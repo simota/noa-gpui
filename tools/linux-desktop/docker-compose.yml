@@ -1,0 +1,25 @@
+# Rendering uses Mesa's software drivers (lavapipe / llvmpipe): fine for correctness,
+# not for performance numbers.
+services:
+  webtop:
+    image: lscr.io/linuxserver/webtop:ubuntu-xfce
+    container_name: noa-webtop
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Tokyo
+      - LC_ALL=ja_JP.UTF-8
+      # Build outside the bind-mounted source so the host's target/ is untouched.
+      - CARGO_TARGET_DIR=/config/noa-target
+    volumes:
+      # rustup, cargo and build output persist here.
+      - home:/config
+      - ../..:/config/noa-gpui:ro
+      - ./setup.sh:/custom-cont-init.d/50-noa-setup.sh:ro
+    ports:
+      - 127.0.0.1:3000:3000
+    shm_size: 1gb
+    restart: unless-stopped
+
+volumes:
+  home:
