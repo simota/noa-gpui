@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  check:
+    name: fmt, clippy, tests
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      # Software Vulkan (lavapipe) so the GPU readback tests have an adapter.
+      - name: Install Mesa Vulkan drivers
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers
+      # The checks themselves live in scripts/verify.sh, the same command people and agents run.
+      - run: ./scripts/verify.sh --full
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-output
+          include-hidden-files: true
+          path: .verify/
+      # The catalog and the Mini-OS drawn without a window (on lavapipe), to look at in
+      # the run's artifacts.
+      - name: Snapshots
+        run: |
+          mkdir -p snapshots
+          cargo run -p desktop -- --scene=catalog --snapshot=snapshots/catalog.png
+          cargo run -p desktop -- --scene=minios --snapshot=snapshots/minios.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: snapshots
+          path: snapshots/
+
+  native:
+    name: native build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build -p desktop --release
+
+  web:
+    name: web build (${{ matrix.backend }})
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [webgpu, webgl2]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.backend }}
+      - run: cargo build -p web --target wasm32-unknown-unknown --profile wasm-release --features ${{ matrix.backend }}
