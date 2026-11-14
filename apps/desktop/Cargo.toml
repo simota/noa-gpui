@@ -1,0 +1,16 @@
+[package]
+name = "desktop"
+description = "Desktop (Windows/macOS/Linux) runner for the noa-gpui demo"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "noa-demo"
+path = "src/main.rs"
+
+[dependencies]
+demo = { workspace = true, features = ["native"] }
+env_logger.workspace = true

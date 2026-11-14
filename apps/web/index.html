@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>noa-gpui demo</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --background: #f4f5f8;
+      --surface: #ffffff;
+      --text: #1e2230;
+      --muted: #50586a;
+      --border: #c9cfdc;
+      --accent: #2952cc;
+      --accent-hover: #1d3f9f;
+      --on-accent: #ffffff;
+      --focus: #244fd7;
+      --error: #b00020;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: #1b1d24;
+        --surface: #262932;
+        --text: #e8eaf0;
+        --muted: #b5bdcf;
+        --border: #596273;
+        --accent: #a7bdff;
+        --accent-hover: #bfd0ff;
+        --on-accent: #11192e;
+        --focus: #acc0ff;
+        --error: #ffb3bc;
+      }
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { margin: 0; height: 100%; background: var(--background); overflow: hidden; }
+    body { font: 16px/1.5 system-ui, sans-serif; color: var(--text); }
+    #app { position: fixed; inset: 0; }
+    #app canvas { display: block; width: 100%; height: 100%; outline: none; }
+    .startup { position: fixed; inset: 0; overflow: auto; padding: 24px 16px; display: flex; flex-direction: column; align-items: center; }
+    .startup-card { flex-shrink: 0; margin: auto; width: 100%; max-width: 32rem; min-width: 0; padding: clamp(20px, 5vw, 32px); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow-wrap: anywhere; }
+    .brand { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--muted); }
+    h1 { margin: 0 0 16px; font-size: 24px; line-height: 1.25; }
+    #startup-status, #error-summary { margin: 0; }
+    #startup-status, .help { color: var(--muted); }
+    .help { margin: 12px 0 20px; }
+    #retry { min-height: 44px; padding: 10px 20px; border: 1px solid transparent; border-radius: 6px; background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; cursor: pointer; }
+    #retry:hover, #retry:active { background: var(--accent-hover); }
+    details { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+    summary { cursor: pointer; color: var(--muted); }
+    #error { max-height: 16rem; overflow: auto; margin: 12px 0 0; font: 13px/1.5 ui-monospace, monospace; color: var(--error); white-space: pre-wrap; overflow-wrap: anywhere; }
+    #retry:focus-visible, summary:focus-visible, #error:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    @media (forced-colors: active) {
+      #retry { border-color: ButtonText; }
+      #retry:focus-visible, summary:focus-visible, #error:focus-visible { outline-color: Highlight; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" aria-busy="true"></div>
+  <main id="startup" class="startup" aria-labelledby="startup-title">
+    <section class="startup-card">
+      <p class="brand">noa-gpui demo</p>
+      <h1 id="startup-title">Starting the demo</h1>
+      <p id="startup-status" role="status" aria-live="polite" aria-atomic="true">Checking graphics support…</p>
+      <div id="recovery" hidden>
+        <p id="error-summary" role="alert"></p>
+        <p class="help">Check your connection and your browser’s graphics support, then try again. Your selected scene and backend will be kept.</p>
+        <button id="retry" type="button">Try again</button>
+        <details>
+          <summary>Technical details</summary>
+          <pre id="error" tabindex="0"></pre>
+        </details>
+      </div>
+      <noscript>JavaScript is needed to run this demo. Enable it in your browser, then reload this page.</noscript>
+    </section>
+  </main>
+  <script type="module">
+    const startup = document.getElementById("startup");
+    const status = document.getElementById("startup-status");
+    const app = document.getElementById("app");
+    // A full reload releases the failed attempt's canvas, listeners and devices and
+    // keeps the query parameters.
+    const retry = document.getElementById("retry");
+    retry.addEventListener("click", () => location.reload());
+
+    // If the WebGPU build fails to initialize the GPU, retry with WebGL2 on a new
+    // canvas: a canvas that handed out one context type cannot hand out another.
+    // `?backend=webgpu|webgl2` forces a build.
+    async function webgpuUsable() {
+      if (!navigator.gpu) return false;
+      try {
+        // Request a device too: some browsers hand out an adapter but no device, and
+        // the WebGPU build would then be downloaded only to fall back to WebGL2.
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) return false;
+        (await adapter.requestDevice()).destroy();
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    function freshCanvas() {
+      const app = document.getElementById("app");
+      const canvas = document.createElement("canvas");
+      app.replaceChildren(canvas);
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.round(app.clientWidth * dpr));
+      canvas.height = Math.max(1, Math.round(app.clientHeight * dpr));
+      return canvas;
+    }
+
+    async function run(backend) {
+      const wasm = await import(`./${backend}.js`);
+      await wasm.default();
+      await wasm.start(freshCanvas(), location.search);
+    }
+
+    const forced = new URLSearchParams(location.search).get("backend");
+    const order = forced ? [forced] : (await webgpuUsable()) ? ["webgpu", "webgl2"] : ["webgl2"];
+    const errors = [];
+    for (const backend of order) {
+      status.textContent = errors.length
+        ? "The first graphics option was unavailable. Trying a compatible option…"
+        : "Loading the demo…";
+      try {
+        await run(backend);
+        document.documentElement.dataset.backend = backend;
+        console.info(`noa-gpui: running the ${backend} build`);
+        app.removeAttribute("aria-busy");
+        startup.hidden = true;
+        errors.length = 0;
+        break;
+      } catch (e) {
+        errors.push(`${backend}: ${e}`);
+        console.warn(`noa-gpui: ${backend} build failed`, e);
+      }
+    }
+    if (errors.length) {
+      app.removeAttribute("aria-busy");
+      document.getElementById("startup-title").textContent = "The demo couldn’t start";
+      status.hidden = true;
+      document.getElementById("recovery").hidden = false;
+      document.getElementById("error-summary").textContent = "Loading the graphics backend failed.";
+      const el = document.getElementById("error");
+      el.textContent = "Could not start a GPU backend.\n\n" + errors.join("\n");
+      el.hidden = false;
+      retry.focus();
+    }
+  </script>
+</body>
+</html>

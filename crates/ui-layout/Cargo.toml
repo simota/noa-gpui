@@ -1,0 +1,11 @@
+[package]
+name = "ui-layout"
+description = "Taffy-based layout adapter for noa-gpui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+ui-scene.workspace = true
+taffy.workspace = true

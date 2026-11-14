@@ -1,0 +1,14 @@
+[package]
+name = "ui-text"
+description = "Text shaping and layout storage for noa-gpui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+ui-scene.workspace = true
+cosmic-text.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+sys-locale.workspace = true

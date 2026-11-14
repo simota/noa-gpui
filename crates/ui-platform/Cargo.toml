@@ -1,0 +1,72 @@
+[package]
+name = "ui-platform"
+description = "winit application shell for noa-gpui: windows, input, the frame loop and OS integration"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[features]
+native = [
+    "ui-render-wgpu/native",
+    "dep:arboard",
+    "dep:accesskit_winit",
+    "dep:tray-icon",
+    "dep:rfd",
+    "dep:objc2",
+    "dep:objc2-app-kit",
+    "dep:ksni",
+]
+webgpu = ["ui-render-wgpu/webgpu"]
+webgl2 = ["ui-render-wgpu/webgl2"]
+
+[dependencies]
+ui-scene.workspace = true
+ui-core.workspace = true
+ui-text.workspace = true
+ui-render-wgpu.workspace = true
+winit.workspace = true
+log.workspace = true
+web-time.workspace = true
+arboard = { workspace = true, optional = true }
+accesskit_winit = { workspace = true, optional = true }
+
+# Blocks on GPU initialization (the Web awaits it before the app starts).
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+pollster.workspace = true
+
+# The system menu bar (macOS, through tray-icon's `menu`, which is muda) and menu bar
+# extras / tray icons (macOS, Windows).
+[target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
+tray-icon = { workspace = true, optional = true }
+
+# The application delegate that reports a click on the Dock icon (reopen).
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = { workspace = true, optional = true }
+objc2-app-kit = { workspace = true, optional = true }
+
+# The OS's open and save panels (NSOpenPanel / NSSavePanel on macOS, the common item
+# dialogs on Windows, the XDG desktop portal on Linux).
+[target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies.rfd]
+workspace = true
+optional = true
+
+# The tray icon on Linux (StatusNotifierItem over D-Bus, no GTK).
+[target.'cfg(target_os = "linux")'.dependencies]
+ksni = { workspace = true, optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies.rfd]
+workspace = true
+optional = true
+features = ["xdg-portal", "async-std"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { workspace = true, features = ["HtmlCanvasElement", "Window", "Navigator"] }
+
+[[example]]
+name = "hello"
+required-features = ["native"]
+
+[[example]]
+name = "snapshot"
+required-features = ["native"]

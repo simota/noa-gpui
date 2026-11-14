@@ -1,0 +1,34 @@
+/* A Noa Style sheet to try with the demo:
+ *
+ *   cargo run -p desktop --release -- --scene=catalog --stylesheet=apps/demo/styles/example.noa.css
+ *
+ * Edit and save this file while the window is open: the catalog restyles at once.
+ * A mistake is reported in the log and the previous sheet stays in effect.
+ */
+
+:root {
+    --field-fill: #fffbea;
+    --field-edge: #d4a72c;
+}
+
+/* Text inputs take the box and text properties. */
+TextField, SecureTextField, SearchField, ComboBox, TextArea, TextView {
+    background-color: var(--field-fill);
+    border: 1px solid var(--field-edge);
+    border-radius: 4px;
+    color: #5c3c00;
+}
+
+TextField:focus, TextArea:focus {
+    border-color: theme(accent);
+}
+
+Button {
+    border-radius: 4px;
+}
+
+/* Widgets that draw no box of their own get one from the tree. */
+Checkbox:hover, Switch:hover {
+    background-color: theme(surface-alt);
+    border-radius: 4px;
+}

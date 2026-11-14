@@ -1,0 +1,26 @@
+[package]
+name = "web"
+description = "Web (WebGPU / WebGL2) runner for the noa-gpui demo"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+webgpu = ["demo/webgpu"]
+webgl2 = ["demo/webgl2"]
+
+[dependencies]
+demo.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
+web-sys = { workspace = true, features = ["HtmlCanvasElement"] }
+console_error_panic_hook.workspace = true
+console_log.workspace = true
+log.workspace = true
