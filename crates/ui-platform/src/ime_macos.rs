@@ -520,12 +520,17 @@ mod tests {
     #[test]
     fn the_first_rect_covers_only_the_first_line() {
         let line = |x: f32, y: f32| Rect::new(x, y, 8.0, 16.0);
+        let cluster = |bytes: Range<usize>, x: f32, y: f32| noa_gpui_text::Cluster {
+            bytes,
+            rect: line(x, y),
+            rtl: false,
+        };
         let mut s = snapshot("abcd", 0..0);
         s.context.clusters = vec![
-            (0..1, line(0.0, 0.0)),
-            (1..2, line(8.0, 0.0)),
-            (2..3, line(0.0, 16.0)),
-            (3..4, line(8.0, 16.0)),
+            cluster(0..1, 0.0, 0.0),
+            cluster(1..2, 8.0, 0.0),
+            cluster(2..3, 0.0, 16.0),
+            cluster(3..4, 8.0, 16.0),
         ];
         let (rect, covered) = s.first_rect(NSRange::of(1..4));
         assert_eq!(rect, line(8.0, 0.0));

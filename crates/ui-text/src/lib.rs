@@ -106,6 +106,29 @@ struct Layout {
     size: Size,
 }
 
+/// A glyph cluster: the bytes it shows and its box, a line high.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Cluster {
+    pub bytes: Range<usize>,
+    pub rect: Rect,
+    /// Laid out right to left: the caret before it is at its right edge.
+    pub rtl: bool,
+}
+
+impl Cluster {
+    /// The caret's x before byte `index` of the cluster (part way across a cluster of
+    /// several characters, such as a ligature).
+    pub fn caret_x(&self, index: usize) -> f32 {
+        let len = (self.bytes.end - self.bytes.start).max(1) as f32;
+        let t = (index.clamp(self.bytes.start, self.bytes.end) - self.bytes.start) as f32 / len;
+        if self.rtl {
+            self.rect.right() - self.rect.width * t
+        } else {
+            self.rect.x + self.rect.width * t
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CaretPosition {
     pub x: f32,
@@ -250,7 +273,7 @@ impl TextLayouts {
     /// The glyph clusters overlapping bytes `range`, in text order, each with the bytes
     /// it shows and its box (a line high): what an input method asks to place its
     /// candidate window or to find the character under the pointer.
-    pub fn clusters(&self, id: TextLayoutId, range: Range<usize>) -> Vec<(Range<usize>, Rect)> {
+    pub fn clusters(&self, id: TextLayoutId, range: Range<usize>) -> Vec<Cluster> {
         let layout = self.get(id);
         let lines = &layout.buffer.lines;
         // Paragraph starts, counted up as the runs reach them: the paragraphs before
@@ -275,17 +298,17 @@ impl TextLayouts {
                 }
                 // Ligatures and combined characters are one glyph over several
                 // characters; a cluster shaped into several glyphs comes once.
-                if clusters
-                    .last()
-                    .is_some_and(|(last, _): &(Range<usize>, Rect)| *last == bytes)
-                {
+                if clusters.last().is_some_and(|c: &Cluster| c.bytes == bytes) {
                     continue;
                 }
-                let rect = Rect::new(glyph.x, run.line_top, glyph.w, run.line_height);
-                clusters.push((bytes, rect));
+                clusters.push(Cluster {
+                    bytes,
+                    rect: Rect::new(glyph.x, run.line_top, glyph.w, run.line_height),
+                    rtl: glyph.level.is_rtl(),
+                });
             }
         }
-        clusters.sort_by_key(|(bytes, _)| bytes.start);
+        clusters.sort_by_key(|c| c.bytes.start);
         clusters
     }
 
@@ -659,7 +682,7 @@ impl TextStore {
         self.layouts.selection_rects(id, start, end)
     }
 
-    pub fn clusters(&self, id: TextLayoutId, range: Range<usize>) -> Vec<(Range<usize>, Rect)> {
+    pub fn clusters(&self, id: TextLayoutId, range: Range<usize>) -> Vec<Cluster> {
         self.layouts.clusters(id, range)
     }
 
@@ -1404,17 +1427,24 @@ mod cluster_tests {
         let style = TextStyle::new(14.0);
         let id = store.create("ab\ncdé", style, None);
         let clusters = store.clusters(id, 0..usize::MAX);
-        let bytes: Vec<_> = clusters.iter().map(|c| c.0.clone()).collect();
+        let bytes: Vec<_> = clusters.iter().map(|c| c.bytes.clone()).collect();
         assert_eq!(bytes, [0..1, 1..2, 3..4, 4..5, 5..7]);
         // Each sits where the caret before it is, on its own line.
-        for (range, rect) in &clusters {
+        for Cluster {
+            bytes: range, rect, ..
+        } in &clusters
+        {
             let caret = store.caret(id, range.start);
             assert_eq!((rect.x, rect.y), (caret.x, caret.top), "{range:?}");
             assert_eq!(rect.height, style.line_height);
         }
-        assert_eq!(clusters[2].1.y, style.line_height);
+        assert_eq!(clusters[2].rect.y, style.line_height);
         // Only those overlapping the range asked for.
-        let middle: Vec<_> = store.clusters(id, 4..6).into_iter().map(|c| c.0).collect();
+        let middle: Vec<_> = store
+            .clusters(id, 4..6)
+            .into_iter()
+            .map(|c| c.bytes)
+            .collect();
         assert_eq!(middle, [4..5, 5..7]);
     }
 }

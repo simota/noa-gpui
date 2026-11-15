@@ -5,7 +5,7 @@
 use std::ops::Range;
 
 use noa_gpui_scene::{Point, Rect, TextLayoutId};
-use noa_gpui_text::TextStore;
+use noa_gpui_text::{Cluster, TextStore};
 
 /// Bytes on either side of the caret the input method sees at most: a long paragraph
 /// is cut there rather than copied whole every frame.
@@ -27,7 +27,7 @@ pub struct ImeContext {
     /// The composition, while the input method has one.
     pub composition: Option<Range<usize>>,
     /// Every character's cluster and its box, in text order.
-    pub clusters: Vec<(Range<usize>, Rect)>,
+    pub clusters: Vec<Cluster>,
     /// The caret's box, for ranges with no characters (an empty text).
     pub caret: Rect,
 }
@@ -69,9 +69,13 @@ impl ImeContext {
             clusters: text
                 .clusters(layout, shown_base + start..shown_base + end)
                 .into_iter()
-                .map(|(bytes, rect)| {
-                    let bytes = bytes.start - shown_base..bytes.end - shown_base;
-                    (local(&bytes), to_window(rect))
+                .map(|c| {
+                    let bytes = c.bytes.start - shown_base..c.bytes.end - shown_base;
+                    Cluster {
+                        bytes: local(&bytes),
+                        rect: to_window(c.rect),
+                        rtl: c.rtl,
+                    }
                 })
                 .collect(),
             caret: to_window(Rect::new(caret.x, caret.top, 1.0, caret.height)),
@@ -79,8 +83,8 @@ impl ImeContext {
     }
 
     pub fn translate(mut self, dx: f32, dy: f32) -> Self {
-        for (_, rect) in &mut self.clusters {
-            *rect = rect.translate(dx, dy);
+        for cluster in &mut self.clusters {
+            cluster.rect = cluster.rect.translate(dx, dy);
         }
         self.caret = self.caret.translate(dx, dy);
         self
@@ -91,10 +95,13 @@ impl ImeContext {
     /// it fits on one line). An empty range is a caret's width at its start.
     pub fn first_rect(&self, range: Range<usize>) -> (Rect, Range<usize>) {
         let mut first: Option<(Rect, Range<usize>)> = None;
-        for (bytes, rect) in &self.clusters {
+        for cluster in &self.clusters {
+            let (bytes, rect) = (&cluster.bytes, &cluster.rect);
             if range.is_empty() {
-                if bytes.start >= range.start {
-                    return (Rect::new(rect.x, rect.y, 0.0, rect.height), range);
+                // The caret before the cluster holding the byte, or part way across it.
+                if bytes.end > range.start {
+                    let x = cluster.caret_x(range.start);
+                    return (Rect::new(x, rect.y, 0.0, rect.height), range);
                 }
                 continue;
             }
@@ -114,9 +121,10 @@ impl ImeContext {
             return (rect, covered.start..covered.end.min(range.end));
         }
         let rect = match self.clusters.last() {
-            // At the end of the text: just after the last character.
-            Some((bytes, rect)) if range.start >= bytes.end => {
-                Rect::new(rect.right(), rect.y, 0.0, rect.height)
+            // At the end of the text: just after the last character, on its far side.
+            Some(last) if range.start >= last.bytes.end => {
+                let x = last.caret_x(last.bytes.end);
+                Rect::new(x, last.rect.y, 0.0, last.rect.height)
             }
             _ => self.caret,
         };
@@ -128,8 +136,8 @@ impl ImeContext {
     pub fn index_at(&self, pos: Point) -> Option<usize> {
         self.clusters
             .iter()
-            .find(|(_, rect)| rect.contains(pos))
-            .map(|(bytes, _)| bytes.start)
+            .find(|c| c.rect.contains(pos))
+            .map(|c| c.bytes.start)
     }
 }
 
@@ -196,5 +204,37 @@ mod tests {
         assert!(context.text.len() <= 2 * REACH);
         assert_eq!(context.base + context.selection.start, caret);
         assert!(shown.is_char_boundary(context.base));
+    }
+
+    /// An empty range is the caret before that byte, as the layout places it: on the
+    /// right of a right-to-left character, and inside a ligature.
+    #[test]
+    fn an_empty_range_is_where_the_caret_is() {
+        let mut text = store();
+        let shown = "ab שלום";
+        let layout = text.create(shown, TextStyle::new(14.0), None);
+        let context =
+            ImeContext::of_layout(&text, layout, (shown, 0), 0..0, None, Point::default());
+        for (i, _) in shown.char_indices().chain([(shown.len(), ' ')]) {
+            let (rect, _) = context.first_rect(i..i);
+            let caret = text.caret(layout, i);
+            assert!(
+                (rect.x - caret.x).abs() < 0.5,
+                "{i}: {} vs {}",
+                rect.x,
+                caret.x
+            );
+        }
+        // Inside a cluster of two characters (a ligature): part way across it.
+        let ligature = ImeContext {
+            text: "fi".into(),
+            clusters: vec![Cluster {
+                bytes: 0..2,
+                rect: Rect::new(0.0, 0.0, 10.0, 16.0),
+                rtl: false,
+            }],
+            ..Default::default()
+        };
+        assert_eq!(ligature.first_rect(1..1).0.x, 5.0);
     }
 }
