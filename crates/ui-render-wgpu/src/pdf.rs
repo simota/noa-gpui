@@ -261,8 +261,9 @@ impl PdfDocument {
     }
 
     /// PDF has no blur: the shadow is eight rounded rectangles grown and shrunk to the
-    /// Gaussian's octiles, each an eighth as opaque, so their overlap rises across the
-    /// edge as the blurred one does.
+    /// Gaussian's octiles, drawn from the largest in, so their overlap rises across the
+    /// edge as the blurred one does. Each layer is as opaque as it takes for the `k`
+    /// layers over a point to add up to `k / 8` of the shadow's alpha.
     fn shadow(
         &mut self,
         out: &mut Content,
@@ -277,8 +278,12 @@ impl PdfDocument {
             return;
         }
         let sigma = blur / 2.0;
-        let layer = color.with_alpha(color.a / OCTILES.len() as f32);
-        for k in OCTILES {
+        let layers = OCTILES.len() as f32;
+        for (i, k) in OCTILES.into_iter().enumerate() {
+            // Covered so far, and what this layer must bring it to.
+            let below = color.a * i as f32 / layers;
+            let target = color.a * (i + 1) as f32 / layers;
+            let layer = color.with_alpha((target - below) / (1.0 - below));
             let grow = k * sigma;
             let (w, h) = (rect.width + 2.0 * grow, rect.height + 2.0 * grow);
             if w <= 0.0 || h <= 0.0 {
@@ -905,7 +910,18 @@ mod tests {
         pdf.add_page(&list, &mut text, Size::new(100.0, 100.0), None);
         let objects = objects(&pdf.finish());
         let content = objects.iter().find(|o| o.contains("0 0 0 rg")).unwrap();
-        assert_eq!(content.matches("/A50 gs").count(), 8, "{content}");
+        // Drawn over one another, the eight layers add up to the shadow's alpha
+        // where they all overlap.
+        let alphas: Vec<f32> = content
+            .split("/A")
+            .skip(1)
+            .filter_map(|rest| rest.split_once(" gs").map(|(key, _)| key))
+            .filter_map(|key| key.parse::<f32>().ok())
+            .map(|key| key / 1000.0)
+            .collect();
+        assert_eq!(alphas.len(), 8, "{content}");
+        let covered = 1.0 - alphas.iter().map(|a| 1.0 - a).product::<f32>();
+        assert!((covered - 0.4).abs() < 0.005, "{covered}");
         // The outermost reaches 1.534 sigma (6.1 points) past the box.
         assert!(content.contains("13.864 "), "{content}");
     }
