@@ -1115,12 +1115,23 @@ fn on_a_monitor(event_loop: &ActiveEventLoop, (x, y): (i32, i32)) -> bool {
 #[cfg(feature = "native")]
 pub(crate) fn start_window_drags(window: &Window, screen: &mut dyn Screen) {
     use crate::screen::WindowDrag;
-    for drag in screen.take_window_drags() {
-        let started = match drag {
+    start_window_drags_with(screen, |drag| {
+        match drag {
             WindowDrag::Move => window.drag_window(),
             WindowDrag::Resize(direction) => window.drag_resize_window(direction),
-        };
-        if let Err(error) = started {
+        }
+        .map_err(|e| e.to_string())
+    });
+}
+
+/// Hand each move or resize the screen asked for to `start`, which asks the OS.
+#[cfg(feature = "native")]
+fn start_window_drags_with(
+    screen: &mut dyn Screen,
+    mut start: impl FnMut(crate::screen::WindowDrag) -> Result<(), String>,
+) {
+    for drag in screen.take_window_drags() {
+        if let Err(error) = start(drag) {
             log::debug!("cannot {drag:?} the window: {error}");
         }
     }
@@ -1129,6 +1140,93 @@ pub(crate) fn start_window_drags(window: &Window, screen: &mut dyn Screen) {
 #[cfg(test)]
 mod tests {
     use super::visibility_change;
+
+    /// A title bar the screen draws: a press asks the OS to move the window.
+    #[cfg(feature = "native")]
+    #[test]
+    fn a_drag_asked_for_on_a_press_starts_right_after_it() {
+        use crate::screen::{Screen, WindowDrag};
+        use noa_gpui_core::widgets::Container;
+        use noa_gpui_core::{Event, EventCx, Message, PaintCx, PointerButton, UiTree, Widget};
+        use noa_gpui_scene::Point;
+        use noa_gpui_text::{FontOptions, TextStore};
+        use winit::window::ResizeDirection;
+
+        struct TitleBar;
+        struct Pressed(Point);
+        impl Widget for TitleBar {
+            fn style(&self) -> noa_gpui_core::Style {
+                noa_gpui_core::Style {
+                    size: noa_gpui_core::style::Size {
+                        width: noa_gpui_core::style::length(200.0),
+                        height: noa_gpui_core::style::length(28.0),
+                    },
+                    ..Default::default()
+                }
+            }
+            fn paint(&mut self, _cx: &mut PaintCx) {}
+            fn event(&mut self, cx: &mut EventCx, event: &Event) {
+                if let Event::PointerDown { pos, .. } = event {
+                    cx.emit(Pressed(cx.local(*pos)));
+                    cx.set_handled();
+                }
+            }
+        }
+        struct Window {
+            tree: UiTree,
+            drags: Vec<WindowDrag>,
+        }
+        impl Screen for Window {
+            fn tree(&self) -> &UiTree {
+                &self.tree
+            }
+            fn tree_mut(&mut self) -> &mut UiTree {
+                &mut self.tree
+            }
+            fn handle(&mut self, message: Message, _text: &mut TextStore) {
+                if let Some(Pressed(at)) = message.downcast_ref::<Pressed>() {
+                    // The right end resizes, the rest moves.
+                    self.drags.push(if at.x > 190.0 {
+                        WindowDrag::Resize(ResizeDirection::East)
+                    } else {
+                        WindowDrag::Move
+                    });
+                }
+            }
+            fn take_window_drags(&mut self) -> Vec<WindowDrag> {
+                std::mem::take(&mut self.drags)
+            }
+        }
+
+        let mut text = TextStore::new(FontOptions {
+            locale: "en-US".into(),
+            load_system_fonts: false,
+        });
+        let mut tree = UiTree::new();
+        let root = tree.insert(None, Container::new(Default::default()));
+        tree.insert(Some(root), TitleBar);
+        tree.prepare(noa_gpui_scene::Size::new(400.0, 300.0), &mut text);
+        let mut screen = Window {
+            tree,
+            drags: Vec::new(),
+        };
+        let mut started = Vec::new();
+        for x in [20.0, 195.0] {
+            let pos = Point::new(x, 10.0);
+            let button = PointerButton::Primary;
+            screen.dispatch(Event::PointerDown { pos, button }, &mut text);
+            super::start_window_drags_with(&mut screen, |drag| {
+                started.push(drag);
+                Ok(())
+            });
+        }
+        assert_eq!(
+            started,
+            [WindowDrag::Move, WindowDrag::Resize(ResizeDirection::East)]
+        );
+        // Each was taken once.
+        super::start_window_drags_with(&mut screen, |drag| panic!("{drag:?} again"));
+    }
 
     #[test]
     fn the_os_decorates_the_main_window_unless_told_otherwise() {
