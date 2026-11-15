@@ -131,6 +131,26 @@ impl TextField {
         self.line.edit.composition()
     }
 
+    /// Collect the reading of the typed text from the IME — the kana typed before each
+    /// conversion — and emit [`super::ReadingChanged`] when it changes, for filling a
+    /// furigana field as a name is typed. Text typed as kana is its own reading, ASCII
+    /// typed directly has none. The reading only grows as text is committed; it is
+    /// cleared when the field becomes empty or [`TextField::set_text`] replaces the text,
+    /// but deleting part of the text leaves it as it was.
+    pub fn capture_reading(mut self, capture: bool) -> Self {
+        self.line.edit.reading = capture.then(Default::default);
+        self
+    }
+
+    /// The captured reading; empty unless [`TextField::capture_reading`] is on.
+    pub fn reading(&self) -> &str {
+        self.line
+            .edit
+            .reading
+            .as_ref()
+            .map_or("", |r| r.text.as_str())
+    }
+
     pub fn scroll_x(&self) -> f32 {
         self.line.scroll_x
     }
@@ -140,6 +160,9 @@ impl TextField {
         let text = text.into();
         if text != self.text() {
             self.line.edit.editor.set_text(&text);
+            if let Some(reading) = &mut self.line.edit.reading {
+                *reading = Default::default();
+            }
             cx.request_layout();
         }
     }
