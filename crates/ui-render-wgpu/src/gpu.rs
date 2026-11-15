@@ -42,16 +42,17 @@ pub struct GpuOptions {
 }
 
 /// How the compositor blends a surface with what is behind the window. The frame holds
-/// premultiplied colors (see [`crate::Renderer`]): a transparent surface takes
-/// `PostMultiplied` where it is offered, which is how Metal names a non-opaque layer
-/// (Core Animation composites it premultiplied), and `PreMultiplied` otherwise.
+/// premultiplied colors (see [`crate::Renderer`]), so a transparent surface takes
+/// `PreMultiplied`. Metal offers only `PostMultiplied`, which is how it names a
+/// non-opaque layer (Core Animation composites it premultiplied): that comes second.
+/// Elsewhere `PostMultiplied` would multiply by alpha twice.
 pub fn alpha_mode(
     modes: &[wgpu::CompositeAlphaMode],
     transparent: bool,
 ) -> wgpu::CompositeAlphaMode {
     use wgpu::CompositeAlphaMode as Mode;
     let wanted: &[Mode] = if transparent {
-        &[Mode::PostMultiplied, Mode::PreMultiplied]
+        &[Mode::PreMultiplied, Mode::PostMultiplied]
     } else {
         &[]
     };
@@ -279,6 +280,9 @@ mod tests {
         assert_eq!(alpha_mode(&metal, false), Mode::Opaque);
         let vulkan = [Mode::Opaque, Mode::PreMultiplied, Mode::Inherit];
         assert_eq!(alpha_mode(&vulkan, true), Mode::PreMultiplied);
+        // Where both are offered, premultiplied is what the frame holds.
+        let both = [Mode::Opaque, Mode::PostMultiplied, Mode::PreMultiplied];
+        assert_eq!(alpha_mode(&both, true), Mode::PreMultiplied);
         // Where nothing blends, the window stays opaque.
         assert_eq!(alpha_mode(&[Mode::Opaque], true), Mode::Opaque);
         assert_eq!(alpha_mode(&[], false), Mode::Auto);
