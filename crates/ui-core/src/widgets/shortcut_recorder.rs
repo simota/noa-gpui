@@ -120,11 +120,12 @@ impl ShortcutRecorder {
             key,
             Key::Other | Key::ContextMenu | Key::Tab | Key::Escape | Key::Enter
         ) || modifiers.command
+            || modifiers.ctrl
             || modifiers.alt;
         if !usable {
             return None;
         }
-        let modified = modifiers.command || modifiers.alt;
+        let modified = modifiers.command || modifiers.ctrl || modifiers.alt;
         let function_key = key.function_number().is_some();
         if !(modified || function_key || self.bare_keys) {
             return None;
@@ -132,6 +133,7 @@ impl ShortcutRecorder {
         Some(Shortcut {
             key,
             command: modifiers.command,
+            ctrl: modifiers.control(),
             shift: modifiers.shift,
             alt: modifiers.alt,
         })
@@ -236,7 +238,8 @@ impl Widget for ShortcutRecorder {
                 cx.request_layout();
             }
             Event::KeyDown { key, modifiers } if self.recording => {
-                let bare = !(modifiers.command || modifiers.alt || modifiers.shift);
+                let bare =
+                    !(modifiers.command || modifiers.ctrl || modifiers.alt || modifiers.shift);
                 match key {
                     Key::Escape if bare => {
                         self.recording = false;

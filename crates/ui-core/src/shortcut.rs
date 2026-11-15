@@ -6,6 +6,9 @@ pub struct Shortcut {
     pub key: Key,
     /// The platform's command modifier ([`Modifiers::command`]).
     pub command: bool,
+    /// The Control key apart from [`Self::command`], as in ⌃⌘F on a Mac. Outside Apple
+    /// platforms Ctrl is the command key, so this means the same as `command` there.
+    pub ctrl: bool,
     pub shift: bool,
     pub alt: bool,
 }
@@ -15,6 +18,7 @@ impl Shortcut {
         Self {
             key,
             command: false,
+            ctrl: false,
             shift: false,
             alt: false,
         }
@@ -25,6 +29,7 @@ impl Shortcut {
         Self {
             key: Key::Char(c),
             command: true,
+            ctrl: false,
             shift: false,
             alt: false,
         }
@@ -41,14 +46,18 @@ impl Shortcut {
         Self { alt: true, ..self }
     }
 
-    /// How the shortcut is written in a menu: Mac glyphs in the Mac order ("⌥⇧⌘S"),
+    pub const fn with_ctrl(self) -> Self {
+        Self { ctrl: true, ..self }
+    }
+
+    /// How the shortcut is written in a menu: Mac glyphs in the Mac order ("⌃⌥⇧⌘S"),
     /// or names joined with "+" ("Ctrl+Alt+Shift+S") elsewhere.
     pub fn label(&self, glyphs: bool) -> String {
         self.keys(glyphs).join(if glyphs { "" } else { "+" })
     }
 
     /// The keys to press, modifiers first, each as written on its keycap: Mac glyphs in
-    /// the Mac order (`["⌥", "⇧", "⌘", "S"]`), or names (`["Ctrl", "Alt", "Shift",
+    /// the Mac order (`["⌃", "⌥", "⇧", "⌘", "S"]`), or names (`["Ctrl", "Alt", "Shift",
     /// "S"]`) elsewhere. See [`crate::widgets::Kbd`].
     pub fn keys(&self, glyphs: bool) -> Vec<String> {
         let key = match (self.key, glyphs) {
@@ -95,13 +104,14 @@ impl Shortcut {
         };
         let modifiers: &[(bool, &str, &str)] = if glyphs {
             &[
+                (self.ctrl, "⌃", ""),
                 (self.alt, "⌥", ""),
                 (self.shift, "⇧", ""),
                 (self.command, "⌘", ""),
             ]
         } else {
             &[
-                (self.command, "", "Ctrl"),
+                (self.command || self.ctrl, "", "Ctrl"),
                 (self.alt, "", "Alt"),
                 (self.shift, "", "Shift"),
             ]
@@ -115,10 +125,13 @@ impl Shortcut {
     }
 
     pub fn matches(&self, key: Key, modifiers: Modifiers) -> bool {
-        self.key == key
-            && self.command == modifiers.command
-            && self.shift == modifiers.shift
-            && self.alt == modifiers.alt
+        let control = if modifiers.ctrl_is_command() {
+            // Ctrl is the command key, so either flag asks for it.
+            self.command || self.ctrl
+        } else {
+            self.command == modifiers.command && self.ctrl == modifiers.control()
+        };
+        self.key == key && control && self.shift == modifiers.shift && self.alt == modifiers.alt
     }
 }
 
@@ -161,6 +174,46 @@ mod tests {
         let all = Shortcut::command('z').with_shift().with_alt();
         assert_eq!(all.label(true), "⌥⇧⌘Z");
         assert_eq!(all.label(false), "Ctrl+Alt+Shift+Z");
+    }
+
+    #[test]
+    fn control_is_its_own_key_on_a_mac_and_the_command_key_elsewhere() {
+        let find = Shortcut::command('f').with_ctrl();
+        let mac_cmd = Modifiers {
+            command: true,
+            meta: true,
+            ..Default::default()
+        };
+        let mac_ctrl_cmd = Modifiers {
+            ctrl: true,
+            ..mac_cmd
+        };
+        assert!(find.matches(Key::Char('f'), mac_ctrl_cmd));
+        assert!(!find.matches(Key::Char('f'), mac_cmd));
+        assert!(!Shortcut::command('f').matches(Key::Char('f'), mac_ctrl_cmd));
+        let mac_ctrl = Modifiers {
+            ctrl: true,
+            ..Default::default()
+        };
+        let tab = Shortcut::key(Key::Tab).with_ctrl();
+        assert!(tab.matches(Key::Tab, mac_ctrl));
+        assert!(!tab.matches(Key::Tab, Modifiers::default()));
+        assert!(!Shortcut::key(Key::Tab).matches(Key::Tab, mac_ctrl));
+
+        // Elsewhere the platform sets `command` with Ctrl.
+        let ctrl = Modifiers {
+            ctrl: true,
+            command: true,
+            ..Default::default()
+        };
+        assert!(find.matches(Key::Char('f'), ctrl));
+        assert!(tab.matches(Key::Tab, ctrl));
+        assert!(Shortcut::command('f').matches(Key::Char('f'), ctrl));
+        assert!(!tab.matches(Key::Tab, Modifiers::default()));
+
+        assert_eq!(find.label(true), "⌃⌘F");
+        assert_eq!(find.label(false), "Ctrl+F");
+        assert_eq!(tab.with_shift().keys(true), ["⌃", "⇧", "⇥"]);
     }
 
     #[test]

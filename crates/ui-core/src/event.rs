@@ -26,6 +26,20 @@ pub struct Modifiers {
     pub command: bool,
 }
 
+impl Modifiers {
+    /// Whether Ctrl is held as a key of its own, apart from [`Self::command`]: on Apple
+    /// platforms, where the command key is Cmd. Elsewhere Ctrl is the command key.
+    pub fn control(&self) -> bool {
+        self.ctrl && !self.ctrl_is_command()
+    }
+
+    /// Ctrl is the command key: held together with no Meta, as the platform layer sets
+    /// [`Self::command`] outside Apple platforms.
+    pub(crate) fn ctrl_is_command(&self) -> bool {
+        self.command && !self.meta
+    }
+}
+
 /// Printable input arrives as [`Event::Text`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Key {
