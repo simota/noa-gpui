@@ -1,3 +1,5 @@
+use std::sync::{Mutex, MutexGuard};
+
 use ui_render_wgpu::{Renderer, Viewport, wgpu};
 use ui_scene::{Border, Color, DisplayList, Rect};
 use ui_text::{FontOptions, TextStore, TextStyle};
@@ -9,9 +11,20 @@ const WHITE: [u8; 4] = [255, 255, 255, 255];
 struct Gpu {
     device: wgpu::Device,
     queue: wgpu::Queue,
+    // Declared last so it is dropped last: the next test starts after this device is gone.
+    _turn: MutexGuard<'static, ()>,
+}
+
+/// One device at a time. CI renders on lavapipe (software Vulkan), which crashed with a
+/// segmentation fault while several tests created and dropped devices in parallel.
+fn turn() -> MutexGuard<'static, ()> {
+    static TURN: Mutex<()> = Mutex::new(());
+    // A test that panics while holding the lock must not fail the tests after it.
+    TURN.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 fn gpu() -> Gpu {
+    let turn = turn();
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
     let adapter = pollster::block_on(instance.request_adapter(&Default::default()))
         .expect("a GPU adapter is required for render tests");
@@ -20,11 +33,15 @@ fn gpu() -> Gpu {
         ..Default::default()
     }))
     .expect("device");
-    Gpu { device, queue }
+    Gpu {
+        device,
+        queue,
+        _turn: turn,
+    }
 }
 
 fn render(gpu: &Gpu, renderer: &mut Renderer, list: &DisplayList, text: &mut TextStore) -> Vec<u8> {
-    let Gpu { device, queue } = gpu;
+    let Gpu { device, queue, .. } = gpu;
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: None,
         size: wgpu::Extent3d {
@@ -329,6 +346,7 @@ fn text_still_renders_after_trimming_caches() {
 #[test]
 fn glyph_atlas_growth_is_bounded_by_the_texture_limit() {
     // A device capped at 512 px textures: the glyph atlas may grow 256 -> 512, no further.
+    let turn = turn();
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
     let adapter = pollster::block_on(instance.request_adapter(&Default::default())).unwrap();
     let options = ui_render_wgpu::GpuOptions {
@@ -340,7 +358,11 @@ fn glyph_atlas_growth_is_bounded_by_the_texture_limit() {
     }))
     .unwrap();
     assert_eq!(device.limits().max_texture_dimension_2d, 512);
-    let gpu = Gpu { device, queue };
+    let gpu = Gpu {
+        device,
+        queue,
+        _turn: turn,
+    };
     let mut renderer = Renderer::new(&gpu.device, &gpu.queue, FORMAT);
     let mut text = text_store();
 
