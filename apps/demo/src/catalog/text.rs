@@ -1,16 +1,17 @@
+use noa_gpui_core::style::{Size, length};
 use noa_gpui_core::widgets::{
     Button, ButtonClicked, ComboBox, FindBar, Label, LogLine, LogView, SearchField,
     SearchSubmitted, SecureTextField, SelectionChanged, Terminal, TerminalInput, TextChanged,
     TextField, TextSubmitted, TextView, TokenField, TokensChanged, Truncation, drive_find,
 };
-use noa_gpui_core::{Message, Paint, Role, WidgetId};
-use noa_gpui_scene::Color;
-use noa_gpui_text::TextAlign;
+use noa_gpui_core::{Message, Paint, PaintCx, Role, Style, Widget, WidgetId};
+use noa_gpui_scene::{Color, TextLayoutId};
+use noa_gpui_text::{TextAlign, TextSpan, TextStore, TextStyle};
 
 use super::kit::Kit;
 use super::{Demo, DemoCx, SectionSpec};
 
-pub const SECTIONS: [SectionSpec; 9] = [
+pub const SECTIONS: [SectionSpec; 10] = [
     SectionSpec {
         title: "Label",
         description: "Static text. Single-line by default; wrap(true) wraps at the available \
@@ -58,6 +59,13 @@ pub const SECTIONS: [SectionSpec; 9] = [
         description: "Multi-line plain-text editing with a fixed height: wraps, follows the \
                       caret and scrolls with the wheel.",
         build: text_view,
+    },
+    SectionSpec {
+        title: "Rich text",
+        description: "One layout with spans of their own color, weight, slant, background \
+                      and underline (TextStore::create_rich), drawn with PaintCx::rich_text: \
+                      a line of highlighted code shaped once.",
+        build: rich_text,
     },
     SectionSpec {
         title: "Log view",
@@ -475,4 +483,67 @@ fn terminal(kit: &mut Kit) -> Box<dyn Demo> {
         term,
         line: String::new(),
     })
+}
+
+/// A line of code highlighted by hand, as a syntax highlighter would.
+struct CodeLine {
+    /// The layout and the theme colors it was made with.
+    shaped: Option<(TextLayoutId, [Color; 2])>,
+}
+
+impl CodeLine {
+    const TEXT: &str = "fn greet(name: &str) -> String { todo!() }";
+}
+
+impl Widget for CodeLine {
+    fn style(&self) -> Style {
+        Style {
+            size: Size {
+                width: length(380.0),
+                height: length(22.0),
+            },
+            ..Default::default()
+        }
+    }
+
+    fn paint(&mut self, cx: &mut PaintCx) {
+        let theme = cx.theme();
+        let colors = [theme.color(Role::Accent), theme.color(Role::Muted)];
+        let [accent, muted] = colors;
+        if let Some((layout, made_with)) = self.shaped
+            && made_with != colors
+        {
+            cx.text_store().remove(layout);
+            self.shaped = None;
+        }
+        let (layout, _) = *self.shaped.get_or_insert_with(|| {
+            let string = Color::rgba(0.2, 0.6, 0.3, 1.0);
+            let spans = [
+                TextSpan::new(0..2).color(accent).weight(700),
+                TextSpan::new(3..8).weight(600),
+                TextSpan::new(15..19).color(string).italic(true),
+                TextSpan::new(24..30).color(accent).underline(accent),
+                TextSpan::new(33..40)
+                    .color(muted)
+                    .background(muted.with_alpha(0.18)),
+            ];
+            let style = TextStyle::new(14.0).family(cx.text_store().font_family("monospace"));
+            let layout = cx.text_store().create_rich(Self::TEXT, &spans, style, None);
+            (layout, colors)
+        });
+        let color = cx.theme().color(Role::Text);
+        cx.rich_text(cx.bounds(), layout, color);
+    }
+
+    fn removed(&mut self, text: &mut TextStore) {
+        if let Some((layout, _)) = self.shaped.take() {
+            text.remove(layout);
+        }
+    }
+}
+
+fn rich_text(kit: &mut Kit) -> Box<dyn Demo> {
+    let card = kit.card("TextStore::create_rich(text, spans, style, None)");
+    kit.tree.insert(Some(card), CodeLine { shaped: None });
+    Box::new(())
 }

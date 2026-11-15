@@ -186,15 +186,23 @@ struct InputRecorder {
 #[cfg(feature = "native")]
 impl InputRecorder {
     fn write(&mut self, steps: &[noa_gpui_core::recording::Step]) {
-        use std::io::Write as _;
-        let Some(file) = &mut self.file else {
-            return;
-        };
         let mut lines = String::new();
         for line in steps.iter().filter_map(noa_gpui_core::recording::step_line) {
             lines.push_str(&line);
             lines.push('\n');
         }
+        self.write_text(&lines);
+    }
+
+    fn write_line(&mut self, line: &str) {
+        self.write_text(&format!("{line}\n"));
+    }
+
+    fn write_text(&mut self, lines: &str) {
+        use std::io::Write as _;
+        let Some(file) = &mut self.file else {
+            return;
+        };
         if let Err(e) = file.write_all(lines.as_bytes()) {
             log::warn!("input not recorded to {}: {e}", self.path.display());
             self.file = None;
@@ -801,9 +809,16 @@ impl App {
         gfx.screen
             .tree_mut()
             .set_now(self.clock.elapsed().as_secs_f64());
+        crate::input::sync_multi_click(gfx.screen.tree_mut());
         #[cfg(feature = "native")]
-        if self.recorder.is_some() && !gfx.screen.tree().is_recording() {
+        if let Some(recorder) = &mut self.recorder
+            && !gfx.screen.tree().is_recording()
+        {
             gfx.screen.tree_mut().start_recording();
+            // Replay counts clicks as this session did, with the OS's interval.
+            recorder.write_line(&noa_gpui_core::recording::multi_click_line(
+                gfx.screen.tree().multi_click(),
+            ));
         }
         let inspecting = self.inspector.as_ref().is_some_and(|i| i.is_active());
         for event in events {
