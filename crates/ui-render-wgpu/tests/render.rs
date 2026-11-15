@@ -41,6 +41,16 @@ fn gpu() -> Gpu {
 }
 
 fn render(gpu: &Gpu, renderer: &mut Renderer, list: &DisplayList, text: &mut TextStore) -> Vec<u8> {
+    render_on(gpu, renderer, list, text, Color::WHITE)
+}
+
+fn render_on(
+    gpu: &Gpu,
+    renderer: &mut Renderer,
+    list: &DisplayList,
+    text: &mut TextStore,
+    background: Color,
+) -> Vec<u8> {
     let Gpu { device, queue, .. } = gpu;
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: None,
@@ -75,7 +85,7 @@ fn render(gpu: &Gpu, renderer: &mut Renderer, list: &DisplayList, text: &mut Tex
     });
     let mut encoder = device.create_command_encoder(&Default::default());
     renderer
-        .encode(&mut encoder, &view, Color::WHITE)
+        .encode(&mut encoder, &view, background)
         .expect("render");
     encoder.copy_texture_to_buffer(
         texture.as_image_copy(),
@@ -119,6 +129,40 @@ fn text_store() -> TextStore {
         locale: "en-US".into(),
         load_system_fonts: false,
     })
+}
+
+/// A transparent window composites premultiplied colors: the clear color is
+/// premultiplied as what is blended over it already is.
+#[test]
+fn frames_on_a_translucent_clear_hold_premultiplied_colors() {
+    let gpu = gpu();
+    let mut renderer = Renderer::new(&gpu.device, &gpu.queue, FORMAT);
+    let mut text = text_store();
+    let mut list = DisplayList::new();
+    list.fill_rect(
+        Rect::new(0.0, 0.0, 16.0, 16.0),
+        Color::rgba(1.0, 0.0, 0.0, 0.5),
+    );
+    let data = render_on(
+        &gpu,
+        &mut renderer,
+        &list,
+        &mut text,
+        Color::rgba(1.0, 0.0, 0.0, 0.5),
+    );
+    // Red at half coverage either way: linear 0.5 is 188 in sRGB.
+    assert!(
+        close(pixel(&data, 32, 32), [188, 0, 0, 128]),
+        "{:?}",
+        pixel(&data, 32, 32)
+    );
+    let fully = render_on(&gpu, &mut renderer, &list, &mut text, Color::TRANSPARENT);
+    assert!(
+        close(pixel(&fully, 8, 8), [188, 0, 0, 128]),
+        "{:?}",
+        pixel(&fully, 8, 8)
+    );
+    assert_eq!(pixel(&fully, 32, 32), [0, 0, 0, 0]);
 }
 
 /// A rich layout's spans keep their own color, the rest takes the command's.
@@ -430,6 +474,7 @@ fn glyph_atlas_growth_is_bounded_by_the_texture_limit() {
     let adapter = pollster::block_on(instance.request_adapter(&Default::default())).unwrap();
     let options = noa_gpui_render_wgpu::GpuOptions {
         max_texture_size: Some(512),
+        ..Default::default()
     };
     let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
         required_limits: noa_gpui_render_wgpu::limits_with(&adapter, options),

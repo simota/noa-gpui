@@ -38,6 +38,24 @@ pub struct AppOptions {
     pub titlebar: crate::Titlebar,
     /// Desktop: the smallest logical size the main window can be resized to.
     pub min_size: Option<(f64, f64)>,
+    /// Desktop: what shows where the main window's frame is not opaque.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub background: WindowBackground,
+}
+
+/// What shows through a window where its frame is not opaque: where
+/// [`Screen::background`] and what is drawn over it let it.
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum WindowBackground {
+    /// Nothing: the window is opaque.
+    #[default]
+    Opaque,
+    /// The windows and desktop behind it.
+    Transparent,
+    /// The windows and desktop behind it, blurred (macOS; elsewhere as
+    /// [`WindowBackground::Transparent`], or as winit manages on KDE Wayland).
+    Blurred,
 }
 
 impl AppOptions {
@@ -54,6 +72,8 @@ impl AppOptions {
             #[cfg(not(target_arch = "wasm32"))]
             titlebar: crate::Titlebar::default(),
             min_size: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            background: WindowBackground::Opaque,
         }
     }
 
@@ -65,7 +85,9 @@ impl AppOptions {
         let attributes = crate::titlebar::apply(
             attributes
                 .with_inner_size(winit::dpi::LogicalSize::new(self.size.0, self.size.1))
-                .with_decorations(self.decorations),
+                .with_decorations(self.decorations)
+                .with_transparent(self.background != WindowBackground::Opaque)
+                .with_blur(self.background == WindowBackground::Blurred),
             &self.titlebar,
             self.min_size,
         );
@@ -483,11 +505,16 @@ impl App {
         self.instance = Some(wgpu::Instance::new(descriptor.with_env()));
         let surface = self.create_surface();
         let size = window.inner_size();
-        let ctx = pollster::block_on(GpuContext::new(
+        let options = noa_gpui_render_wgpu::GpuOptions {
+            transparent: self.options.background != WindowBackground::Opaque,
+            ..Default::default()
+        };
+        let ctx = pollster::block_on(GpuContext::with_options(
             self.instance.as_ref().expect("set above"),
             surface,
             size.width,
             size.height,
+            options,
         ))
         .unwrap_or_else(|e| panic!("GPU initialization failed: {e}"));
         let build = self.build.take().expect("the screen is built once");
@@ -1315,6 +1342,24 @@ mod tests {
         assert_eq!(answer(Answer::Ok), AlertResult::Confirmed);
         assert_eq!(answer(Answer::Cancel), AlertResult::Cancelled);
         assert_eq!(answer(Answer::No), AlertResult::Cancelled);
+    }
+
+    #[test]
+    fn a_blurred_background_makes_the_window_transparent_and_blurred() {
+        use super::{AppOptions, WindowBackground};
+        let attributes = |background| {
+            AppOptions {
+                background,
+                ..AppOptions::new("Test")
+            }
+            .window_attributes()
+        };
+        let opaque = attributes(WindowBackground::Opaque);
+        assert!(!opaque.transparent && !opaque.blur);
+        let clear = attributes(WindowBackground::Transparent);
+        assert!(clear.transparent && !clear.blur);
+        let blurred = attributes(WindowBackground::Blurred);
+        assert!(blurred.transparent && blurred.blur);
     }
 
     #[test]

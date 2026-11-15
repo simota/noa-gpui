@@ -612,6 +612,9 @@ impl Renderer {
         self.text.atlas.trim();
     }
 
+    /// Premultiplied, as everything blended over it is: the color blend multiplies by
+    /// the source alpha and the alpha blend adds coverage, so a frame on a transparent
+    /// clear holds premultiplied colors (what a transparent window composites).
     fn clear_color(&self, color: Color) -> wgpu::Color {
         let channel = |c: f32| {
             let c = c as f64;
@@ -623,11 +626,12 @@ impl Renderer {
                 ((c + 0.055) / 1.055).powf(2.4)
             }
         };
+        let a = f64::from(color.a.clamp(0.0, 1.0));
         wgpu::Color {
-            r: channel(color.r),
-            g: channel(color.g),
-            b: channel(color.b),
-            a: color.a as f64,
+            r: channel(color.r) * a,
+            g: channel(color.g) * a,
+            b: channel(color.b) * a,
+            a,
         }
     }
 }

@@ -39,6 +39,8 @@ mod web_text;
 #[cfg(feature = "native")]
 mod windows;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub use app::WindowBackground;
 pub use app::{App, AppOptions, FrameReport, Setup};
 #[cfg(feature = "native")]
 pub use headless::Headless;
