@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>noa-gpui — Rust で書いて GPU で描く、デスクトップと Web の UI フレームワーク</title>
+  <meta name="description" content="noa-gpui は wgpu の上に自前の 2D レンダラーを持つ Rust 製 UI フレームワークです。テーブル、ターミナル、コマンドパレットまで揃った部品を、Windows・macOS・Linux・ブラウザで同じコードのまま動かせます。MIT ライセンス。">
+  <meta name="theme-color" content="#f4f5f8">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="noa-gpui — Rust で書いて、GPU で描く。">
+  <meta property="og:description" content="テーブルからターミナルまで揃った UI 部品を、Windows・macOS・Linux・Web で同じコードのまま。WebView を使わない Rust 製 GPU UI フレームワーク。">
+  <meta property="og:image" content="assets/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="fonts/inter-var-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/minios-1500.webp" as="image" imagesrcset="assets/minios-760.webp 760w, assets/minios-1500.webp 1500w" imagesizes="(min-width: 1024px) 640px, 92vw" fetchpriority="high">
+  <link rel="stylesheet" href="styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareSourceCode",
+    "name": "noa-gpui",
+    "description": "A cross-platform UI framework written in Rust, with its own 2D renderer on top of wgpu.",
+    "codeRepository": "https://github.com/simota/noa-gpui",
+    "programmingLanguage": "Rust",
+    "license": "https://opensource.org/licenses/MIT",
+    "runtimePlatform": ["Windows", "macOS", "Linux", "Web (WebGPU / WebGL2)"]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">本文へ移動</a>
+
+  <header class="site-header" data-header>
+    <div class="wrap header-inner">
+      <a class="logo" href="#top" aria-label="noa-gpui トップへ">
+        <svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="8" fill="currentColor"/><rect x="8" y="9" width="16" height="5" rx="2.5" fill="#e8a33d"/><rect x="8" y="17" width="10" height="6" rx="2" fill="#f4f5f8"/></svg>
+        <span>noa-gpui</span>
+      </a>
+      <nav class="nav" aria-label="ページ内">
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-list" data-nav-toggle>
+          <span class="nav-toggle-bars" aria-hidden="true"></span><span class="sr-only">メニュー</span>
+        </button>
+        <ul id="nav-list" class="nav-list" data-nav-list>
+          <li><a href="#components">部品</a></li>
+          <li><a href="#design">デザイン</a></li>
+          <li><a href="#performance">性能</a></li>
+          <li><a href="#architecture">仕組み</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li class="nav-cta"><a class="btn btn-small btn-primary" href="#start">始め方</a></li>
+        </ul>
+      </nav>
+      <a class="gh-link" href="https://github.com/simota/noa-gpui" rel="noopener" aria-label="GitHub リポジトリ">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        <span>GitHub</span>
+      </a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow" data-enter>GPU UI フレームワーク · v0.1.0 · MIT</p>
+          <h1 id="hero-title" class="hero-title" data-enter>
+            <span class="nb">Rust で書いて、</span><span class="nb">GPU で描く。</span>
+          </h1>
+          <p class="hero-lead" data-enter>
+            <strong><span class="nb">Windows・macOS・Linux・Web で</span><span class="nb">同じコードが動く、</span><span class="nb">Rust 製の UI フレームワーク。</span></strong>
+            テーブルやターミナル、コマンドパレットまで揃った部品を、WebView を使わずに GPU が直接描きます。
+          </p>
+          <div class="hero-actions" data-enter>
+            <a class="btn btn-primary" href="#start">3 ステップで動かす<span aria-hidden="true">→</span></a>
+            <a class="btn btn-ghost" href="https://github.com/simota/noa-gpui" rel="noopener">GitHub でソースを見る</a>
+          </div>
+        </div>
+        <figure class="hero-visual" data-enter>
+          <div class="frame frame-hero">
+            <img src="assets/minios-1500.webp" srcset="assets/minios-760.webp 760w, assets/minios-1500.webp 1500w" sizes="(min-width: 1024px) 660px, 96vw" width="1500" height="1000" alt="noa-gpui のミニ OS デモ。メニューバーの下に Finder と Notes の 2 つのウィンドウが重なって開いている" fetchpriority="high" decoding="async">
+          </div>
+          <div class="frame frame-float">
+            <img src="assets/themes/noa-dark.webp" width="760" height="660" alt="Noa デザイン・ダーク表示の設定パネル。セグメント、テキスト欄、スイッチ、チェックボックス、スライダー、進捗バー、ボタン" loading="eager" decoding="async">
+          </div>
+          <figcaption>奥はミニ OS デモ、手前は Noa デザインの設定パネル。どちらも noa-gpui が描いた実際の画面です</figcaption>
+        </figure>
+        <figure class="budget" id="performance" aria-labelledby="perf-title" data-budget>
+          <figcaption class="budget-head"><h2 id="perf-title" class="budget-h">変化がなければ、描かない。</h2><p class="budget-lead">変化のないフレームは描画しないので、待機中の GPU は 0 FPS。変わった部分だけをレイアウトし直し、それ以外の描画コマンドは前のフレームから再利用します。</p><p class="budget-title">60Hz の 1 フレーム（16.7 ms）を物差しにすると</p></figcaption>
+          <div class="budget-scale">
+            <div class="budget-row budget-row-axis" aria-hidden="true"><span></span><span class="budget-axis"><span class="budget-tick" style="--at: 0%">0</span><span class="budget-tick" style="--at: 49.7%">8.3 ms</span><span class="budget-tick budget-tick-end" style="--at: 95.8%">16 ms</span></span><span></span></div>
+            <div class="budget-row" style="--share: 0.078%"><span class="budget-label">1 万行のリストを、1 行ずつ書き換えながらスクロール（UI ツリーの更新）</span><span class="budget-track"><span class="budget-bar"></span></span><span class="budget-value"><span class="num">0.013</span> ms</span><span class="budget-cond"><code>UiTree::prepare</code> （レイアウトと描画リストの組み立て）の p95。GPU の描画は含みません。最適化前の 4.38 ms から 300 分の 1 以下に。</span></div>
+            <div class="budget-row" style="--share: 11.56%"><span class="budget-label">デモ全体の CPU 時間（1 万行・Metal）</span><span class="budget-track"><span class="budget-bar"></span></span><span class="budget-value"><span class="num">1.93</span> ms</span><span class="budget-cond">120Hz の 1 フレーム予算 8.3 ms に余裕を残します。</span></div>
+          </div>
+          <dl class="budget-legend"><div><dt>目盛り 16 ms</dt><dd>10 万行テーブル、1 フレームの上限。1 フレームでも超えるとベンチマークが失敗し、CI と同じ検査（<code>verify.sh --full</code>）を通りません。</dd></div></dl>
+          <p class="budget-note">いずれも p95、計測環境は Apple M1 Pro。止まっている画面では、物差しは空のままです。数値と条件は <a href="https://github.com/simota/noa-gpui/blob/main/docs/architecture.md#phase-4-measurements" rel="noopener">docs/architecture.md</a> に記録されています。手元では <code>cargo bench -p ui-core --bench table</code> で再現できます。</p>
+        </figure>
+      </div>
+    </section>
+    <section class="platforms" aria-label="対応プラットフォームと GPU バックエンド">
+      <ul class="wrap platform-list">
+        <li><span class="p-os">Windows</span><span class="p-api">Direct3D 12</span></li>
+        <li><span class="p-os">macOS</span><span class="p-api">Metal</span></li>
+        <li><span class="p-os">Linux</span><span class="p-api">Vulkan</span></li>
+        <li><span class="p-os">Web</span><span class="p-api">WebGPU → WebGL2</span><span class="p-note">日本語表示・IME は未対応</span></li>
+      </ul>
+    </section>
+    <section class="section components" id="components" aria-labelledby="components-title">
+      <div class="wrap">
+        <div class="section-head">
+          <h2 id="components-title" class="section-title"><span class="nb">12 グループ・87 項目の</span><span class="nb">部品カタログ</span></h2>
+          <p class="section-lead">部品は macOS の標準部品に倣っています。データグリッドはスプレッドシートとの貼り付け、CSV の入出力、取り消しとやり直しまで備えています。</p>
+        </div>
+        <figure class="showcase">
+          <div class="frame">
+            <picture><source media="(max-width: 599px)" srcset="assets/catalog-phone-760.webp" width="760" height="760"><img src="assets/catalog-1600.webp" srcset="assets/catalog-800.webp 800w, assets/catalog-1600.webp 1600w" sizes="(min-width: 1200px) 1120px, 94vw" width="1600" height="938" alt="UI カタログの画面。左にグループごとのナビゲーション、右に Container と Stack view の見本が並ぶ" loading="lazy" decoding="async"></picture>
+          </div>
+          <figcaption><code>cargo run -p desktop --release -- --scene=catalog</code> の最初の画面</figcaption>
+        </figure>
+        <div class="catalog-index">
+          <dl>
+            <div><dt>Layout</dt><dd>Stack · Grid · Split view · Tab view · Accordion · ScrollView</dd></div>
+            <div><dt>Text</dt><dd>TextField · Token field · Combo box · Text view · Log view · Terminal</dd></div>
+            <div><dt>Controls</dt><dd>Button · Checkbox · Radio · Switch · Pop-up · Segmented</dd></div>
+            <div><dt>Values &amp; Inputs</dt><dd>Slider · Stepper · Color well · Date picker · Number input · Find bar</dd></div>
+            <div><dt>Data</dt><dd>Table · Data grid · Chart · Outline · Collection · Rule editor</dd></div>
+            <div><dt>Menus &amp; Navigation</dt><dd>Menu bar · Toolbar · Command palette (⌘K) · Breadcrumbs</dd></div>
+            <div><dt>Presentation</dt><dd>Alert · Sheet · Drawer · Popover · Tooltip · Inner windows</dd></div>
+            <div><dt>Notices &amp; Status</dt><dd>Toast · Banner · Badge · Skeleton · Progress · Spinner</dd></div>
+          </dl>
+          <p class="index-note">全項目は <a href="https://github.com/simota/noa-gpui#desktop" rel="noopener">README の UI カタログ一覧</a>にあります。</p>
+        </div>
+      </div>
+    </section>
+    <section class="section design" id="design" aria-labelledby="design-title">
+      <div class="wrap design-grid">
+        <div class="design-copy">
+          <h2 id="design-title" class="section-title"><span class="nb">テーマで切り替える</span> <span class="nb">7 つのデザイン</span></h2>
+          <p class="section-lead"><code>Theme::with_design</code> を切り替えるだけで、角丸、ベゼル、配色が変わります。ライトとダーク、アクセント色、コントラストを上げる設定にも対応。</p>
+          <div class="theme-switch" role="group" aria-label="デザインを選ぶ" data-theme-designs>
+            <button type="button" data-design="big-sur" aria-pressed="false">Big Sur</button>
+            <button type="button" data-design="liquid-glass" aria-pressed="false">Liquid Glass</button>
+            <button type="button" data-design="flat-vibrancy" aria-pressed="false">Flat + Vibrancy</button>
+            <button type="button" data-design="aero" aria-pressed="false">Aero</button>
+            <button type="button" data-design="metro" aria-pressed="false">Metro</button>
+            <button type="button" data-design="fluent-2" aria-pressed="false">Fluent 2</button>
+            <button type="button" data-design="noa" aria-pressed="true">Noa</button>
+          </div>
+          <div class="appearance-switch" role="group" aria-label="外観を選ぶ" data-theme-appearance>
+            <button type="button" data-appearance="light" aria-pressed="false">ライト</button>
+            <button type="button" data-appearance="dark" aria-pressed="true">ダーク</button>
+          </div>
+        </div>
+        <figure class="theme-stage">
+          <div class="frame frame-theme" data-theme-frame data-appearance-now="dark">
+            <img src="assets/themes/noa-dark.webp" width="760" height="660" alt="Noa デザイン・ダーク表示の設定パネル" loading="lazy" decoding="async" data-theme-image>
+          </div>
+          <figcaption><span data-theme-label>Noa · ダーク</span> — 同じ Widget Tree を Headless レンダラーで描いた実際の出力</figcaption>
+        </figure>
+      </div>
+
+      <div class="wrap style-row">
+        <div class="style-copy">
+          <h3><span class="nb">CSS に似た</span> <span class="nb">Noa Style での上書き</span></h3>
+          <p>型・ID・クラス・状態のセレクタ、継承、<code>@media</code>、変数が使える Noa Style。デスクトップではファイルを保存した瞬間に再適用されるので、ビルドし直さずに見た目を詰められます。</p>
+          <p class="fine">ブラウザの CSS と互換ではないサブセットです。未知のプロパティは無視せずエラーにします。</p>
+        </div>
+        <div class="code-block">
+          <div class="code-bar"><span class="code-name">app.noa.css</span></div>
+          <pre class="code" tabindex="0" aria-label="Noa Style の例"><code><span class="c">/* 保存するとその場で反映される */</span>
+<span class="s">TextField</span>, <span class="s">SearchField</span> {
+  <span class="p">border-radius</span>: 4px;
+  <span class="p">background-color</span>: var(--field-fill);
+}
+
+<span class="s">Button.primary:hover</span> {
+  <span class="p">background-color</span>: theme(accent-hover);
+}</code></pre>
+        </div>
+      </div>
+    </section>
+    <section class="section essentials" aria-labelledby="essentials-title">
+      <div class="wrap">
+        <div class="section-head">
+          <h2 id="essentials-title" class="section-title"><span class="nb">日本語入力・支援技術・</span><span class="nb">OS との統合</span></h2>
+        </div>
+        <ul class="essentials-list">
+          <li>
+            <h3>日本語入力</h3>
+            <p>変換中の文節は太い下線で示し、候補ウィンドウはキャレットのすぐ隣に。デスクトップの IME に対応しています。</p>
+          </li>
+          <li>
+            <h3>スクリーンリーダー</h3>
+            <p>AccessKit で OS の支援技術につなぎます。デモの全コントロールに名前があることをテストで確かめています。</p>
+          </li>
+          <li>
+            <h3>キーボードだけで操作</h3>
+            <p>Tab でデモ全体を巡回できることをテストで検証。⌘K のコマンドパレットには、メニューバーの項目をそのまま並べられます。</p>
+          </li>
+          <li>
+            <h3>表示状態の保存</h3>
+            <p>列幅、分割位置、開いたタブ、ウィンドウの位置。ユーザーが整えた配置を、次の起動で元どおりに。</p>
+          </li>
+          <li>
+            <h3>OS との統合</h3>
+            <p>macOS のメニューバー、システムトレイ、標準のファイルダイアログ、常に手前のパネルを含む複数ウィンドウ。</p>
+          </li>
+          <li>
+            <h3>ウィンドウなしで描画</h3>
+            <p>画面を PNG に書き出せます。GPU のない CI では CPU で描画。このページの製品画像もこの機能で作りました。</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+    <section class="section architecture" id="architecture" aria-labelledby="arch-title">
+      <div class="wrap arch-grid">
+        <div class="arch-copy">
+          <h2 id="arch-title" class="section-title"><span class="nb">自前で持つのは</span><span class="nb">描画だけ</span></h2>
+          <p class="section-lead">残りは実績あるライブラリに任せました。wgpu の上の小さな 2D レンダラーに、Taffy のレイアウトと cosmic-text の文字組みを組み合わせ、OS ごとの違いは薄い層に閉じ込めています。</p>
+          <p class="arch-detail">描画コマンドを境に、GPU と UI を分けています。UI は GPU に依存しない Display List を出力するだけ。描くのは wgpu の 3 本のパイプラインです。WebGL2 を最低ラインに設計しているので、Compute Shader なしで全環境が同じ描画経路を通ります。</p>
+          <p class="fine">依存の向きは一方通行で、<code>ui-core</code> 以下が GPU やウィンドウに依存しないことはテストで検査しています。</p>
+        </div>
+        <ol class="stack" aria-label="クレートの層構成（上ほどアプリに近い）">
+          <li class="layer layer-app"><span class="l-name">あなたのアプリ</span><span class="l-desc"><code>Screen</code> トレイトを実装</span></li>
+          <li class="layer"><span class="l-name">ui-platform</span><span class="l-desc">winit · IME · AccessKit · メニュー · ファイルダイアログ</span></li>
+          <li class="layer"><span class="l-name">ui-core</span><span class="l-desc">Widget Tree · イベント · フォーカス · テーマ · 部品</span></li>
+          <li class="layer layer-split">
+            <span class="sub"><span class="l-name">ui-layout</span><span class="l-desc">Taffy</span></span>
+            <span class="sub"><span class="l-name">ui-text</span><span class="l-desc">cosmic-text</span></span>
+            <span class="sub"><span class="l-name">ui-scene</span><span class="l-desc">Display List</span></span>
+          </li>
+          <li class="layer layer-gpu"><span class="l-name">ui-render-wgpu</span><span class="l-desc">Quad · Image · Text — SDF 角丸とインスタンス描画</span></li>
+          <li class="layer layer-backends"><span>D3D12</span><span>Metal</span><span>Vulkan</span><span>WebGPU</span><span>WebGL2</span></li>
+        </ol>
+      </div>
+    </section>
+    <section class="section start" id="start" aria-labelledby="start-title">
+      <div class="wrap">
+        <div class="section-head">
+          <h2 id="start-title" class="section-title"><span class="nb">3 ステップで</span><span class="nb">最初のウィンドウを開く</span></h2>
+          <p class="section-lead">Rust 1.89 以上が必要です。依存に加えるのは <code>ui-platform</code> ひとつです。</p>
+        </div>
+        <ol class="steps">
+          <li class="step">
+            <div class="step-head"><span class="step-no">1</span><h3>サンプルを動かす</h3></div>
+            <div class="code-block code-wrap">
+              <div class="code-bar"><span class="code-name">Terminal</span><button class="copy" type="button" data-copy>コピー</button></div>
+              <pre class="code" tabindex="0" aria-label="サンプルを動かすコマンド"><code>git clone https://github.com/simota/noa-gpui
+cd noa-gpui
+cargo run -p ui-platform --example hello --features native</code></pre>
+            </div>
+            <p class="step-note">部品をひととおり触るなら <code>cargo run -p desktop --release -- --scene=catalog</code>。</p>
+          </li>
+          <li class="step">
+            <div class="step-head"><span class="step-no">2</span><h3>コードを読む</h3></div>
+            <div class="code-block">
+              <div class="code-bar"><span class="code-name">hello.rs</span><button class="copy" type="button" data-copy>コピー</button></div>
+              <pre class="code" tabindex="0" aria-label="hello.rs の抜粋"><code><span class="c">// 部品を Widget Tree に置く</span>
+<span class="k">let</span> label  = tree.insert(Some(root), Label::new(<span class="str">"Clicked 0 times"</span>));
+<span class="k">let</span> button = tree.insert(Some(root), Button::new(<span class="str">"Click me"</span>));
+
+<span class="c">// ボタンからのメッセージに反応する</span>
+<span class="k">if</span> message.source == self.button {
+    self.clicks += <span class="n">1</span>;
+    <span class="k">let</span> text = format!(<span class="str">"Clicked {} times"</span>, self.clicks);
+    self.tree.update::&lt;Label, _&gt;(self.label, |l, cx| l.set_text(cx, text));
+}</code></pre>
+            </div>
+            <p class="step-note">全文は <a href="https://github.com/simota/noa-gpui/blob/main/crates/ui-platform/examples/hello.rs" rel="noopener">examples/hello.rs</a>（約 80 行）。</p>
+          </li>
+          <li class="step">
+            <div class="step-head"><span class="step-no">3</span><h3>自分のアプリに入れる</h3></div>
+            <div class="code-block code-wrap">
+              <div class="code-bar"><span class="code-name">Cargo.toml</span><button class="copy" type="button" data-copy>コピー</button></div>
+              <pre class="code" tabindex="0" aria-label="Cargo.toml"><code>[dependencies]
+ui-platform = { git = <span class="str">"https://github.com/simota/noa-gpui"</span>, features = [<span class="str">"native"</span>] }</code></pre>
+            </div>
+            <p class="step-note">まだリリースタグがないので、<code>rev = "&lt;commit&gt;"</code> を足して版を固定するのがおすすめです。Web 向けには <code>native</code> の代わりに <code>webgpu</code> か <code>webgl2</code> のどちらかひとつを有効にします。</p>
+          </li>
+        </ol>
+        <p class="copy-status sr-only" role="status" aria-live="polite" data-copy-status></p>
+      </div>
+    </section>
+    <section class="section faq" id="faq" aria-labelledby="faq-title">
+      <div class="wrap faq-grid">
+        <div >
+          <h2 id="faq-title" class="section-title">導入前の質問</h2>
+        </div>
+        <div class="faq-list">
+          <details>
+            <summary>どのプラットフォームで動きますか？</summary>
+            <p>Windows（Direct3D 12 / Vulkan）、macOS（Metal）、Linux（Vulkan / OpenGL）、Web（WebGPU、使えなければ WebGL2）です。iOS と Android は対象外です。</p>
+          </details>
+          <details>
+            <summary>Web 版でできないことはありますか？</summary>
+            <p>日本語入力（IME）、アクセシビリティ、ファイルダイアログは Web ではまだ使えません。Web には同梱の Inter フォントしかないため、日本語の表示もデスクトップのみです。</p>
+          </details>
+          <details>
+            <summary>crates.io から入れられますか？</summary>
+            <p>現在は Git リポジトリを直接依存に指定します（バージョン 0.1.0）。手順は上の 3 ステップのとおりです。</p>
+          </details>
+          <details>
+            <summary>ライセンスは？</summary>
+            <p>MIT ライセンスです。同梱の Inter フォントは SIL Open Font License です。</p>
+          </details>
+          <details>
+            <summary>見た目はどこまで変えられますか？</summary>
+            <p>7 種のデザイン、ライト／ダーク、アクセント色、コントラスト強調をテーマで切り替えられます。さらに Noa Style（CSS に似たサブセット）で、自作の Widget も含めた背景・枠線・角丸・余白などを上書きできます。</p>
+          </details>
+          <details>
+            <summary>品質はどうやって保っていますか？</summary>
+            <p>各部品は <code>UiTree</code> にイベントを送って結果を確かめるテストを持ち、レンダラーは GPU で実際に描いた画素を読み戻して検証します。性能はベンチマークが 16 ms の予算を超えると失敗します。2026 年 11 月時点で、ワークスペース全体のテストは 795 件です。</p>
+          </details>
+        </div>
+      </div>
+    </section>
+    <section class="final" aria-labelledby="final-title">
+      <div class="wrap final-inner">
+        <h2 id="final-title">ミニ OS を動かす</h2>
+        <p>ウィンドウを掴んで動かし、⌥Tab で切り替え、メモを書く。すべて <span class="nb">noa-gpui</span> の部品だけで作られています。</p>
+        <div class="code-block code-wrap code-inline">
+          <div class="code-bar"><span class="code-name">Terminal</span><button class="copy" type="button" data-copy>コピー</button></div>
+          <pre class="code" tabindex="0" aria-label="ミニ OS を起動するコマンド"><code>git clone https://github.com/simota/noa-gpui &amp;&amp; cd noa-gpui
+cargo run -p desktop --release -- --scene=minios</code></pre>
+        </div>
+        <div class="final-actions">
+          <a class="btn btn-primary" href="https://github.com/simota/noa-gpui" rel="noopener">GitHub でソースを見る<span aria-hidden="true">→</span></a>
+          <a class="btn btn-ghost-dark" href="https://github.com/simota/noa-gpui#readme" rel="noopener">README を読む</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <a class="logo" href="#top"><svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="8" fill="currentColor"/><rect x="8" y="9" width="16" height="5" rx="2.5" fill="#e8a33d"/><rect x="8" y="17" width="10" height="6" rx="2" fill="#f4f5f8"/></svg><span>noa-gpui</span></a>
+        <p>Rust 製のクロスプラットフォーム UI フレームワーク。MIT License.</p>
+      </div>
+      <nav aria-label="ドキュメント">
+        <h2 class="footer-h">ドキュメント</h2>
+        <ul>
+          <li><a href="https://github.com/simota/noa-gpui#readme" rel="noopener">README</a></li>
+          <li><a href="https://github.com/simota/noa-gpui/blob/main/docs/architecture.md" rel="noopener">アーキテクチャ</a></li>
+          <li><a href="https://github.com/simota/noa-gpui/blob/main/docs/styling.md" rel="noopener">Noa Style</a></li>
+          <li><a href="https://github.com/simota/noa-gpui/blob/main/docs/feature-map.md" rel="noopener">機能マップ</a></li>
+        </ul>
+      </nav>
+      <nav aria-label="プロジェクト">
+        <h2 class="footer-h">プロジェクト</h2>
+        <ul>
+          <li><a href="https://github.com/simota/noa-gpui" rel="noopener">GitHub</a></li>
+          <li><a href="https://github.com/simota/noa-gpui/issues" rel="noopener">Issues</a></li>
+          <li><a href="https://github.com/simota/noa-gpui/blob/main/LICENSE" rel="noopener">License</a></li>
+        </ul>
+      </nav>
+    </div>
+    <p class="wrap footer-note">このページの製品画像は、すべて noa-gpui のウィンドウなし描画（Headless）で出力した実際の画面です。</p>
+  </footer>
+
+  <script src="main.js" defer></script>
+</body>
+</html>
