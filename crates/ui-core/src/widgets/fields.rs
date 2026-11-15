@@ -352,6 +352,10 @@ impl Widget for SearchField {
         Some(self.line.input_area())
     }
 
+    fn ime_context(&self, text: &TextStore) -> Option<crate::ImeContext> {
+        self.line.ime_context(text)
+    }
+
     fn accessibility_role(&self) -> Option<accesskit::Role> {
         Some(accesskit::Role::SearchInput)
     }
@@ -691,6 +695,10 @@ impl Widget for ComboBox {
 
     fn text_input_area(&self) -> Option<Rect> {
         Some(self.line.input_area())
+    }
+
+    fn ime_context(&self, text: &TextStore) -> Option<crate::ImeContext> {
+        self.line.ime_context(text)
     }
 
     fn accessibility_role(&self) -> Option<accesskit::Role> {

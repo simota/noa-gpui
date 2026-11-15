@@ -281,6 +281,11 @@ pub trait Screen {
         self.tree().text_input_area()
     }
 
+    /// The focused text as the input method may ask about it, in window coordinates.
+    fn ime_context(&self, text: &TextStore) -> Option<noa_gpui_core::ImeContext> {
+        self.tree().ime_context(text)
+    }
+
     fn widget_count(&self) -> usize {
         self.tree().len()
     }

@@ -165,6 +165,10 @@ impl Widget for TextArea {
         Some(self.edit.input_area(ORIGIN))
     }
 
+    fn ime_context(&self, text: &TextStore) -> Option<crate::ImeContext> {
+        self.edit.ime_context(text, ORIGIN)
+    }
+
     fn accessibility_role(&self) -> Option<accesskit::Role> {
         Some(accesskit::Role::MultilineTextInput)
     }

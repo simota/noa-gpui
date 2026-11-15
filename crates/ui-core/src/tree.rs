@@ -2421,6 +2421,15 @@ impl UiTree {
         Some(area.translate(origin.x, origin.y))
     }
 
+    /// What the input method may ask about the focused widget's text, in window
+    /// coordinates (see [`Widget::ime_context`]).
+    pub fn ime_context(&self, text: &TextStore) -> Option<crate::ImeContext> {
+        let focused = self.focused?;
+        let context = self.node(focused)?.widget.ime_context(text)?;
+        let origin = self.window_origin(focused)?;
+        Some(context.translate(origin.x, origin.y))
+    }
+
     pub fn focused(&self) -> Option<WidgetId> {
         self.focused
     }
@@ -2934,7 +2943,7 @@ impl UiTree {
                         .push(Message::new(target, Box::new(ShortcutPressed(shortcut))));
                 }
             }
-            Event::Text(_) | Event::Composition { .. } => {
+            Event::Text(_) | Event::Composition { .. } | Event::ImeSelect(_) => {
                 if let Some(target) = self.key_target() {
                     self.bubble(target, &event, text);
                 }

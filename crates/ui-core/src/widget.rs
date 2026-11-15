@@ -171,6 +171,14 @@ pub trait Widget: Any {
         None
     }
 
+    /// The text around the caret and where its characters are, in widget coordinates,
+    /// for an input method that converts a selection again or places its candidate
+    /// window by character (macOS). Widgets that take [`Event::ImeSelect`] answer it;
+    /// `None` leaves the input method with [`Widget::text_input_area`].
+    fn ime_context(&self, _text: &TextStore) -> Option<crate::ImeContext> {
+        None
+    }
+
     /// `None` leaves the widget out of the accessibility tree; its children are still
     /// included.
     fn accessibility_role(&self) -> Option<accesskit::Role> {

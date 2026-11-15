@@ -578,6 +578,8 @@ impl App {
             }
         }
         sync_ime(&window, &mut self.ime_area, screen.text_input_area());
+        #[cfg(all(feature = "native", target_os = "macos"))]
+        sync_ime_context(&window, screen.as_ref(), &self.text, changed);
         #[cfg(target_arch = "wasm32")]
         if let Some(web_ime) = &mut self.web_ime {
             web_ime.sync(screen.text_input_area());
@@ -824,6 +826,8 @@ impl App {
             return;
         };
         let events = self.input.translate(event, window.scale_factor());
+        #[cfg(all(feature = "native", target_os = "macos"))]
+        let events = with_ime_replacement(window, event, events);
         self.dispatch(events);
     }
 
@@ -1019,6 +1023,9 @@ impl ApplicationHandler<Wake> for App {
             );
             #[cfg(not(target_arch = "wasm32"))]
             crate::titlebar::follow(&window, &self.options.titlebar, None);
+            // winit has registered its view class with the first view.
+            #[cfg(all(feature = "native", target_os = "macos"))]
+            crate::ime_macos::install();
             #[cfg(feature = "native")]
             {
                 self.accessibility = Some(crate::accessibility::Accessibility::attach(
@@ -1161,6 +1168,42 @@ fn on_a_monitor(event_loop: &ActiveEventLoop, (x, y): (i32, i32)) -> bool {
             && i64::from(px) < i64::from(origin.x) + i64::from(size.width)
             && i64::from(py) < i64::from(origin.y) + i64::from(size.height)
     })
+}
+
+/// Keep what the input method may ask about the focused text of `window`, while it
+/// takes text. Only after a frame that `changed` something: finding the characters
+/// costs time in proportion to the text's lines.
+#[cfg(all(feature = "native", target_os = "macos"))]
+pub(crate) fn sync_ime_context(
+    window: &Window,
+    screen: &dyn Screen,
+    text: &TextStore,
+    changed: bool,
+) {
+    if !changed && crate::ime_macos::is_synced(window) {
+        return;
+    }
+    let context = screen
+        .text_input_area()
+        .and_then(|_| screen.ime_context(text));
+    crate::ime_macos::sync(window, context);
+}
+
+/// `events` for `event`, after an [`noa_gpui_core::Event::ImeSelect`] when the input
+/// method starts its composition over other text than the selection.
+#[cfg(all(feature = "native", target_os = "macos"))]
+pub(crate) fn with_ime_replacement(
+    window: &Window,
+    event: &WindowEvent,
+    mut events: Vec<noa_gpui_core::Event>,
+) -> Vec<noa_gpui_core::Event> {
+    use winit::event::Ime;
+    if let WindowEvent::Ime(Ime::Preedit(..) | Ime::Commit(_)) = event
+        && let Some(range) = crate::ime_macos::take_replacement(window)
+    {
+        events.insert(0, noa_gpui_core::Event::ImeSelect(range));
+    }
+    events
 }
 
 /// Let the OS move or resize `window` as the screen asked, following the pointer until

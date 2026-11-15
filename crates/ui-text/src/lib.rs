@@ -5,9 +5,8 @@
 pub use cosmic_text;
 
 use std::hash::{Hash, Hasher};
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use std::ops::Range;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use cosmic_text::{
     Align, Attrs, Buffer, Cursor, Family, FontSystem, Metrics, Shaping, Style, TextDecoration,
@@ -186,6 +185,29 @@ struct Layout {
     backgrounds: Vec<(Range<usize>, Color)>,
 }
 
+/// A glyph cluster: the bytes it shows and its box, a line high.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Cluster {
+    pub bytes: Range<usize>,
+    pub rect: Rect,
+    /// Laid out right to left: the caret before it is at its right edge.
+    pub rtl: bool,
+}
+
+impl Cluster {
+    /// The caret's x before byte `index` of the cluster (part way across a cluster of
+    /// several characters, such as a ligature).
+    pub fn caret_x(&self, index: usize) -> f32 {
+        let len = (self.bytes.end - self.bytes.start).max(1) as f32;
+        let t = (index.clamp(self.bytes.start, self.bytes.end) - self.bytes.start) as f32 / len;
+        if self.rtl {
+            self.rect.right() - self.rect.width * t
+        } else {
+            self.rect.x + self.rect.width * t
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CaretPosition {
     pub x: f32,
@@ -325,6 +347,48 @@ impl TextLayouts {
                 .zip(layout.buffer.lines.last())
                 .map_or(0, |(start, line)| start + line.text().len()),
         }
+    }
+
+    /// The glyph clusters overlapping bytes `range`, in text order, each with the bytes
+    /// it shows and its box (a line high): what an input method asks to place its
+    /// candidate window or to find the character under the pointer.
+    pub fn clusters(&self, id: TextLayoutId, range: Range<usize>) -> Vec<Cluster> {
+        let layout = self.get(id);
+        let lines = &layout.buffer.lines;
+        // Paragraph starts, counted up as the runs reach them: the paragraphs before
+        // `range` cost an addition each, and those after it nothing.
+        let (mut line, mut base) = (0, 0);
+        let mut clusters = Vec::new();
+        for run in layout.buffer.layout_runs() {
+            while line < run.line_i {
+                base += lines[line].text().len() + lines[line].ending().as_str().len();
+                line += 1;
+            }
+            if base > range.end {
+                break;
+            }
+            if base + lines[line].text().len() < range.start {
+                continue;
+            }
+            for glyph in run.glyphs {
+                let bytes = base + glyph.start..base + glyph.end;
+                if bytes.end <= range.start || bytes.start >= range.end {
+                    continue;
+                }
+                // Ligatures and combined characters are one glyph over several
+                // characters; a cluster shaped into several glyphs comes once.
+                if clusters.last().is_some_and(|c: &Cluster| c.bytes == bytes) {
+                    continue;
+                }
+                clusters.push(Cluster {
+                    bytes,
+                    rect: Rect::new(glyph.x, run.line_top, glyph.w, run.line_height),
+                    rtl: glyph.level.is_rtl(),
+                });
+            }
+        }
+        clusters.sort_by_key(|c| c.bytes.start);
+        clusters
     }
 
     /// The backgrounds and underlines of a layout made by [`TextStore::create_rich`];
@@ -849,6 +913,10 @@ impl TextStore {
 
     pub fn selection_rects(&self, id: TextLayoutId, start: usize, end: usize) -> Vec<Rect> {
         self.layouts.selection_rects(id, start, end)
+    }
+
+    pub fn clusters(&self, id: TextLayoutId, range: Range<usize>) -> Vec<Cluster> {
+        self.layouts.clusters(id, range)
     }
 
     pub fn decorations(&self, id: TextLayoutId) -> TextDecorations {
@@ -1605,6 +1673,45 @@ mod align_tests {
         assert_eq!(store.size(plain), store.size(center));
         assert!(store.size(center).width <= 120.0);
         assert!(lines(&store, center).iter().any(|&(x, _)| x > 1.0));
+    }
+}
+
+#[cfg(test)]
+mod cluster_tests {
+    use super::*;
+
+    fn store() -> TextStore {
+        TextStore::new(FontOptions {
+            locale: "en-US".into(),
+            load_system_fonts: false,
+        })
+    }
+
+    #[test]
+    fn clusters_cover_their_bytes_across_paragraphs_and_lines() {
+        let mut store = store();
+        let style = TextStyle::new(14.0);
+        let id = store.create("ab\ncdé", style, None);
+        let clusters = store.clusters(id, 0..usize::MAX);
+        let bytes: Vec<_> = clusters.iter().map(|c| c.bytes.clone()).collect();
+        assert_eq!(bytes, [0..1, 1..2, 3..4, 4..5, 5..7]);
+        // Each sits where the caret before it is, on its own line.
+        for Cluster {
+            bytes: range, rect, ..
+        } in &clusters
+        {
+            let caret = store.caret(id, range.start);
+            assert_eq!((rect.x, rect.y), (caret.x, caret.top), "{range:?}");
+            assert_eq!(rect.height, style.line_height);
+        }
+        assert_eq!(clusters[2].rect.y, style.line_height);
+        // Only those overlapping the range asked for.
+        let middle: Vec<_> = store
+            .clusters(id, 4..6)
+            .into_iter()
+            .map(|c| c.bytes)
+            .collect();
+        assert_eq!(middle, [4..5, 5..7]);
     }
 }
 

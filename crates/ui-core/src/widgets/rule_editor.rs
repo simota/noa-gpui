@@ -737,7 +737,10 @@ impl Widget for RuleEditor {
                     cx.set_handled();
                 }
             }
-            Event::KeyDown { .. } | Event::Text(_) | Event::Composition { .. }
+            Event::KeyDown { .. }
+            | Event::Text(_)
+            | Event::Composition { .. }
+            | Event::ImeSelect(_)
                 if cx.is_focused() =>
             {
                 self.forward(cx, event);
@@ -754,6 +757,14 @@ impl Widget for RuleEditor {
         self.rows.get(self.active)?;
         let origin = self.value_origin(self.active);
         Some(self.rows[self.active].value.edit.input_area(origin))
+    }
+
+    fn ime_context(&self, text: &TextStore) -> Option<crate::ImeContext> {
+        self.rows
+            .get(self.active)?
+            .value
+            .edit
+            .ime_context(text, self.value_origin(self.active))
     }
 
     fn accessibility_role(&self) -> Option<accesskit::Role> {

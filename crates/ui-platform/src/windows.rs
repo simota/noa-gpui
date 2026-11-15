@@ -101,6 +101,8 @@ impl SecondaryWindow {
 
     /// Close the window, releasing its widgets' text layouts from the shared store.
     pub fn close(mut self, text: &mut TextStore) {
+        #[cfg(target_os = "macos")]
+        crate::ime_macos::forget(&self.window);
         let tree = self.screen.tree_mut();
         let roots: Vec<_> = tree.root().into_iter().chain(tree.overlays()).collect();
         for id in roots {
@@ -141,7 +143,10 @@ impl SecondaryWindow {
             event => {
                 self.screen.tree_mut().set_now(now);
                 crate::input::sync_multi_click(self.screen.tree_mut());
-                for event in self.input.translate(&event, self.window.scale_factor()) {
+                let events = self.input.translate(&event, self.window.scale_factor());
+                #[cfg(target_os = "macos")]
+                let events = crate::app::with_ime_replacement(&self.window, &event, events);
+                for event in events {
                     self.screen.dispatch(event, text);
                 }
                 crate::app::start_window_drags(&self.window, self.screen.as_mut());
@@ -200,6 +205,8 @@ impl SecondaryWindow {
             &mut self.ime_area,
             self.screen.text_input_area(),
         );
+        #[cfg(target_os = "macos")]
+        crate::app::sync_ime_context(&self.window, self.screen.as_ref(), text, changed);
         crate::app::sync_cursor(&self.window, &mut self.cursor, self.screen.tree().cursor());
         let animating = self.screen.tree().wants_animation_frame();
         if !self.needs_present {

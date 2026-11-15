@@ -224,6 +224,7 @@ fn every_input_event_survives_the_saved_form() {
             text: "日本".into(),
             cursor: Some((0, 3)),
         },
+        Event::ImeSelect(3..9),
         Event::ModifiersChanged(shift_cmd),
     ];
     let recording = Recording {

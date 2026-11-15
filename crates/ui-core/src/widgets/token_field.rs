@@ -390,6 +390,10 @@ impl Widget for TokenField {
         Some(self.edit.input_area(self.input_origin))
     }
 
+    fn ime_context(&self, text: &TextStore) -> Option<crate::ImeContext> {
+        self.edit.ime_context(text, self.input_origin)
+    }
+
     fn accessibility_role(&self) -> Option<accesskit::Role> {
         Some(accesskit::Role::TextInput)
     }
