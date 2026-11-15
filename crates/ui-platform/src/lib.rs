@@ -10,6 +10,7 @@ mod clipboard;
 #[cfg(feature = "native")]
 mod headless;
 mod input;
+mod inspector;
 #[cfg(all(feature = "native", any(target_os = "macos", target_os = "linux")))]
 mod pty;
 #[cfg(all(feature = "native", target_os = "macos"))]

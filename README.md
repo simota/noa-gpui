@@ -34,6 +34,7 @@ A cross-platform UI framework written in Rust, with its own 2D renderer on top o
 > - The OS menu bar (macOS), menu bar extras / the system tray (macOS, Windows, Linux; on Linux, desktops that can show StatusNotifierItem), open / save file dialogs
 > - Windowless rendering (`Headless`): writes the Widget Tree or the screen to PNG. In environments without a GPU adapter, it renders on the CPU
 > - Recording and replaying input: `App::record_input` writes the main window's input to a text file as it happens (one step per line, `noa_gpui_core::recording`), `noa_gpui_platform::replay` plays it back into a screen, and `check_golden` compares the rendered image with a saved one, writing the rendered image and a picture of the differences on a mismatch (`NOA_GPUI_UPDATE_GOLDEN=1` rewrites them). The demo takes `--record=FILE` and `--replay=FILE` (with `--snapshot`)
+> - Inspector: with `App::inspector(true)` (on in the desktop demo), ⇧⌘I / Ctrl+Shift+I outlines the widget under the pointer and shows it as a selector (`Button#save.primary:hover`) with its frame, ancestors and the Noa Style rules that apply, strongest last; a click pins it. `UiTree::inspect`, `UiTree::outline` and `StyleSheet::matching_rules` give the same information to code
 >
 > On the Web, the accessibility tree is mirrored as ARIA elements inside the canvas (see [docs/architecture.md](docs/architecture.md), "Web Accessibility Support").
 >

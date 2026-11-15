@@ -1511,6 +1511,11 @@ impl UiTree {
     }
 
     /// Inline declarations outrank matching rules.
+    pub fn has_inline_style(&self, id: WidgetId) -> bool {
+        self.node(id)
+            .is_some_and(|node| node.inline_style.is_some())
+    }
+
     pub fn set_inline_style(&mut self, id: WidgetId, style: StylePatch) {
         let Some(node) = self.node_mut(id) else {
             return;

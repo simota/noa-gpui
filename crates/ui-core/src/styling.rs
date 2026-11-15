@@ -488,6 +488,17 @@ impl StylePatch {
 
 type Vars = HashMap<String, String>;
 
+/// A style rule that applies to a widget (see [`StyleSheet::matching_rules`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MatchedRule {
+    /// The selector as written, whitespace collapsed (`Button.primary:hover`).
+    pub selector: String,
+    /// The declarations as written (`color: #fff`, `border-width: 2 !important`).
+    pub declarations: Vec<String>,
+    /// Inside an `@media` block whose condition holds.
+    pub in_media: bool,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct StyleSheet {
     rules: Vec<Rule>,
@@ -500,6 +511,8 @@ pub struct StyleSheet {
 #[derive(Debug, Clone)]
 struct Rule {
     selector: Selector,
+    /// The declarations as written, one per entry, for showing which rules apply.
+    declarations: Vec<String>,
     patch: StylePatch,
     important: StylePatch,
     media: Option<Media>,
@@ -681,9 +694,15 @@ impl StyleSheet {
         let mut rules = Vec::new();
         for (selectors, body, media) in blocks {
             let parsed = parse_declarations(body, &vars, true)?;
+            let written: Vec<String> = body
+                .split(';')
+                .map(|d| d.split_whitespace().collect::<Vec<_>>().join(" "))
+                .filter(|d| !d.is_empty())
+                .collect();
             for selector in selectors {
                 rules.push(Rule {
                     selector,
+                    declarations: written.clone(),
                     patch: parsed.normal.clone(),
                     important: parsed.important.clone(),
                     media,
@@ -769,6 +788,23 @@ impl StyleSheet {
         result
     }
 
+    /// The rules that apply to the node `id`, lowest precedence first (by specificity,
+    /// then source order), as written: what [`StyleSheet::resolve_in`] combined, for
+    /// inspecting why a widget looks as it does. A rule with several selectors is
+    /// listed for the selector that matched.
+    pub fn matching_rules<T: StyleTree + ?Sized>(&self, tree: &T, id: T::Id) -> Vec<MatchedRule> {
+        let node = tree.style_node(id);
+        self.rules
+            .iter()
+            .filter(|rule| rule.applies(self.viewport, &node, tree, id))
+            .map(|rule| MatchedRule {
+                selector: rule.selector.source.clone(),
+                declarations: rule.declarations.clone(),
+                in_media: rule.media.is_some(),
+            })
+            .collect()
+    }
+
     /// Whether any selector looks at other nodes (ancestors or siblings), so that a
     /// change to a node can restyle its descendants.
     pub fn needs_ancestors(&self) -> bool {
@@ -796,6 +832,8 @@ enum Combinator {
 
 #[derive(Debug, Clone)]
 struct Selector {
+    /// As written, for showing which rules apply to a widget.
+    source: String,
     subject: Compound,
     /// The compounds to the left of the subject, nearest first. The combinator
     /// relates the compound to the one after it in source order (the subject, or the
@@ -849,7 +887,11 @@ impl Selector {
             chain.push((relation, compound));
             relation = next_relation;
         }
-        Ok(Self { subject, chain })
+        Ok(Self {
+            source: raw.split_whitespace().collect::<Vec<_>>().join(" "),
+            subject,
+            chain,
+        })
     }
 
     fn is_root_only(&self) -> bool {

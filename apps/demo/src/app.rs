@@ -94,7 +94,8 @@ fn screen_with(config: Config, assets: Assets) -> Box<dyn Screen> {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn app(config: Config) -> App {
-    App::new(options(), move |setup| screen(config, setup))
+    // The demo is a development tool: ⇧⌘I shows what is under the pointer.
+    App::new(options(), move |setup| screen(config, setup)).inspector(true)
 }
 
 /// Draws the screen for `config` without a window, at the main window's size and
