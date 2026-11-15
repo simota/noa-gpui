@@ -44,3 +44,41 @@ fn a_loaded_font_covers_what_the_bundled_one_lacks() {
         .collect();
     assert_eq!(bold, glyphs);
 }
+
+#[test]
+fn system_ui_names_stand_for_one_family() {
+    let mut store = TextStore::new(FontOptions {
+        locale: "en-US".into(),
+        load_system_fonts: false,
+    });
+    let system = store.font_family("system-ui");
+    // Without system fonts (as on the Web) it is the bundled font.
+    assert_eq!(store.family_name(system), "Inter");
+    for name in [".SystemUIFont", "-apple-system", "BlinkMacSystemFont"] {
+        assert_eq!(store.font_family(name), system, "{name}");
+    }
+}
+
+/// San Francisco is one variable font file: the weight comes from its axis, so bold
+/// text is wider than regular text at the same size.
+#[cfg(target_os = "macos")]
+#[test]
+fn the_mac_system_font_is_san_francisco_with_variable_weight() {
+    let mut store = TextStore::new(FontOptions {
+        locale: "en-US".into(),
+        load_system_fonts: true,
+    });
+    let system = store.font_family(".SystemUIFont");
+    assert_eq!(store.family_name(system), "System Font");
+    let mut width = |weight| {
+        let style = TextStyle::new(13.0).family(system).weight(weight);
+        let id = store.create("The quick brown fox jumps", style, None);
+        let size = store.size(id);
+        store.remove(id);
+        size
+    };
+    let (regular, bold) = (width(400), width(700));
+    assert!(bold.width > regular.width, "{bold:?} vs {regular:?}");
+    // 13 pt with a line height of 1.3: one line of ceil(16.9) = 17 px.
+    assert_eq!(regular.height, 17.0);
+}
