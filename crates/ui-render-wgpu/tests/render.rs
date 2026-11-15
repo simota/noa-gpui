@@ -684,6 +684,9 @@ fn a_full_icon_atlas_starts_over_with_the_icons_in_use() {
 
 #[test]
 fn offscreen_frames_read_back_at_any_width_and_encode_as_png() {
+    // OffscreenRenderer makes its own device. Locals drop in reverse order, so the turn
+    // is released after the renderer.
+    let _turn = turn();
     let mut offscreen = pollster::block_on(ui_render_wgpu::OffscreenRenderer::new())
         .expect("a GPU adapter is required for render tests");
     let mut text = text_store();
