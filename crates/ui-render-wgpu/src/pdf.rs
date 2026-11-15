@@ -981,4 +981,77 @@ mod tests {
         assert!(objects[6].contains("/DeviceGray"));
         assert_eq!(objects.len(), 7);
     }
+
+    #[test]
+    fn gradients_arcs_stars_and_triangles_become_shadings_and_paths() {
+        let mut list = DisplayList::new();
+        let blue = Color::rgba(0.0, 0.0, 1.0, 1.0);
+        list.push(DrawCommand::Shape {
+            shape: Shape::Gradient {
+                rect: Rect::new(0.0, 0.0, 100.0, 20.0),
+                radius: 4.0,
+                end: Color::rgba(1.0, 0.0, 0.0, 1.0),
+                vertical: false,
+            },
+            color: blue,
+        });
+        list.push(DrawCommand::Shape {
+            shape: Shape::Arc {
+                center: Point::new(50.0, 50.0),
+                radius: 10.0,
+                width: 2.0,
+                sweep: 0.75,
+            },
+            color: blue,
+        });
+        list.push(DrawCommand::Shape {
+            shape: Shape::Star {
+                rect: Rect::new(0.0, 0.0, 20.0, 20.0),
+                outline: 0.0,
+            },
+            color: blue,
+        });
+        list.push(DrawCommand::Shape {
+            shape: Shape::Triangle {
+                rect: Rect::new(0.0, 0.0, 10.0, 10.0),
+                direction: Direction::Down,
+            },
+            color: blue,
+        });
+        let mut text = TextStore::new(FontOptions::default());
+        let mut pdf = PdfDocument::new();
+        pdf.add_page(&list, &mut text, Size::new(100.0, 100.0), None);
+        let objects = objects(&pdf.finish());
+        // The gradient: clipped to its rounded rectangle, an axial shading from the
+        // left edge to the right one, from the color to the end color.
+        assert!(
+            objects[2].contains("/Shading << /S0 6 0 R >>"),
+            "{}",
+            objects[2]
+        );
+        assert!(objects[5].contains("/ShadingType 2"));
+        assert!(objects[5].contains("/Coords [0 0 100 0]"));
+        assert!(objects[5].contains("/C0 [0 0 1] /C1 [1 0 0]"));
+        let content = &objects[4];
+        assert!(content.contains("W n /S0 sh"), "{content}");
+        // Three quarters of a circle from the top: three Bézier quarters, ending on
+        // the left (y down, clockwise).
+        let arc = &content[content.find("50 40 m").expect("starts at the top")..];
+        let pieces: Vec<&str> = arc.lines().skip(1).take(3).collect();
+        assert!(pieces.iter().all(|l| l.ends_with(" c")), "{pieces:?}");
+        assert!(pieces[2].ends_with(" 40 50 c"), "{pieces:?}");
+        assert!(arc.lines().nth(4) == Some("S"), "stroked");
+        // The star: ten corners, the first at the top (a tenth of the radius low).
+        let star = &content[content.find("10 1 m").expect("the star's top")..];
+        assert_eq!(star.lines().take_while(|l| l.ends_with(" l")).count(), 0);
+        assert_eq!(
+            star.lines()
+                .skip(1)
+                .take_while(|l| l.ends_with(" l"))
+                .count(),
+            9
+        );
+        // The triangle pointing down: its tip at the bottom middle.
+        assert!(content.contains("5 10 m\n0 0 l\n10 0 l\nh"), "{content}");
+    }
 }
