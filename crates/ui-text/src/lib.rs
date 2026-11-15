@@ -358,6 +358,24 @@ const MONOSPACE_FAMILIES: &[&str] = if cfg!(target_os = "macos") {
     ]
 };
 
+/// Names that ask for the system's interface font, as CSS and AppKit write them.
+const SYSTEM_UI_NAMES: &[&str] = &[
+    "system-ui",
+    ".SystemUIFont",
+    "-apple-system",
+    "BlinkMacSystemFont",
+];
+
+/// Families to stand for `system-ui`, most preferred first. macOS's San Francisco
+/// (SFNS.ttf) is a variable font: [`TextStyle::weight`] sets its weight axis.
+const SYSTEM_UI_FAMILIES: &[&str] = if cfg!(target_os = "macos") {
+    &["System Font", ".SF NS", "Helvetica Neue"]
+} else if cfg!(windows) {
+    &["Segoe UI Variable Text", "Segoe UI"]
+} else {
+    &["Cantarell", "Ubuntu", "Noto Sans", "DejaVu Sans"]
+};
+
 fn first_loaded<'a>(db: &fontdb::Database, names: &[&'a str]) -> Option<&'a str> {
     names.iter().copied().find(|name| {
         db.faces()
@@ -425,7 +443,17 @@ impl TextStore {
     /// fixed-width and serif fonts: `monospace` is the first of SF Mono, Menlo and
     /// Monaco on macOS, Cascadia Mono and Consolas on Windows, and DejaVu Sans Mono,
     /// Noto Sans Mono, Liberation Mono and Ubuntu Mono elsewhere that is loaded.
+    ///
+    /// `system-ui` (also `.SystemUIFont`, `-apple-system` and `BlinkMacSystemFont`)
+    /// stands for the interface font: San Francisco on macOS, Segoe UI on Windows, and
+    /// Cantarell, Ubuntu, Noto Sans or DejaVu Sans elsewhere. When none is loaded (the
+    /// Web loads no system fonts) it is the bundled sans-serif font.
     pub fn font_family(&mut self, name: &str) -> FontFamily {
+        let name = if SYSTEM_UI_NAMES.contains(&name) {
+            first_loaded(self.font_system.db(), SYSTEM_UI_FAMILIES).unwrap_or(BUNDLED_FAMILY)
+        } else {
+            name
+        };
         // The generic families go by the name of the font they stand for: for generic
         // monospace, cosmic-text prefers monospaced fallback fonts, and may pick one
         // without outlines (macOS's GB18030 Bitmap) whose glyphs have no width.
