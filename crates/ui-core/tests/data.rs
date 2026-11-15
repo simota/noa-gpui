@@ -2,13 +2,13 @@ use std::borrow::Cow;
 
 use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, percent};
 use noa_gpui_core::widgets::{
-    BrowserPathChanged, BrowserView, CellActionClicked, CellButton, CellButtonClicked, CellLook,
-    CollectionItem, CollectionView, ColumnResized, ColumnSort, ColumnVisibilityChanged, Container,
-    GroupActionClicked, GroupRowClicked, ItemExpanded, ItemsMoved, Menu, OutlineItem, OutlineView,
-    RowActivated, RowSelectionChanged, RowSeparator, RowsMoved, Rule, RuleEditor, RuleField,
-    RuleMatch, RuleOperator, RulesChanged, SelectionMode, SortChanged, TABLE_CHECK_COLUMN,
-    TABLE_HEADER, TABLE_ROW, TableColumn, TableData, TableText, TableView, TextView, Tone,
-    Truncation,
+    Aggregate, BrowserPathChanged, BrowserView, CellActionClicked, CellButton, CellButtonClicked,
+    CellLook, CollectionItem, CollectionView, ColumnResized, ColumnSort, ColumnVisibilityChanged,
+    Container, GroupActionClicked, GroupRowClicked, Grouping, ItemExpanded, ItemsMoved, Menu,
+    OutlineItem, OutlineView, RowActivated, RowSelectionChanged, RowSeparator, RowsMoved, Rule,
+    RuleEditor, RuleField, RuleMatch, RuleOperator, RulesChanged, SelectionMode, SortChanged,
+    TABLE_CHECK_COLUMN, TABLE_HEADER, TABLE_ROW, TableColumn, TableData, TableText, TableView,
+    TextView, Tone, Truncation,
 };
 use noa_gpui_core::{
     Event, Key, Message, Modifiers, PointerButton, Style, Theme, UiTree, Widget, WidgetId,
@@ -4193,4 +4193,135 @@ fn an_item_the_filter_hides_is_not_renamed() {
     h.tree
         .update::<OutlineView, _>(o, |v, cx| v.rename_item(cx, 5)); // Owl
     assert_eq!(outline(&h, o).renaming(), Some(5));
+}
+
+fn sales() -> Vec<Vec<String>> {
+    [
+        ("East", "Tokyo", "1,200"),
+        ("West", "Osaka", "800"),
+        ("East", "Sendai", "400"),
+        ("North", "Sapporo", "n/a"),
+        ("West", "Kobe", "300"),
+    ]
+    .iter()
+    .map(|(r, c, s)| vec![(*r).to_owned(), (*c).to_owned(), (*s).to_owned()])
+    .collect()
+}
+
+fn sales_columns() -> Vec<TableColumn> {
+    vec![
+        TableColumn::new("Region", 120.0),
+        TableColumn::new("City", 120.0),
+        TableColumn::new("Sales", 90.0).sort(ColumnSort::Number),
+    ]
+}
+
+#[test]
+fn grouped_data_puts_a_group_row_with_aggregates_before_each_group() {
+    let grouping = Grouping::by(0)
+        .aggregate(2, Aggregate::Sum)
+        .aggregate(1, Aggregate::Count);
+    let data = grouping.apply(sales());
+    let rows: Vec<Vec<String>> = (0..data.row_count())
+        .map(|r| (0..3).map(|c| data.cell(r, c).into_owned()).collect())
+        .collect();
+    // Groups in the order their first row comes; group rows show the key in the first
+    // and grouping columns and the aggregates in theirs ("n/a" is not a number).
+    assert_eq!(
+        rows,
+        [
+            ["▾ East", "2", "1,600"],
+            ["East", "Tokyo", "1,200"],
+            ["East", "Sendai", "400"],
+            ["▾ West", "2", "1,100"],
+            ["West", "Osaka", "800"],
+            ["West", "Kobe", "300"],
+            ["▾ North", "1", ""],
+            ["North", "Sapporo", "n/a"],
+        ]
+    );
+    let groups: Vec<usize> = (0..data.row_count())
+        .filter(|&r| data.is_group_row(r))
+        .collect();
+    assert_eq!(groups, [0, 3, 6]);
+    assert_eq!(data.group_count(), 3);
+    assert_eq!(data.group_key(3), Some("West"));
+    assert_eq!(data.source_row(4), Some(1));
+    assert_eq!(data.source_row(3), None);
+    assert_eq!(data.cell_note(0, 0).as_deref(), Some("2 rows"));
+    assert_eq!(data.cell_note(6, 0).as_deref(), Some("1 row"));
+    assert_eq!(data.cell_note(0, 2), None);
+
+    let averages = Grouping::by(0)
+        .aggregate(2, Aggregate::Average)
+        .apply(sales());
+    assert_eq!(averages.cell(0, 2), "800");
+    let extremes = Grouping::by(0).aggregate(2, Aggregate::Max).apply(sales());
+    assert_eq!(extremes.cell(3, 2), "800");
+}
+
+#[test]
+fn clicking_a_group_row_folds_and_unfolds_it_in_a_table() {
+    let mut h = Harness::new();
+    let mut grouping = Grouping::by(0).aggregate(2, Aggregate::Sum);
+    let t = h.add(
+        TableView::new(sales_columns(), grouping.apply(sales()))
+            .group_row_cells(true)
+            .height(TEN_ROWS),
+    );
+    h.prepare();
+    assert_eq!(get(&h, t).displayed_rows().len(), 8);
+    let y = |pos: usize| TABLE_HEADER + (pos as f32 + 0.5) * TABLE_ROW;
+    h.messages();
+    h.click(h.at(t, 40.0, y(3)));
+    let clicked = values::<GroupRowClicked>(&h.messages());
+    assert_eq!(clicked, [GroupRowClicked(3)]);
+
+    let source = sales();
+    assert_eq!(
+        grouping.toggle_at(&source, clicked[0].0).as_deref(),
+        Some("West")
+    );
+    assert!(grouping.is_collapsed("West"));
+    let folded = grouping.apply(sales());
+    h.tree
+        .update::<TableView, _>(t, |table, cx| table.set_data(cx, folded));
+    h.prepare();
+    let table = get(&h, t);
+    assert_eq!(table.displayed_rows().len(), 6);
+    // Folded groups still count their rows and sum them.
+    assert_eq!(grouping.apply(sales()).cell(3, 0), "▸ West");
+    assert_eq!(grouping.apply(sales()).cell(3, 2), "1,100");
+    assert_eq!(grouping.toggle_at(&source, 0).as_deref(), Some("East"));
+    // With East and West folded, the rows are East, West, North and Sapporo.
+    assert_eq!(grouping.toggle_at(&source, 3), None, "not a group row");
+}
+
+#[test]
+fn grouped_rows_sort_within_their_groups_and_edits_reach_the_source() {
+    let mut h = Harness::new();
+    let grouping = Grouping::by(0).aggregate(2, Aggregate::Sum);
+    let t = h.add(
+        TableView::new(
+            vec![
+                TableColumn::new("Region", 120.0),
+                TableColumn::new("City", 120.0).editable(true),
+                TableColumn::new("Sales", 90.0).sort(ColumnSort::Number),
+            ],
+            grouping.apply(sales()),
+        )
+        .group_row_cells(true)
+        .height(TEN_ROWS),
+    );
+    h.prepare();
+    h.tree
+        .update::<TableView, _>(t, |table, cx| table.sort_by(cx, 2, true));
+    h.prepare();
+    // East's 400 comes before its 1,200; group rows stay at the head of their group.
+    assert_eq!(get(&h, t).displayed_rows(), [0, 2, 1, 3, 5, 4, 6, 7]);
+
+    let mut data = grouping.apply(sales());
+    assert!(data.set_cell(1, 1, "Yokohama"));
+    assert_eq!(data.source()[0][1], "Yokohama");
+    assert!(!data.set_cell(0, 1, "x"), "group rows take no edits");
 }
