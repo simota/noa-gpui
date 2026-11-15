@@ -35,8 +35,14 @@ pub(crate) struct Reading {
 }
 
 impl Reading {
+    /// A composition of kana, possibly with spaces between words (a family and a given
+    /// name), is the reading of what it will be converted to.
     fn composed(&mut self, composition: &str) {
-        if crate::kana::is_kana(composition) {
+        let words = composition
+            .split([' ', '\u{3000}'])
+            .filter(|w| !w.is_empty());
+        let mut words = words.peekable();
+        if words.peek().is_some() && words.all(crate::kana::is_kana) {
             self.pending = Some(composition.to_owned());
         }
     }

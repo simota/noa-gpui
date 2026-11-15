@@ -42,27 +42,29 @@ fn shift(c: char, by: i32) -> char {
 
 /// The usual width normalization for form input: full-width ASCII letters, digits and
 /// symbols become half-width (`ＡＢＣ１２３` → `ABC123`), and half-width katakana become
-/// full-width, with a following `ﾞ` / `ﾟ` merged into the letter (`ｶﾞｯｺｳ` → `ガッコウ`).
+/// full-width, with a following `ﾞ` / `ﾟ` merged into the letter (`ｶﾞｯｺｳ` → `ガッコウ`,
+/// and `カﾞ` → `ガ`, so normalizing after every keystroke gives the same result).
 /// The full-width space `　` is kept, since Japanese names put it between family and
 /// given name.
 pub fn normalize_width(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
-    let mut chars = text.chars().peekable();
-    while let Some(c) = chars.next() {
+    for c in text.chars() {
         match c {
             '\u{FF01}'..='\u{FF5E}' => out.push(shift(c, -0xFEE0)),
             '\u{FF61}'..='\u{FF9F}' => {
-                let base = HALF_WIDTH_KANA[(c as usize) - 0xFF61];
-                let merged = match chars.peek() {
-                    Some('\u{FF9E}') => voiced(base),
-                    Some('\u{FF9F}') => semi_voiced(base),
+                let full = HALF_WIDTH_KANA[(c as usize) - 0xFF61];
+                // A mark merges into the letter before it, whether that came half-width
+                // in the same text or was normalized earlier (marks typed one at a time).
+                let merged = match full {
+                    '゛' => out.chars().next_back().and_then(voiced),
+                    '゜' => out.chars().next_back().and_then(semi_voiced),
                     _ => None,
                 };
                 if let Some(merged) = merged {
-                    chars.next();
+                    out.pop();
                     out.push(merged);
                 } else {
-                    out.push(base);
+                    out.push(full);
                 }
             }
             _ => out.push(c),

@@ -1323,6 +1323,18 @@ fn text_fields_capture_the_reading_of_converted_text() {
         [ReadingChanged(String::new())]
     );
 
+    // A name composed with a space between family and given name keeps both readings.
+    h.command('a');
+    h.key(Key::Backspace);
+    for composition in ["やまだ", "やまだ　たろう", "山田　太郎", ""] {
+        h.compose(composition);
+    }
+    h.type_text("山田　太郎");
+    assert_eq!(
+        h.tree.get::<TextField>(field).unwrap().reading(),
+        "やまだ　たろう"
+    );
+
     h.compose("すずき");
     h.compose("鈴木");
     h.type_text("鈴木");
@@ -1356,4 +1368,11 @@ fn kana_helpers_convert_scripts_and_normalize_widths() {
         kana::normalize_width("ＡＢＣ１２３－ｶﾞｯｺｳ ﾊﾟﾝ ﾞ　山田"),
         "ABC123-ガッコウ パン ゛　山田"
     );
+    // Normalizing after each keystroke merges a mark typed after its letter.
+    assert_eq!(kana::normalize_width("カﾞ"), "ガ");
+    assert_eq!(kana::normalize_width("ﾍﾟ"), "ペ");
+    let typed = ["ﾊ", "ﾟ", "ﾝ"].iter().fold(String::new(), |text, key| {
+        kana::normalize_width(&(text + key))
+    });
+    assert_eq!(typed, "パン");
 }
