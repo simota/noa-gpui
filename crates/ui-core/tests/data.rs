@@ -157,6 +157,7 @@ const CMD: Modifiers = Modifiers {
     alt: false,
     meta: true,
     command: true,
+    command_is_meta: true,
 };
 const SHIFT: Modifiers = Modifiers {
     shift: true,
@@ -164,6 +165,7 @@ const SHIFT: Modifiers = Modifiers {
     alt: false,
     meta: false,
     command: false,
+    command_is_meta: false,
 };
 const ALT: Modifiers = Modifiers {
     shift: false,
@@ -171,6 +173,7 @@ const ALT: Modifiers = Modifiers {
     alt: true,
     meta: false,
     command: false,
+    command_is_meta: false,
 };
 
 /// Rows computed on demand: "Item n", a number that is not in row order, and a
@@ -3936,6 +3939,7 @@ const CMD_ALT: Modifiers = Modifiers {
     alt: true,
     meta: true,
     command: true,
+    command_is_meta: true,
 };
 
 #[test]

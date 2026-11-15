@@ -712,6 +712,39 @@ impl App {
         }
     }
 
+    /// Show the alerts the screen asked for (the OS's own), one after the other, and
+    /// hand back each answer.
+    #[cfg(all(
+        feature = "native",
+        any(target_os = "macos", target_os = "windows", target_os = "linux")
+    ))]
+    fn run_alerts(&mut self) {
+        use crate::screen::AlertLevel;
+        let (Some(window), Some(gfx)) = (&self.window, &mut self.gfx) else {
+            return;
+        };
+        for request in gfx.screen.take_alerts() {
+            let level = match request.level {
+                AlertLevel::Info => rfd::MessageLevel::Info,
+                AlertLevel::Warning => rfd::MessageLevel::Warning,
+                AlertLevel::Error => rfd::MessageLevel::Error,
+            };
+            let answer = rfd::MessageDialog::new()
+                .set_level(level)
+                .set_title(&request.title)
+                .set_description(&request.message)
+                .set_buttons(rfd::MessageButtons::OkCancelCustom(
+                    request.confirm.clone(),
+                    request.cancel.clone(),
+                ))
+                .set_parent(window.as_ref())
+                .show();
+            gfx.screen
+                .alert_finished(alert_result(&request, answer), &mut self.text);
+            window.request_redraw();
+        }
+    }
+
     fn set_main_visible(&mut self, visible: bool) {
         let (Some(window), Some(gfx)) = (&self.window, &mut self.gfx) else {
             return;
@@ -1054,6 +1087,11 @@ impl ApplicationHandler<Wake> for App {
             any(target_os = "macos", target_os = "windows", target_os = "linux")
         ))]
         self.run_file_dialogs();
+        #[cfg(all(
+            feature = "native",
+            any(target_os = "macos", target_os = "windows", target_os = "linux")
+        ))]
+        self.run_alerts();
         self.apply_main_window_request();
         // Async wakes and tray/menu actions can request exit while the main window
         // is hidden, when there may never be another window event or redraw.
@@ -1107,6 +1145,26 @@ fn start_window_drags_with(
         if let Err(error) = start(drag) {
             log::debug!("cannot {drag:?} the window: {error}");
         }
+    }
+}
+
+/// The answer to `request` from what rfd reports: the confirm button's label, or OK
+/// where the labels could not be set (Windows without common controls 6).
+#[cfg(all(
+    feature = "native",
+    any(target_os = "macos", target_os = "windows", target_os = "linux")
+))]
+fn alert_result(
+    request: &crate::screen::AlertRequest,
+    answer: rfd::MessageDialogResult,
+) -> crate::screen::AlertResult {
+    use crate::screen::AlertResult;
+    match answer {
+        rfd::MessageDialogResult::Ok | rfd::MessageDialogResult::Yes => AlertResult::Confirmed,
+        rfd::MessageDialogResult::Custom(label) if label == request.confirm => {
+            AlertResult::Confirmed
+        }
+        _ => AlertResult::Cancelled,
     }
 }
 
@@ -1211,6 +1269,37 @@ mod tests {
             ..options
         };
         assert!(!bare.window_attributes().decorations);
+    }
+
+    #[cfg(all(
+        feature = "native",
+        any(target_os = "macos", target_os = "windows", target_os = "linux")
+    ))]
+    #[test]
+    fn only_the_confirm_button_confirms_an_alert() {
+        use super::alert_result;
+        use crate::screen::{AlertLevel, AlertRequest, AlertResult};
+        use rfd::MessageDialogResult as Answer;
+        let request = AlertRequest {
+            level: AlertLevel::Warning,
+            title: "Delete “notes.md”?".into(),
+            message: "This cannot be undone.".into(),
+            confirm: "Delete".into(),
+            cancel: "Cancel".into(),
+        };
+        let answer = |a| alert_result(&request, a);
+        assert_eq!(
+            answer(Answer::Custom("Delete".into())),
+            AlertResult::Confirmed
+        );
+        assert_eq!(
+            answer(Answer::Custom("Cancel".into())),
+            AlertResult::Cancelled
+        );
+        // Windows without custom labels answers OK or Cancel.
+        assert_eq!(answer(Answer::Ok), AlertResult::Confirmed);
+        assert_eq!(answer(Answer::Cancel), AlertResult::Cancelled);
+        assert_eq!(answer(Answer::No), AlertResult::Cancelled);
     }
 
     #[test]
