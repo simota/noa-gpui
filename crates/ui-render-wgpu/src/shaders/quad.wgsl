@@ -154,25 +154,35 @@ fn gaussian(x: f32, sigma: f32) -> f32 {
     return exp(-(x * x) / (2.0 * sigma * sigma)) / (2.50662827 * sigma);
 }
 
-// How much of the row `y` of a rounded box (half size `h`, corner radius `corner`)
-// blurred horizontally by `sigma` covers `x`.
-fn shadow_row(x: f32, y: f32, sigma: f32, corner: f32, h: vec2<f32>) -> f32 {
-    let delta = min(h.y - corner - abs(y), 0.0);
-    let curved = h.x - corner + sqrt(max(0.0, corner * corner - delta * delta));
-    let integral = 0.5 + 0.5 * erf2((x + vec2<f32>(-curved, curved)) * (0.70710678 / sigma));
+// How far the row `y` of a box (half size `h`) reaches from its center toward a side
+// whose corner has radius `r`.
+fn shadow_reach(r: f32, y: f32, h: vec2<f32>) -> f32 {
+    let delta = min(h.y - r - abs(y), 0.0);
+    return h.x - r + sqrt(max(0.0, r * r - delta * delta));
+}
+
+// How much of the row `y` of a rounded box (half size `h`, radii as `radii`) blurred
+// horizontally by `sigma` covers `x`. The row's corners are the top ones above the
+// center and the bottom ones below, left and right each its own, so the shape is the
+// same whichever quadrant the fragment is in.
+fn shadow_row(x: f32, y: f32, sigma: f32, radii: vec4<f32>, h: vec2<f32>) -> f32 {
+    let left = select(radii.x, radii.w, y >= 0.0);
+    let right = select(radii.y, radii.z, y >= 0.0);
+    let k = 0.70710678 / sigma;
+    let integral = 0.5 + 0.5 * erf2(vec2<f32>(x - shadow_reach(right, y, h), x + shadow_reach(left, y, h)) * k);
     return integral.y - integral.x;
 }
 
 // Coverage of a rounded box blurred by a Gaussian of `sigma`: exact across the rows,
 // sampled four times down the column (Evan Wallace, "Fast Rounded Rectangle Shadows").
-fn box_shadow(p: vec2<f32>, h: vec2<f32>, corner: f32, sigma: f32) -> f32 {
+fn box_shadow(p: vec2<f32>, h: vec2<f32>, radii: vec4<f32>, sigma: f32) -> f32 {
     let start = clamp(-3.0 * sigma, p.y - h.y, p.y + h.y);
     let end = clamp(3.0 * sigma, p.y - h.y, p.y + h.y);
     let step = (end - start) / 4.0;
     var y = start + step * 0.5;
     var value = 0.0;
     for (var i = 0; i < 4; i++) {
-        value += shadow_row(p.x, p.y - y, sigma, corner, h) * gaussian(y, sigma) * step;
+        value += shadow_row(p.x, p.y - y, sigma, radii, h) * gaussian(y, sigma) * step;
         y += step;
     }
     return value;
@@ -182,16 +192,14 @@ fn box_shadow(p: vec2<f32>, h: vec2<f32>, corner: f32, sigma: f32) -> f32 {
 fn shadow_coverage(in: VertexOutput) -> f32 {
     let blur = in.shape.y;
     let h = max(in.half_size - vec2<f32>(1.5 * blur), vec2<f32>(0.0));
-    let top = select(in.radii.x, in.radii.y, in.local.x > 0.0);
-    let bottom = select(in.radii.w, in.radii.z, in.local.x > 0.0);
-    let corner = clamp(select(top, bottom, in.local.y > 0.0), 0.0, min(h.x, h.y));
+    let radii = clamp(in.radii, vec4<f32>(0.0), vec4<f32>(min(h.x, h.y)));
     let sigma = blur * 0.5;
     if sigma * globals.scale < 0.25 {
         // Too little blur to sample: a sharp, antialiased edge.
-        let d = rounded_box_sdf(in.local, h, vec4<f32>(corner)) * globals.scale;
+        let d = rounded_box_sdf(in.local, h, radii) * globals.scale;
         return clamp(0.5 - d, 0.0, 1.0);
     }
-    return clamp(box_shadow(in.local, h, corner, sigma), 0.0, 1.0);
+    return clamp(box_shadow(in.local, h, radii, sigma), 0.0, 1.0);
 }
 
 @fragment

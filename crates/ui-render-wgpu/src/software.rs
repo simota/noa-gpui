@@ -657,12 +657,10 @@ fn shadow_coverage(p: Point, half: Point, radii: CornerRadii, blur: f32, scale: 
         (half.x - 1.5 * blur).max(0.0),
         (half.y - 1.5 * blur).max(0.0),
     );
-    let top = if p.x > 0.0 { radii[1] } else { radii[0] };
-    let bottom = if p.x > 0.0 { radii[2] } else { radii[3] };
-    let corner = if p.y > 0.0 { bottom } else { top }.clamp(0.0, h.x.min(h.y));
+    let radii = radii.map(|r| r.clamp(0.0, h.x.min(h.y)));
     let sigma = blur * 0.5;
     if sigma * scale < 0.25 {
-        let d = rounded_box(p, h, [corner; 4]) * scale;
+        let d = rounded_box(p, h, radii) * scale;
         return (0.5 - d).clamp(0.0, 1.0);
     }
     let erf = |x: f32| {
@@ -672,11 +670,22 @@ fn shadow_coverage(p: Point, half: Point, radii: CornerRadii, blur: f32, scale: 
         x.signum() * (1.0 - 1.0 / (r * r))
     };
     let gaussian = |x: f32| (-(x * x) / (2.0 * sigma * sigma)).exp() / (2.506_628 * sigma);
+    // How far the box's row `y` reaches from the center toward a side whose corner
+    // has radius `r`.
+    let reach = |r: f32, y: f32| {
+        let delta = (h.y - r - y.abs()).min(0.0);
+        h.x - r + (r * r - delta * delta).max(0.0).sqrt()
+    };
+    // The row's corners are the top ones above the center and the bottom ones below,
+    // left and right each its own: one shape whatever the fragment's quadrant.
     let row = |x: f32, y: f32| {
-        let delta = (h.y - corner - y.abs()).min(0.0);
-        let curved = h.x - corner + (corner * corner - delta * delta).max(0.0).sqrt();
+        let (left, right) = if y < 0.0 {
+            (radii[0], radii[1])
+        } else {
+            (radii[3], radii[2])
+        };
         let k = std::f32::consts::FRAC_1_SQRT_2 / sigma;
-        0.5 * (erf((x + curved) * k) - erf((x - curved) * k))
+        0.5 * (erf((x + reach(left, y)) * k) - erf((x - reach(right, y)) * k))
     };
     let start = (-3.0 * sigma).clamp(p.y - h.y, p.y + h.y);
     let end = (3.0 * sigma).clamp(p.y - h.y, p.y + h.y);
@@ -790,6 +799,28 @@ mod tests {
         (0..image.width)
             .map(|x| 1.0 - decode(image.pixel(x, y)[0]))
             .collect()
+    }
+
+    /// Corners of different radii still make one smooth shadow: no step where the
+    /// fragment crosses from one quadrant to the next.
+    #[test]
+    fn a_shadow_with_one_round_corner_has_no_seams() {
+        // A 20 x 20 box, blur 8: the shadow's bounds reach 12 past it.
+        let half = Point::new(10.0 + 12.0, 10.0 + 12.0);
+        let radii = [10.0, 0.0, 0.0, 0.0];
+        let at = |x: f32, y: f32| shadow_coverage(Point::new(x, y), half, radii, 8.0, 1.0);
+        for (x, y) in [
+            (0.0, -10.0),
+            (0.0, 10.0),
+            (-10.0, 0.0),
+            (10.0, 0.0),
+            (0.0, 0.0),
+        ] {
+            let (a, b) = (at(x - 0.01, y - 0.01), at(x + 0.01, y + 0.01));
+            assert!((a - b).abs() < 0.005, "({x}, {y}): {a} vs {b}");
+        }
+        // The round corner is lighter than the square one opposite it.
+        assert!(at(-10.0, -10.0) < at(10.0, -10.0));
     }
 
     #[test]
