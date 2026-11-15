@@ -207,6 +207,14 @@ fn every_input_event_survives_the_saved_form() {
             key: Key::PageDown,
             modifiers: Modifiers::default(),
         },
+        Event::KeyDown {
+            key: Key::F5,
+            modifiers: Modifiers::default(),
+        },
+        Event::KeyDown {
+            key: Key::F12,
+            modifiers: shift_cmd,
+        },
         Event::Text("a \"quoted\" \\ line\nand tab\t".into()),
         Event::Composition {
             text: "にほん".into(),

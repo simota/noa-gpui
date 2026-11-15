@@ -314,6 +314,13 @@ fn a_recorder_takes_a_modified_key_and_refuses_bare_ones() {
         values::<ShortcutChanged>(&h.messages()),
         [ShortcutChanged(None)]
     );
+    // A function key needs no modifier.
+    h.key(Key::Enter);
+    h.key(Key::F2);
+    assert_eq!(
+        h.get::<ShortcutRecorder>(id).shortcut(),
+        Some(Shortcut::key(Key::F2))
+    );
 }
 
 #[test]

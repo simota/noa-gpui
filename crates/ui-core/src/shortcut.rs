@@ -76,7 +76,21 @@ impl Shortcut {
             (Key::PageUp, false) => "PgUp".into(),
             (Key::PageDown, true) => "⇟".into(),
             (Key::PageDown, false) => "PgDn".into(),
-            (Key::F10, _) => "F10".into(),
+            (
+                Key::F1
+                | Key::F2
+                | Key::F3
+                | Key::F4
+                | Key::F5
+                | Key::F6
+                | Key::F7
+                | Key::F8
+                | Key::F9
+                | Key::F10
+                | Key::F11
+                | Key::F12,
+                _,
+            ) => format!("F{}", self.key.function_number().unwrap_or_default()),
             (Key::ContextMenu | Key::Other, _) => String::new(),
         };
         let modifiers: &[(bool, &str, &str)] = if glyphs {
@@ -147,6 +161,22 @@ mod tests {
         let all = Shortcut::command('z').with_shift().with_alt();
         assert_eq!(all.label(true), "⌥⇧⌘Z");
         assert_eq!(all.label(false), "Ctrl+Alt+Shift+Z");
+    }
+
+    #[test]
+    fn function_keys_are_named_by_number() {
+        assert_eq!(Shortcut::key(Key::F2).label(true), "F2");
+        assert_eq!(
+            Shortcut::key(Key::F12).with_shift().label(false),
+            "Shift+F12"
+        );
+        for n in 1..=12 {
+            let key = Key::function(n).unwrap();
+            assert_eq!(key.function_number(), Some(n));
+        }
+        assert_eq!(Key::function(0), None);
+        assert_eq!(Key::function(13), None);
+        assert_eq!(Key::Char('f').function_number(), None);
     }
 
     #[test]
