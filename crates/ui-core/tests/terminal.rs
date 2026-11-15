@@ -319,6 +319,34 @@ fn tab_goes_to_the_program_and_ctrl_tab_moves_the_focus_on() {
     assert_eq!(h.tree.focused(), Some(after));
 }
 
+/// A cell is as wide as a glyph's advance, not the rounded-up width of a laid-out
+/// "M": the grid (and the cursor drawn on it) keeps pace with the text.
+#[test]
+fn cells_are_as_wide_as_the_glyphs_advance() {
+    let mut h = Harness::new(Terminal::new().font_size(12.0));
+    // Wide enough that the rounding adds up to whole cells.
+    h.viewport = Size::new(1200.0, 400.0);
+    h.prepare();
+    let family = h.text.font_family("monospace");
+    let probe = h.text.create(
+        &"M".repeat(10),
+        noa_gpui_text::TextStyle::new(12.0).family(family),
+        None,
+    );
+    let advance = h.text.caret_x(probe, 10) / 10.0;
+    assert!(
+        advance.fract() != 0.0,
+        "the font's advance is fractional: {advance}"
+    );
+    let cols = h.term().grid_size().0;
+    let available = h.viewport.width - 2.0 * 6.0;
+    assert_eq!(
+        cols,
+        (available / advance).floor() as usize,
+        "advance {advance}"
+    );
+}
+
 #[test]
 fn the_grid_follows_the_widget_size_and_reports_changes_once() {
     let mut h = Harness::new(Terminal::new());

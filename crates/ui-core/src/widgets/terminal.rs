@@ -145,8 +145,9 @@ impl Terminal {
         let width = match self.cell_width {
             Some((measured, width)) if measured == style => width,
             _ => {
+                // The glyph's advance: a layout's size is rounded up to whole pixels.
                 let probe = store.create("M", style, None);
-                let width = store.size(probe).width;
+                let width = store.caret_x(probe, 1);
                 store.remove(probe);
                 self.cell_width = Some((style, width));
                 width
