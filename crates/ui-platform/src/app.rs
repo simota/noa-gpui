@@ -131,6 +131,9 @@ pub struct App {
     system_menus: crate::system_menu::SystemMenus,
     #[cfg(target_arch = "wasm32")]
     canvas: web_sys::HtmlCanvasElement,
+    /// Keyboard and IME input while a text widget has focus.
+    #[cfg(target_arch = "wasm32")]
+    web_ime: Option<crate::web_ime::WebIme>,
     #[cfg(feature = "native")]
     stylesheet: Option<crate::stylesheet::StyleSheetWatcher>,
     #[cfg(feature = "native")]
@@ -147,6 +150,9 @@ impl App {
         #[cfg(target_arch = "wasm32")] canvas: web_sys::HtmlCanvasElement,
     ) -> Self {
         Self {
+            // Before `waker` and `canvas` move in below.
+            #[cfg(target_arch = "wasm32")]
+            web_ime: crate::web_ime::WebIme::new(&canvas, &waker),
             #[cfg(all(feature = "native", any(target_os = "macos", target_os = "windows")))]
             system_menus: crate::system_menu::SystemMenus::new(&options),
             #[cfg(all(feature = "native", target_os = "linux"))]
@@ -430,6 +436,10 @@ impl App {
             accessibility.update(screen.as_ref(), changed, viewport.scale_factor as f64);
         }
         sync_ime(&window, &mut self.ime_area, screen.text_input_area());
+        #[cfg(target_arch = "wasm32")]
+        if let Some(web_ime) = &mut self.web_ime {
+            web_ime.sync(screen.text_input_area());
+        }
         sync_cursor(&window, &mut self.cursor, screen.tree().cursor());
         if !self.needs_present && !screen.continuous() {
             // Nothing to draw this frame, but an animation may still be running.
@@ -632,6 +642,15 @@ impl App {
     }
 
     fn input(&mut self, event: &WindowEvent) {
+        let Some(window) = &self.window else {
+            return;
+        };
+        let events = self.input.translate(event, window.scale_factor());
+        self.dispatch(events);
+    }
+
+    /// Hand input events to the main screen and redraw if they changed it.
+    fn dispatch(&mut self, events: Vec<noa_gpui_core::Event>) {
         let (Some(window), Some(gfx)) = (&self.window, &mut self.gfx) else {
             return;
         };
@@ -639,8 +658,14 @@ impl App {
         gfx.screen
             .tree_mut()
             .set_now(self.clock.elapsed().as_secs_f64());
-        for event in self.input.translate(event, scale) {
+        for event in events {
             gfx.screen.dispatch(event, &mut self.text);
+        }
+        // A click on the canvas takes focus from the text area while a text widget
+        // keeps it.
+        #[cfg(target_arch = "wasm32")]
+        if let Some(web_ime) = &mut self.web_ime {
+            web_ime.sync(gfx.screen.text_input_area());
         }
         sync_cursor(window, &mut self.cursor, gfx.screen.tree().cursor());
         let (width, height) = gfx.ctx.size();
@@ -749,6 +774,12 @@ impl ApplicationHandler<Wake> for App {
                 gfx.screen.reopened(&mut self.text);
             }
             self.apply_main_window_request();
+        }
+        #[cfg(target_arch = "wasm32")]
+        if let Some(events) = self.web_ime.as_ref().map(|ime| ime.take_events())
+            && !events.is_empty()
+        {
+            self.dispatch(events);
         }
         if !self.waker.take() {
             return;

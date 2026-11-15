@@ -39,9 +39,12 @@ impl Waker {
     }
 
     /// Wake the event loop without a [`crate::Screen::woken`] call, for the app's own
-    /// events (a reopen, a tray menu item).
+    /// events (a reopen, a tray menu item, typing on the Web).
     #[cfg_attr(
-        not(all(feature = "native", any(target_os = "macos", target_os = "linux"))),
+        not(any(
+            all(feature = "native", any(target_os = "macos", target_os = "linux")),
+            target_arch = "wasm32"
+        )),
         expect(dead_code)
     )]
     pub(crate) fn nudge(&self) {

@@ -475,7 +475,17 @@ Updating one row cost time proportional to the number of children of the scroll 
 - **Preventing double input:** On macOS, winit sends `Ime::Commit` only when there is a composition string, and does not send that key's `KeyboardInput`. Ordinary key input arrives as before via `KeyboardInput`'s `text`.
 - **Font fallback:** `FontOptions::default()` uses the OS locale (e.g. `ja-JP`). For kanji shared across CJK, Japanese glyph forms are chosen.
 - **Bugs fixed:** Layout updates that did not change size did not set the whole tree's repaint flag, so repaints were skipped (`UiTree::invalidate`). Even after entering a composition string, the drawing for the empty state remained.
-- **Not supported:** Web IME (winit 0.30 does not support it, so a separate mechanism using a DOM textarea is needed), selection ranges, and horizontal scrolling of long text.
+- **Not supported:** selection ranges, and horizontal scrolling of long text. (Web IME was added later; see the next appendix.)
+
+## Appendix: Web IME Support
+
+winit 0.30's Web backend reports no IME events (`set_ime_allowed` and `set_ime_cursor_area` do nothing there), so on the Web the hidden DOM `textarea` planned in §3.1 takes keyboard and IME input while a text widget has focus.
+
+- **Split:** `crates/ui-platform/src/web_text.rs` turns DOM keyboard, `input`, and composition events into the same `Event::KeyDown` / `Event::Text` / `Event::Composition` the desktop gets, and holds no DOM types, so it is tested on the desktop. `crates/ui-platform/src/web_ime.rs` (wasm32 only) owns the `textarea`, its listeners, and the queue the event loop drains after a `Waker` nudge.
+- **Focus:** While `Widget::text_input_area` returns an area, the `textarea` is focused and placed at the caret (so the candidate window opens there). winit focuses the canvas on every pointer press, so focus is given back after input is dispatched. When no text widget has focus, the canvas gets focus back and winit's keyboard events are used as before.
+- **Preventing double input:** Text keys are not `preventDefault`ed; their text arrives from `input` (`insertText`). Composed text is committed only on `compositionend`; the `input` events around a composition (`insertCompositionText`, `insertFromComposition`) are skipped. Keys the IME takes (`isComposing`, key code 229, `Process`) produce nothing; key code 229 also covers the case reported for WebKit, where the committing Enter arrives after `compositionend` (not checked in a browser yet). Named keys and shortcuts are `preventDefault`ed so the `textarea` never edits itself.
+- **Composition cursor:** `compositionupdate` carries only the string, so the cursor is put at the end of it and no clause is shown. Chromium's EditContext API reports clause formats; it is not used, since other browsers lack it.
+- **Not verified automatically:** Real IME input in browsers is not covered by tests; only the translation in `web_text.rs` is.
 
 ## Appendix: Decisions Made While Implementing Phase 4
 
