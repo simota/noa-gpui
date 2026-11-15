@@ -20,6 +20,7 @@ mod fields;
 mod file_drop;
 mod find;
 mod form_field;
+mod grouped;
 mod hover_card;
 mod image;
 mod inline_label;
@@ -104,6 +105,7 @@ pub use find::{
     find_matches, replace_all,
 };
 pub use form_field::{FormField, LabelPosition};
+pub use grouped::{Aggregate, GroupedData, Grouping};
 pub use hover_card::HoverCard;
 pub(crate) use hover_card::HoverCardPanel;
 pub use image::{Image, ImageFrame, ImageScaling, image_rect};

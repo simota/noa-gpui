@@ -2,14 +2,14 @@ use std::borrow::Cow;
 
 use noa_gpui_core::style::{AlignItems, FlexDirection, Size as LayoutSize, auto, length, percent};
 use noa_gpui_core::widgets::{
-    BrowserPathChanged, BrowserView, Button, ButtonClicked, CellActionClicked, CellButton,
-    CellButtonClicked, CellEdited, CellLook, CellSelectionChanged, Chart, ChartPointActivated,
-    ChartSeries, CollectionItem, CollectionView, ColumnAlign, ColumnSort, ColumnVisibilityChanged,
-    Container, DescriptionList, DescriptionListParts, GroupActionClicked, GroupRowClicked,
-    ItemExpanded, ItemRenamed, ItemsMoved, Label, NumberInput, OutlineItem, OutlineView,
-    PropertyGrid, PropertyValue, RowActivated, RowSelectionChanged, RowSeparator, RowsMoved,
-    RuleEditor, RuleField, RulesChanged, ScrollView, SearchField, SortChanged, TableColumn,
-    TableData, TableView, TextChanged, Tone, from_hsv, hex_string,
+    Aggregate, BrowserPathChanged, BrowserView, Button, ButtonClicked, CellActionClicked,
+    CellButton, CellButtonClicked, CellEdited, CellLook, CellSelectionChanged, Chart,
+    ChartPointActivated, ChartSeries, CollectionItem, CollectionView, ColumnAlign, ColumnSort,
+    ColumnVisibilityChanged, Container, DescriptionList, DescriptionListParts, GroupActionClicked,
+    GroupRowClicked, Grouping, ItemExpanded, ItemRenamed, ItemsMoved, Label, NumberInput,
+    OutlineItem, OutlineView, PropertyGrid, PropertyValue, RowActivated, RowSelectionChanged,
+    RowSeparator, RowsMoved, RuleEditor, RuleField, RulesChanged, ScrollView, SearchField,
+    SortChanged, TableColumn, TableData, TableView, TextChanged, Tone, from_hsv, hex_string,
 };
 use noa_gpui_core::{Message, Role, Style, UiTree, WidgetId};
 use noa_gpui_scene::{Color, ImageId, VectorIcon};
@@ -17,7 +17,7 @@ use noa_gpui_scene::{Color, ImageId, VectorIcon};
 use super::kit::{Kit, gap, row_style};
 use super::{Demo, DemoCx, SectionSpec};
 
-pub const SECTIONS: [SectionSpec; 10] = [
+pub const SECTIONS: [SectionSpec; 11] = [
     SectionSpec {
         title: "Table view",
         description: "Columns with headers: click a header to sort (again to reverse), drag \
@@ -121,6 +121,14 @@ pub const SECTIONS: [SectionSpec; 10] = [
                       All / Any combines them. The table below is filtered in place as you \
                       edit: its sort and the selected rows that still match stay.",
         build: rules,
+    },
+    SectionSpec {
+        title: "Grouping",
+        description: "Grouping::by(column) wraps any table data: a group row before each \
+                      group with its row count and aggregates (sum, average, min, max) in \
+                      their columns. Click a group row to fold or unfold it; sorting \
+                      orders the rows within their groups.",
+        build: grouping,
     },
 ];
 
@@ -1859,4 +1867,73 @@ mod tests {
         assert!(grid_rows_from_csv("Region,Jan\n").is_err());
         assert!(grid_rows_from_csv("").is_err());
     }
+}
+
+const ORDERS: [(&str, &str, &str, &str); 9] = [
+    ("Hardware", "Keyboard", "12", "1,080"),
+    ("Software", "IDE license", "3", "1,497"),
+    ("Hardware", "Monitor", "4", "1,596"),
+    ("Services", "Support plan", "1", "2,400"),
+    ("Software", "Font pack", "10", "290"),
+    ("Hardware", "Dock", "6", "714"),
+    ("Services", "Onboarding", "2", "1,800"),
+    ("Software", "Backup", "5", "250"),
+    ("Hardware", "Webcam", "8", "632"),
+];
+
+fn orders() -> Vec<Vec<String>> {
+    ORDERS
+        .iter()
+        .map(|(a, b, c, d)| [a, b, c, d].iter().map(|s| (**s).to_owned()).collect())
+        .collect()
+}
+
+struct GroupingDemo {
+    table: WidgetId,
+    grouping: Grouping,
+}
+
+impl Demo for GroupingDemo {
+    fn handle(&mut self, cx: &mut DemoCx, message: &Message) -> bool {
+        if message.source != self.table {
+            return false;
+        }
+        if let Some(GroupRowClicked(row)) = message.downcast_ref()
+            && self.grouping.toggle_at(&orders(), *row).is_some()
+        {
+            let data = self.grouping.apply(orders());
+            cx.tree
+                .update::<TableView, _>(self.table, |t, cx| t.set_data(cx, data));
+        }
+        true
+    }
+}
+
+fn grouping(kit: &mut Kit) -> Box<dyn Demo> {
+    let card = kit.wide_card(
+        "Grouping::by(0).aggregate(2, Aggregate::Sum).aggregate(3, Aggregate::Sum) \
+         · TableView::group_row_cells(true)",
+        560.0,
+    );
+    let grouping = Grouping::by(0)
+        .aggregate(2, Aggregate::Sum)
+        .aggregate(3, Aggregate::Sum);
+    let columns = vec![
+        TableColumn::new("Category", 140.0),
+        TableColumn::new("Item", 160.0).sort(ColumnSort::Text),
+        TableColumn::new("Qty", 80.0)
+            .align(ColumnAlign::Trailing)
+            .sort(ColumnSort::Number),
+        TableColumn::new("Amount", 120.0)
+            .align(ColumnAlign::Trailing)
+            .sort(ColumnSort::Number),
+    ];
+    let table = kit.tree.insert(
+        Some(card),
+        TableView::new(columns, grouping.apply(orders()))
+            .group_row_cells(true)
+            .height(320.0),
+    );
+    kit.tree.set_accessible_label(table, "Orders by category");
+    Box::new(GroupingDemo { table, grouping })
 }
