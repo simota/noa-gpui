@@ -36,6 +36,31 @@ pub struct GpuOptions {
     /// Largest texture side to allow. Bounds the glyph atlases (which grow from 256 px
     /// up to this size) and the largest image. `None` uses what the adapter supports.
     pub max_texture_size: Option<u32>,
+    /// The window shows what is behind it where the frame is not opaque (the clear
+    /// color's alpha and what is drawn over it). Off: the surface is opaque.
+    pub transparent: bool,
+}
+
+/// How the compositor blends a surface with what is behind the window. The frame holds
+/// premultiplied colors (see [`crate::Renderer`]): a transparent surface takes
+/// `PostMultiplied` where it is offered, which is how Metal names a non-opaque layer
+/// (Core Animation composites it premultiplied), and `PreMultiplied` otherwise.
+pub fn alpha_mode(
+    modes: &[wgpu::CompositeAlphaMode],
+    transparent: bool,
+) -> wgpu::CompositeAlphaMode {
+    use wgpu::CompositeAlphaMode as Mode;
+    let wanted: &[Mode] = if transparent {
+        &[Mode::PostMultiplied, Mode::PreMultiplied]
+    } else {
+        &[]
+    };
+    wanted
+        .iter()
+        .copied()
+        .find(|mode| modes.contains(mode))
+        .or_else(|| modes.first().copied())
+        .unwrap_or(Mode::Auto)
 }
 
 /// Limits every backend must satisfy: the WebGL2 baseline, with resolution limits
@@ -111,7 +136,7 @@ impl GpuContext {
             height: height.max(1),
             present_mode: wgpu::PresentMode::Fifo,
             desired_maximum_frame_latency: 2,
-            alpha_mode: caps.alpha_modes[0],
+            alpha_mode: alpha_mode(&caps.alpha_modes, options.transparent),
             view_formats: vec![],
             color_space: wgpu::SurfaceColorSpace::Auto,
         };
@@ -119,10 +144,11 @@ impl GpuContext {
 
         let info = adapter.get_info();
         log::info!(
-            "GPU: {} ({:?}), surface format {:?}",
+            "GPU: {} ({:?}), surface format {:?}, alpha {:?}",
             info.name,
             info.backend,
-            format
+            format,
+            config.alpha_mode
         );
 
         Ok(Self {
@@ -237,5 +263,24 @@ fn acquire(
         wgpu::CurrentSurfaceTexture::Validation => {
             panic!("surface validation error while acquiring a frame")
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wgpu::CompositeAlphaMode as Mode;
+
+    #[test]
+    fn a_transparent_surface_takes_a_blending_alpha_mode() {
+        // Metal offers these two.
+        let metal = [Mode::Opaque, Mode::PostMultiplied];
+        assert_eq!(alpha_mode(&metal, true), Mode::PostMultiplied);
+        assert_eq!(alpha_mode(&metal, false), Mode::Opaque);
+        let vulkan = [Mode::Opaque, Mode::PreMultiplied, Mode::Inherit];
+        assert_eq!(alpha_mode(&vulkan, true), Mode::PreMultiplied);
+        // Where nothing blends, the window stays opaque.
+        assert_eq!(alpha_mode(&[Mode::Opaque], true), Mode::Opaque);
+        assert_eq!(alpha_mode(&[], false), Mode::Auto);
     }
 }
