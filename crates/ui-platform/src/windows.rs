@@ -135,6 +135,7 @@ impl SecondaryWindow {
                 for event in self.input.translate(&event, self.window.scale_factor()) {
                     self.screen.dispatch(event, text);
                 }
+                crate::app::start_window_drags(&self.window, self.screen.as_mut());
                 crate::app::sync_cursor(
                     &self.window,
                     &mut self.cursor,

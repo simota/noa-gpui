@@ -29,6 +29,10 @@ pub struct AppOptions {
     /// icon). It ends when the screen
     /// [wants to close](Screen::wants_close). Off by default: closing ends it.
     pub keep_running: bool,
+    /// Desktop: the OS draws the main window's title bar and borders. Off, the screen
+    /// draws its own and moves and resizes the window through
+    /// [`Screen::take_window_drags`]. On by default.
+    pub decorations: bool,
 }
 
 impl AppOptions {
@@ -41,7 +45,19 @@ impl AppOptions {
             version: None,
             size: (1280.0, 800.0),
             keep_running: false,
+            decorations: true,
         }
+    }
+
+    /// The main window as these options describe it, before a saved size and position
+    /// replace theirs.
+    fn window_attributes(&self) -> winit::window::WindowAttributes {
+        let attributes = Window::default_attributes().with_title(&self.title);
+        #[cfg(not(target_arch = "wasm32"))]
+        let attributes = attributes
+            .with_inner_size(winit::dpi::LogicalSize::new(self.size.0, self.size.1))
+            .with_decorations(self.decorations);
+        attributes
     }
 }
 
@@ -399,17 +415,12 @@ impl App {
         &self,
         #[cfg_attr(not(feature = "native"), expect(unused_variables))] event_loop: &ActiveEventLoop,
     ) -> winit::window::WindowAttributes {
-        let attributes = Window::default_attributes().with_title(&self.options.title);
+        let attributes = self.options.window_attributes();
         #[cfg(target_arch = "wasm32")]
         let attributes = {
             use winit::platform::web::WindowAttributesExtWebSys;
             attributes.with_canvas(Some(self.canvas.clone()))
         };
-        #[cfg(not(target_arch = "wasm32"))]
-        let attributes = attributes.with_inner_size(winit::dpi::LogicalSize::new(
-            self.options.size.0,
-            self.options.size.1,
-        ));
         #[cfg(feature = "native")]
         let attributes = match self.saved_main_window() {
             Some(saved) => {
@@ -758,6 +769,8 @@ impl App {
             }
             gfx.screen.dispatch(event, &mut self.text);
         }
+        #[cfg(feature = "native")]
+        start_window_drags(window, gfx.screen.as_mut());
         // The outline follows the pointer, and turning the inspector on or off redraws.
         if inspecting || self.inspector.as_ref().is_some_and(|i| i.is_active()) {
             self.needs_present = true;
@@ -1052,9 +1065,37 @@ fn on_a_monitor(event_loop: &ActiveEventLoop, (x, y): (i32, i32)) -> bool {
     })
 }
 
+/// Let the OS move or resize `window` as the screen asked, following the pointer until
+/// the button is released. Call it while the press that asked is being handled.
+#[cfg(feature = "native")]
+pub(crate) fn start_window_drags(window: &Window, screen: &mut dyn Screen) {
+    use crate::screen::WindowDrag;
+    for drag in screen.take_window_drags() {
+        let started = match drag {
+            WindowDrag::Move => window.drag_window(),
+            WindowDrag::Resize(direction) => window.drag_resize_window(direction),
+        };
+        if let Err(error) = started {
+            log::debug!("cannot {drag:?} the window: {error}");
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::visibility_change;
+
+    #[test]
+    fn the_os_decorates_the_main_window_unless_told_otherwise() {
+        let options = super::AppOptions::new("Test");
+        assert!(options.decorations);
+        assert!(options.window_attributes().decorations);
+        let bare = super::AppOptions {
+            decorations: false,
+            ..options
+        };
+        assert!(!bare.window_attributes().decorations);
+    }
 
     #[test]
     fn only_requests_that_change_the_main_window_apply() {
