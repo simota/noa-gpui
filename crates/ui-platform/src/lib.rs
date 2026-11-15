@@ -25,6 +25,10 @@ mod system_menu;
 #[cfg(feature = "native")]
 mod view_state;
 mod wake;
+#[cfg(target_arch = "wasm32")]
+mod web_ime;
+#[cfg(any(target_arch = "wasm32", test))]
+mod web_text;
 #[cfg(feature = "native")]
 mod windows;
 

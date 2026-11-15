@@ -61,8 +61,28 @@ workspace = true
 optional = true
 features = ["xdg-portal", "async-std"]
 
+# The hidden text area for keyboard and IME input on the Web (`web_ime`).
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-web-sys = { workspace = true, features = ["HtmlCanvasElement", "Window", "Navigator"] }
+wasm-bindgen.workspace = true
+web-sys = { workspace = true, features = [
+    "HtmlCanvasElement",
+    "Window",
+    "Navigator",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "HtmlTextAreaElement",
+    "CssStyleDeclaration",
+    "DomRect",
+    "FocusOptions",
+    "Node",
+    "EventTarget",
+    "Event",
+    "KeyboardEvent",
+    "InputEvent",
+    "CompositionEvent",
+    "UiEvent",
+] }
 
 [[example]]
 name = "hello"
