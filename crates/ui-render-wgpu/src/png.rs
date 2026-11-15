@@ -1,5 +1,5 @@
 //! Writes stored (uncompressed) deflate blocks: large files, but nothing beyond the
-//! standard library.
+//! standard library. Reads back only what it writes (for comparing with saved images).
 
 /// The most bytes a stored deflate block holds.
 const BLOCK: usize = 65_535;
@@ -53,6 +53,86 @@ pub(crate) fn encode(width: u32, height: u32, pixels: &[u8]) -> Vec<u8> {
 
     chunk(&mut png, b"IEND", &[]);
     png
+}
+
+/// Reads back what [`encode`] writes: 8-bit RGBA, stored deflate blocks, no filtering.
+/// Other PNG files (compressed, filtered, other color types) are refused with the
+/// reason. Returns the width, the height and the RGBA8 rows.
+pub(crate) fn decode(png: &[u8]) -> Result<(u32, u32, Vec<u8>), String> {
+    let body = png
+        .strip_prefix(b"\x89PNG\r\n\x1a\n")
+        .ok_or("not a PNG file")?;
+    let mut header = None;
+    let mut z = Vec::new();
+    let mut at = 0;
+    while at < body.len() {
+        let bytes = |from: usize, len: usize| body.get(from..from + len).ok_or("truncated chunk");
+        let len = u32::from_be_bytes(bytes(at, 4)?.try_into().expect("four bytes")) as usize;
+        let chunk = bytes(at + 4, 4 + len)?;
+        let crc = u32::from_be_bytes(bytes(at + 8 + len, 4)?.try_into().expect("four bytes"));
+        if crc32(chunk) != crc {
+            return Err("chunk checksum mismatch".into());
+        }
+        let (kind, data) = chunk.split_at(4);
+        match kind {
+            b"IHDR" => header = Some(data.to_vec()),
+            b"IDAT" => z.extend_from_slice(data),
+            b"IEND" => break,
+            _ => {}
+        }
+        at += 12 + len;
+    }
+    let header = header.ok_or("no IHDR chunk")?;
+    if header.len() != 13 || header[8..] != [8, 6, 0, 0, 0] {
+        return Err("only 8-bit RGBA without interlacing is read".into());
+    }
+    let width = u32::from_be_bytes(header[0..4].try_into().expect("four bytes"));
+    let height = u32::from_be_bytes(header[4..8].try_into().expect("four bytes"));
+    let raw = inflate_stored(&z)?;
+    let row = width as usize * 4;
+    if raw.len() != height as usize * (row + 1) {
+        return Err("image data does not match the size".into());
+    }
+    let mut pixels = Vec::with_capacity(row * height as usize);
+    for line in raw.chunks_exact(row + 1) {
+        if line[0] != 0 {
+            return Err("only unfiltered scanlines are read".into());
+        }
+        pixels.extend_from_slice(&line[1..]);
+    }
+    Ok((width, height, pixels))
+}
+
+fn inflate_stored(z: &[u8]) -> Result<Vec<u8>, String> {
+    if z.len() < 6 || z[0] & 0x0f != 8 {
+        return Err("not a zlib deflate stream".into());
+    }
+    let mut out = Vec::new();
+    let mut at = 2;
+    loop {
+        let block = z.get(at..at + 5).ok_or("truncated deflate block")?;
+        if block[0] & 0b110 != 0 {
+            return Err("only stored (uncompressed) deflate blocks are read".into());
+        }
+        let len = u16::from_le_bytes([block[1], block[2]]);
+        if !len != u16::from_le_bytes([block[3], block[4]]) {
+            return Err("bad stored block length".into());
+        }
+        let data = z
+            .get(at + 5..at + 5 + len as usize)
+            .ok_or("truncated deflate block")?;
+        out.extend_from_slice(data);
+        at += 5 + len as usize;
+        if block[0] & 1 == 1 {
+            break;
+        }
+    }
+    let mut checksum = Adler32::default();
+    checksum.update(&out);
+    if z.get(at..at + 4) != Some(&checksum.value().to_be_bytes()[..]) {
+        return Err("image data checksum mismatch".into());
+    }
+    Ok(out)
 }
 
 fn chunk(out: &mut Vec<u8>, kind: &[u8; 4], data: &[u8]) {
@@ -355,6 +435,25 @@ mod tests {
         assert_eq!(&raw[1..9], &pixels[..8]);
         assert_eq!(raw[9], 0);
         assert_eq!(&raw[10..], &pixels[8..]);
+    }
+
+    #[test]
+    fn decodes_what_it_encodes_and_refuses_other_files() {
+        for (width, height) in [(0, 0), (1, 1), (7, 5), (200, 100), (128, 383)] {
+            let len = width as usize * height as usize * 4;
+            let pixels: Vec<u8> = (0..len).map(|i| (i * 13 % 251) as u8).collect();
+            let png = encode(width, height, &pixels);
+            assert_eq!(
+                decode(&png),
+                Ok((width, height, pixels)),
+                "{width}x{height}"
+            );
+        }
+        let mut png = encode(2, 2, &[9; 16]);
+        assert!(decode(&png[1..]).is_err());
+        let last = png.len() - 20;
+        png[last] ^= 1;
+        assert!(decode(&png).is_err(), "a changed byte fails a checksum");
     }
 
     #[test]

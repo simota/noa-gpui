@@ -6,6 +6,8 @@
 
 mod backdrop;
 mod buffers;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod golden;
 pub mod gpu;
 mod icons;
 mod images;
@@ -19,6 +21,8 @@ mod renderer;
 mod software;
 
 pub use glyphon;
+#[cfg(not(target_arch = "wasm32"))]
+pub use golden::{GoldenError, ImageDiff, Tolerance, check_golden};
 pub use gpu::{
     AcquireError, GpuContext, GpuOptions, InitError, WindowSurface, limits_with, required_limits,
 };

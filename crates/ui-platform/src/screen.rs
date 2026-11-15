@@ -238,3 +238,128 @@ pub(crate) fn run_accessibility_actions(
     }
     !actions.is_empty()
 }
+
+/// Play `recording` back into `screen` laid out at `size` logical points, as the app
+/// would: each step's input is dispatched at its time (messages handled), running
+/// animations get a frame, and the screen is laid out again. Draw the result with
+/// [`crate::Headless::render_screen`] to compare it with a saved image.
+pub fn replay(
+    screen: &mut dyn Screen,
+    recording: &noa_gpui_core::recording::Recording,
+    text: &mut TextStore,
+    size: Size,
+) {
+    screen.prepare(size, text);
+    for step in &recording.steps {
+        screen.tree_mut().set_now(step.at);
+        screen.dispatch(step.event.clone(), text);
+        if screen.tree().wants_animation_frame() {
+            screen.animate(step.at, text);
+        }
+        screen.prepare(size, text);
+    }
+}
+
+#[cfg(all(test, feature = "native"))]
+mod tests {
+    use noa_gpui_core::widgets::{Button, ButtonClicked, Container, Label};
+    use noa_gpui_core::{Event, Message, PointerButton, UiTree, WidgetId};
+    use noa_gpui_render_wgpu::{Tolerance, check_golden};
+    use noa_gpui_scene::{Point, Size};
+    use noa_gpui_text::TextStore;
+
+    use super::{Screen, replay};
+    use crate::Headless;
+
+    const SIZE: Size = Size::new(240.0, 120.0);
+
+    struct Counter {
+        tree: UiTree,
+        button: WidgetId,
+        label: WidgetId,
+        clicks: usize,
+    }
+
+    impl Counter {
+        fn new() -> Self {
+            let mut tree = UiTree::new();
+            let root = tree.insert(None, Container::new(Default::default()));
+            let button = tree.insert(Some(root), Button::new("Count"));
+            let label = tree.insert(Some(root), Label::new("0"));
+            Self {
+                tree,
+                button,
+                label,
+                clicks: 0,
+            }
+        }
+    }
+
+    impl Screen for Counter {
+        fn tree(&self) -> &UiTree {
+            &self.tree
+        }
+
+        fn tree_mut(&mut self) -> &mut UiTree {
+            &mut self.tree
+        }
+
+        fn handle(&mut self, message: Message, _text: &mut TextStore) {
+            if message.source == self.button && message.downcast_ref::<ButtonClicked>().is_some() {
+                self.clicks += 1;
+                let clicks = self.clicks.to_string();
+                self.tree
+                    .update::<Label, _>(self.label, |l, cx| l.set_text(cx, clicks));
+            }
+        }
+    }
+
+    #[test]
+    fn a_replayed_session_draws_what_the_recorded_one_did() {
+        let mut text = TextStore::new(Default::default());
+        let mut original = Counter::new();
+        original.prepare(SIZE, &mut text);
+        original.tree.start_recording();
+        let r = original.tree.window_rect(original.button).unwrap();
+        let pos = Point::new(r.x + 8.0, r.y + 8.0);
+        let button = PointerButton::Primary;
+        for (i, at) in [0.0, 1.0, 2.0].into_iter().enumerate() {
+            original.tree.set_now(at);
+            original.dispatch(Event::PointerMove { pos }, &mut text);
+            original.dispatch(Event::PointerDown { pos, button }, &mut text);
+            original.dispatch(Event::PointerUp { pos, button }, &mut text);
+            assert_eq!(original.clicks, i + 1);
+            original.prepare(SIZE, &mut text);
+        }
+        let recording = original.tree.stop_recording();
+
+        let mut replayed = Counter::new();
+        replay(&mut replayed, &recording, &mut text, SIZE);
+        assert_eq!(replayed.clicks, 3);
+
+        // Compare once hover and press animations have finished on both.
+        for screen in [&mut original as &mut dyn Screen, &mut replayed] {
+            screen.tree_mut().set_now(10.0);
+            screen.animate(10.0, &mut text);
+            screen.prepare(SIZE, &mut text);
+        }
+
+        let mut headless = Headless::software();
+        let size = (SIZE.width as u32, SIZE.height as u32);
+        let expected = headless
+            .render_screen(&mut original, &mut text, size, 1.0)
+            .unwrap();
+        let actual = headless
+            .render_screen(&mut replayed, &mut text, size, 1.0)
+            .unwrap();
+        let dir = std::env::temp_dir().join(format!("noa-gpui-replay-{}", std::process::id()));
+        let golden = dir.join("counter.png");
+        std::fs::create_dir_all(&dir).unwrap();
+        expected.save_png(&golden).unwrap();
+        let result = check_golden(&actual, &golden, Tolerance::default());
+        if result.is_ok() {
+            let _ = std::fs::remove_dir_all(&dir);
+        }
+        result.expect("the replayed screen draws as the recorded one");
+    }
+}

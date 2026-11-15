@@ -141,6 +141,35 @@ pub struct App {
     stylesheet: Option<crate::stylesheet::StyleSheetWatcher>,
     #[cfg(feature = "native")]
     view_state: Option<(crate::ViewStateFile, noa_gpui_core::ViewState)>,
+    /// Where the main window's input is written (see [`App::record_input`]).
+    #[cfg(feature = "native")]
+    recorder: Option<InputRecorder>,
+}
+
+/// Appends the main screen's input to a file as it is dispatched.
+#[cfg(feature = "native")]
+struct InputRecorder {
+    path: std::path::PathBuf,
+    file: Option<std::fs::File>,
+}
+
+#[cfg(feature = "native")]
+impl InputRecorder {
+    fn write(&mut self, steps: &[noa_gpui_core::recording::Step]) {
+        use std::io::Write as _;
+        let Some(file) = &mut self.file else {
+            return;
+        };
+        let mut lines = String::new();
+        for line in steps.iter().filter_map(noa_gpui_core::recording::step_line) {
+            lines.push_str(&line);
+            lines.push('\n');
+        }
+        if let Err(e) = file.write_all(lines.as_bytes()) {
+            log::warn!("input not recorded to {}: {e}", self.path.display());
+            self.file = None;
+        }
+    }
 }
 
 impl App {
@@ -187,6 +216,8 @@ impl App {
             stylesheet: None,
             #[cfg(feature = "native")]
             view_state: None,
+            #[cfg(feature = "native")]
+            recorder: None,
         }
     }
 
@@ -224,6 +255,21 @@ impl App {
             path,
             self.waker.clone(),
         ));
+        self
+    }
+
+    /// Desktop: write the main window's input to the file at `path` as it happens, one
+    /// step per line (see [`noa_gpui_core::recording`]), to be played back with
+    /// [`crate::replay`]. Other windows' input and actions from assistive technology are
+    /// not recorded. A file that cannot be written is reported in the log; the
+    /// application runs as without it.
+    #[cfg(feature = "native")]
+    pub fn record_input(mut self, path: impl Into<std::path::PathBuf>) -> Self {
+        let path = path.into();
+        let file = std::fs::File::create(&path)
+            .map_err(|e| log::warn!("input not recorded to {}: {e}", path.display()))
+            .ok();
+        self.recorder = Some(InputRecorder { path, file });
         self
     }
 
@@ -683,8 +729,16 @@ impl App {
         gfx.screen
             .tree_mut()
             .set_now(self.clock.elapsed().as_secs_f64());
+        #[cfg(feature = "native")]
+        if self.recorder.is_some() && !gfx.screen.tree().is_recording() {
+            gfx.screen.tree_mut().start_recording();
+        }
         for event in events {
             gfx.screen.dispatch(event, &mut self.text);
+        }
+        #[cfg(feature = "native")]
+        if let Some(recorder) = &mut self.recorder {
+            recorder.write(&gfx.screen.tree_mut().take_recorded());
         }
         // A click on the canvas takes focus from the text area while a text widget
         // keeps it.
