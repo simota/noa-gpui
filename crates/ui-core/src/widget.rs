@@ -3,8 +3,8 @@ use std::rc::Rc;
 
 use noa_gpui_layout::{MeasureInput, Style};
 use noa_gpui_scene::{
-    Border, Color, Direction, DrawCommand, ImageId, Point, Rect, Shape, Size, TextLayoutId,
-    VectorIcon,
+    Border, BoxShadow, Color, CornerRadii, Direction, DrawCommand, ImageId, Point, Rect, Shape,
+    Size, TextLayoutId, VectorIcon,
 };
 use noa_gpui_text::TextStore;
 
@@ -416,6 +416,18 @@ impl PaintCx<'_> {
             radius,
             blur,
             tint,
+        });
+    }
+
+    /// The soft shadow of the box `rect` with corner radii `radius`: paint it before the
+    /// box itself.
+    pub fn box_shadow(&mut self, rect: Rect, radius: CornerRadii, shadow: &BoxShadow) {
+        if shadow.color.a <= 0.0 {
+            return;
+        }
+        self.commands.push(DrawCommand::Shape {
+            shape: shadow.shape(rect, radius),
+            color: shadow.color,
         });
     }
 

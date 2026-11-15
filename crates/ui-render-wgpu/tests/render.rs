@@ -1,7 +1,7 @@
 use std::sync::{Mutex, MutexGuard};
 
-use noa_gpui_render_wgpu::{Renderer, Viewport, wgpu};
-use noa_gpui_scene::{Border, Color, DisplayList, Rect};
+use noa_gpui_render_wgpu::{Renderer, SoftwareRenderer, Viewport, wgpu};
+use noa_gpui_scene::{Border, BoxShadow, Color, DisplayList, Point, Rect};
 use noa_gpui_text::{FontOptions, TextSpan, TextStore, TextStyle};
 
 const SIZE: u32 = 64;
@@ -154,6 +154,50 @@ fn draws_span_colors_in_one_text_layout() {
     assert_eq!(count(left, blue), 0);
     assert!(count(right.clone(), blue) > 20, "the rest is blue");
     assert_eq!(count(right, red), 0);
+}
+
+/// The shader's shadow matches the software renderer's, which follows the same
+/// formula: solid inside, half at the box's edge, gone 1.5 blur radii out.
+#[test]
+fn draws_soft_shadows_like_the_software_renderer() {
+    let gpu = gpu();
+    let mut renderer = Renderer::new(&gpu.device, &gpu.queue, FORMAT);
+    let mut text = text_store();
+    let mut list = DisplayList::new();
+    let shadow = BoxShadow {
+        color: Color::BLACK,
+        offset: Point::new(2.0, 0.0),
+        blur: 8.0,
+        spread: 1.0,
+    };
+    list.box_shadow(
+        Rect::new(16.0, 16.0, 28.0, 32.0),
+        [6.0, 0.0, 6.0, 6.0],
+        &shadow,
+    );
+    let data = render(&gpu, &mut renderer, &list, &mut text);
+    let viewport = Viewport {
+        width: SIZE,
+        height: SIZE,
+        scale_factor: 1.0,
+    };
+    let reference = SoftwareRenderer::new().render(&list, &mut text, viewport, Color::WHITE);
+    for y in [8, 17, 32, 47, 56] {
+        for x in 0..SIZE {
+            let (gpu, cpu) = (pixel(&data, x, y), reference.pixel(x, y));
+            assert!(
+                gpu.iter().zip(cpu).all(|(a, b)| a.abs_diff(b) <= 3),
+                "({x}, {y}): {gpu:?} vs {cpu:?}"
+            );
+        }
+    }
+    // The erf approximation leaves the inside a hair short of opaque (alpha 0.998).
+    assert!(
+        pixel(&data, 32, 32)[0] <= 8,
+        "inside: {:?}",
+        pixel(&data, 32, 32)
+    );
+    assert!(close(pixel(&data, 2, 32), WHITE), "outside");
 }
 
 #[test]

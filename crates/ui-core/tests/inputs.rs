@@ -132,11 +132,12 @@ fn values<T: 'static + Clone>(messages: &[Message]) -> Vec<T> {
         .collect()
 }
 
+/// Cmd on a Mac.
 fn command() -> Modifiers {
     Modifiers {
         command: true,
         meta: true,
-        ..Default::default()
+        ..Modifiers::on_apple()
     }
 }
 
@@ -299,6 +300,7 @@ fn a_recorder_takes_a_modified_key_and_refuses_bare_ones() {
     let p = Shortcut {
         key: Key::Char('p'),
         command: false,
+        ctrl: false,
         shift: true,
         alt: true,
     };
@@ -313,6 +315,24 @@ fn a_recorder_takes_a_modified_key_and_refuses_bare_ones() {
     assert_eq!(
         values::<ShortcutChanged>(&h.messages()),
         [ShortcutChanged(None)]
+    );
+    // A function key needs no modifier.
+    h.key(Key::Enter);
+    h.key(Key::F2);
+    assert_eq!(
+        h.get::<ShortcutRecorder>(id).shortcut(),
+        Some(Shortcut::key(Key::F2))
+    );
+    // On a Mac, Ctrl is recorded apart from Cmd.
+    h.key(Key::Enter);
+    let ctrl_cmd = Modifiers {
+        ctrl: true,
+        ..command()
+    };
+    h.key_with(Key::Char('f'), ctrl_cmd);
+    assert_eq!(
+        h.get::<ShortcutRecorder>(id).shortcut(),
+        Some(Shortcut::command('f').with_ctrl())
     );
 }
 
