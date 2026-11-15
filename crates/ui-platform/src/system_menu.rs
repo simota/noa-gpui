@@ -269,7 +269,18 @@ mod native {
             Key::End => Code::End,
             Key::PageUp => Code::PageUp,
             Key::PageDown => Code::PageDown,
+            Key::F1 => Code::F1,
+            Key::F2 => Code::F2,
+            Key::F3 => Code::F3,
+            Key::F4 => Code::F4,
+            Key::F5 => Code::F5,
+            Key::F6 => Code::F6,
+            Key::F7 => Code::F7,
+            Key::F8 => Code::F8,
+            Key::F9 => Code::F9,
             Key::F10 => Code::F10,
+            Key::F11 => Code::F11,
+            Key::F12 => Code::F12,
             Key::ContextMenu | Key::Other => return None,
         };
         let mut mods = Modifiers::empty();
@@ -279,6 +290,9 @@ mod native {
             } else {
                 Modifiers::CONTROL
             };
+        }
+        if shortcut.ctrl {
+            mods |= Modifiers::CONTROL;
         }
         if shortcut.shift {
             mods |= Modifiers::SHIFT;
