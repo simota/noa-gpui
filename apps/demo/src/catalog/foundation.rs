@@ -924,12 +924,33 @@ struct WindowsDemo {
     open: WidgetId,
     #[cfg(feature = "native")]
     opened: u32,
+    #[cfg(feature = "native")]
+    ask: WidgetId,
+    #[cfg(feature = "native")]
+    answer: WidgetId,
+    /// An alert is up: its answer is this section's.
+    #[cfg(feature = "native")]
+    asking: bool,
 }
 
 impl Demo for WindowsDemo {
     #[cfg(feature = "native")]
     fn handle(&mut self, cx: &mut DemoCx, message: &Message) -> bool {
-        if message.source != self.open || message.downcast_ref::<ButtonClicked>().is_none() {
+        if message.downcast_ref::<ButtonClicked>().is_none() {
+            return false;
+        }
+        if message.source == self.ask {
+            cx.alerts.push(noa_gpui_platform::AlertRequest {
+                level: noa_gpui_platform::AlertLevel::Warning,
+                title: "Delete “Note 1”?".into(),
+                message: "The note is removed from every window. This cannot be undone.".into(),
+                confirm: "Delete".into(),
+                cancel: "Cancel".into(),
+            });
+            self.asking = true;
+            return true;
+        }
+        if message.source != self.open {
             return false;
         }
         self.opened += 1;
@@ -941,6 +962,19 @@ impl Demo for WindowsDemo {
         });
         true
     }
+
+    #[cfg(feature = "native")]
+    fn alert_finished(&mut self, cx: &mut DemoCx, result: noa_gpui_platform::AlertResult) {
+        if !std::mem::take(&mut self.asking) {
+            return;
+        }
+        let text = match result {
+            noa_gpui_platform::AlertResult::Confirmed => "Answered: Delete",
+            noa_gpui_platform::AlertResult::Cancelled => "Answered: Cancel",
+        };
+        cx.tree
+            .update::<Label, _>(self.answer, |l, cx| l.set_text(cx, text));
+    }
 }
 
 fn windows(kit: &mut Kit) -> Box<dyn Demo> {
@@ -950,7 +984,20 @@ fn windows(kit: &mut Kit) -> Box<dyn Demo> {
     );
     let open = kit.tree.insert(Some(content), Button::new("Open a window"));
     #[cfg(feature = "native")]
-    return Box::new(WindowsDemo { open, opened: 0 });
+    {
+        let alert = kit.card("AlertRequest: the OS's own alert (NSAlert on macOS)");
+        let ask = kit.tree.insert(Some(alert), Button::new("Delete note…"));
+        let answer = kit
+            .tree
+            .insert(Some(alert), Label::new("Not asked yet").color(Role::Muted));
+        Box::new(WindowsDemo {
+            open,
+            opened: 0,
+            ask,
+            answer,
+            asking: false,
+        })
+    }
     #[cfg(not(feature = "native"))]
     {
         kit.tree.set_enabled(open, false);
