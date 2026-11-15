@@ -1,4 +1,4 @@
-use ui_scene::ImageId;
+use noa_gpui_scene::ImageId;
 
 pub(crate) struct GpuImage {
     pub bind_group: wgpu::BindGroup,

@@ -1,7 +1,7 @@
-use ui_layout::Style;
-use ui_layout::style::Rect as LayoutRect;
-use ui_layout::style::{FlexDirection, Size as LayoutSize, auto, length, percent};
-use ui_scene::{Border, Point, Rect};
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::Rect as LayoutRect;
+use noa_gpui_layout::style::{FlexDirection, Size as LayoutSize, auto, length, percent};
+use noa_gpui_scene::{Border, Point, Rect};
 
 use super::appear::{Appear, shadow};
 use crate::event::Event;
@@ -28,7 +28,7 @@ pub struct Sheet {
     /// The width, or for a drawer its size across its edge.
     width: f32,
     appear: Appear,
-    size: ui_scene::Size,
+    size: noa_gpui_scene::Size,
     /// Inside an inner window: the distance from the window's top to hang from.
     in_window: Option<f32>,
     drawer: Option<Edge>,
@@ -39,7 +39,7 @@ impl Sheet {
         Self {
             width,
             appear: Appear::new(SLIDE),
-            size: ui_scene::Size::default(),
+            size: noa_gpui_scene::Size::default(),
             in_window: None,
             drawer: None,
         }
@@ -224,11 +224,11 @@ impl Widget for Sheet {
 pub(crate) fn window_modal_position(
     top: Option<f32>,
 ) -> (
-    ui_layout::style::Position,
-    LayoutRect<ui_layout::style::LengthPercentageAuto>,
-    LayoutRect<ui_layout::style::LengthPercentageAuto>,
+    noa_gpui_layout::style::Position,
+    LayoutRect<noa_gpui_layout::style::LengthPercentageAuto>,
+    LayoutRect<noa_gpui_layout::style::LengthPercentageAuto>,
 ) {
-    use ui_layout::style::Position;
+    use noa_gpui_layout::style::Position;
     match top {
         Some(top) => (
             Position::Absolute,

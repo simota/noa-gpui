@@ -5,10 +5,10 @@ use std::ops::Range;
 use glyphon::{
     Cache, ColorMode, Resolution, SwashCache, TextArea, TextAtlas, TextBounds, TextRenderer,
 };
-use ui_scene::{
+use noa_gpui_scene::{
     BatchKind, Batcher, Color, Direction, DisplayList, DrawCommand, ImageId, Rect, Shape, Size,
 };
-use ui_text::TextStore;
+use noa_gpui_text::TextStore;
 
 use crate::backdrop::{Backdrop, BackdropPass};
 use crate::buffers::{Globals, IconInstance, ImageInstance, InstanceBuffer, QuadInstance};
@@ -658,7 +658,7 @@ fn to_scissor(rect: Rect, viewport: Viewport) -> Option<Scissor> {
 
 /// A [`Shape`] as a quad instance: the quad covers the shape's bounds and the fragment
 /// shader evaluates the shape's distance field.
-fn shape_instance(shape: &Shape, color: ui_scene::Color) -> QuadInstance {
+fn shape_instance(shape: &Shape, color: noa_gpui_scene::Color) -> QuadInstance {
     let bounds = shape.bounds();
     let mut end = [0.0; 4];
     let (kind, radii, half_width, param) = match *shape {

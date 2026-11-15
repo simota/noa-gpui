@@ -4,18 +4,18 @@ These are the rules for agents working in this repository. For the structure and
 
 ## Structure
 
-- Crate dependencies go one way: `ui-scene` ← `ui-text` / `ui-layout` ← `ui-core`, `ui-scene` / `ui-text` ← `ui-render-wgpu`, all of them ← `ui-platform` ← `apps/*`. Do not add dependencies in the reverse direction (see each `Cargo.toml`)
-- `ui-core` and below (`ui-scene` / `ui-text` / `ui-layout` / `ui-core`) do not depend on the GPU or windows. Keep wgpu inside `ui-render-wgpu`, and winit and OS integration inside `ui-platform`
+- Crate dependencies go one way: `noa-gpui-scene` ← `noa-gpui-text` / `noa-gpui-layout` ← `noa-gpui-core`, `noa-gpui-scene` / `noa-gpui-text` ← `noa-gpui-render-wgpu`, all of them ← `noa-gpui-platform` ← `apps/*`. Do not add dependencies in the reverse direction (see each `Cargo.toml`)
+- `noa-gpui-core` and below (`noa-gpui-scene` / `noa-gpui-text` / `noa-gpui-layout` / `noa-gpui-core`) do not depend on the GPU or windows. Keep wgpu inside `noa-gpui-render-wgpu`, and winit and OS integration inside `noa-gpui-platform`
 - On the Web, WebGL2 is the lowest common denominator. Do not make Compute Shaders or Storage Buffers mandatory in the rendering pipeline (docs/architecture.md §2)
 - Put new Widgets in `crates/ui-core/src/widgets/`, add tests to the matching group in `crates/ui-core/tests/`, and add a catalog example to the matching group in `apps/demo/src/catalog/`
 - Change only what the task needs. Put unrelated fixes in a separate pull request
 
 ## Coding
 
-- Add tests for new behavior. For `ui-core` Widgets, send events to a `UiTree` and check the result (the same as the existing `crates/ui-core/tests/*.rs`)
+- Add tests for new behavior. For `noa-gpui-core` Widgets, send events to a `UiTree` and check the result (the same as the existing `crates/ui-core/tests/*.rs`)
 - Do not delete existing tests or mark them `#[ignore]` without human agreement
 - Fix warnings and clippy findings. Do not silence them with `#[allow(...)]` or by changing `RUSTFLAGS`
-- Commit messages follow Conventional Commits (`feat(ui-core): ...`, `fix(demo): ...`). The scope is a crate name or `demo`
+- Commit messages follow Conventional Commits (`feat(noa-gpui-core): ...`, `fix(demo): ...`). The scope is a crate name or `demo`
 
 ## Verification
 
@@ -39,7 +39,7 @@ These are the rules for agents working in this repository. For the structure and
 
 ## Discipline — what no command enforces
 
-Neither `scripts/verify.sh` nor CI checks the following. Review is what enforces them. (The direction of crate dependencies, and that `ui-core` and below do not depend on the GPU or windows, are checked from `Cargo.toml` by `crates/ui-core/tests/architecture.rs`)
+Neither `scripts/verify.sh` nor CI checks the following. Review is what enforces them. (The direction of crate dependencies, and that `noa-gpui-core` and below do not depend on the GPU or windows, are checked from `Cargo.toml` by `crates/ui-core/tests/architecture.rs`)
 
 - Treating WebGL2 as the lowest common denominator (the wasm clippy may pass, but runtime limits are not checked)
 - Adding tests for new behavior; not deleting tests or marking them `#[ignore]`

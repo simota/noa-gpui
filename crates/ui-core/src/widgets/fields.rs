@@ -1,6 +1,6 @@
-use ui_layout::{MeasureInput, Style};
-use ui_scene::{Border, Direction, Point, Rect, Size};
-use ui_text::TextStore;
+use noa_gpui_layout::{MeasureInput, Style};
+use noa_gpui_scene::{Border, Direction, Point, Rect, Size};
+use noa_gpui_text::TextStore;
 
 use super::completion::{Completed, Completer};
 use super::editable::SingleLine;
@@ -248,7 +248,7 @@ impl Widget for SearchField {
         cx.rounded_rect(
             lens,
             5.0,
-            ui_scene::Color::TRANSPARENT,
+            noa_gpui_scene::Color::TRANSPARENT,
             Border {
                 width: 1.5,
                 color: muted,

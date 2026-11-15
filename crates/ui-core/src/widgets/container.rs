@@ -1,9 +1,9 @@
-use ui_layout::Style;
-use ui_layout::style::{
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{
     AlignItems, FlexDirection, FlexWrap, JustifyContent, Rect as LayoutRect, Size as LayoutSize,
     length,
 };
-use ui_scene::Border;
+use noa_gpui_scene::Border;
 
 use crate::theme::Paint;
 use crate::widget::{PaintCx, UpdateCx, Widget};
@@ -207,7 +207,7 @@ impl Widget for Container {
         if background.is_none() && border_width <= 0.0 {
             return;
         }
-        let fill = background.map_or(ui_scene::Color::TRANSPARENT, |p| cx.color(p));
+        let fill = background.map_or(noa_gpui_scene::Color::TRANSPARENT, |p| cx.color(p));
         let border_color = overrides
             .border_color
             .or(self.border.map(|(_, color)| color))

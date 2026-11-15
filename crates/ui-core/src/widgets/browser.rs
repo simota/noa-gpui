@@ -1,7 +1,7 @@
-use ui_layout::Style;
-use ui_layout::style::{Dimension, Size as LayoutSize, length, percent};
-use ui_scene::{Border, Direction, Point, Rect, Size};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{Dimension, Size as LayoutSize, length, percent};
+use noa_gpui_scene::{Border, Direction, Point, Rect, Size};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::focus_ring;
 use super::outline::{Node, OutlineItem, flatten};

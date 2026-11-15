@@ -1,16 +1,16 @@
-use ui_core::style::{FlexDirection, Size as LayoutSize, percent};
-use ui_core::widgets::{
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, percent};
+use noa_gpui_core::widgets::{
     Button, ButtonClicked, ButtonStyle, CheckState, Checkbox, CheckboxChanged, ComboButton,
     Container, Disclosure, Menu, MenuChosen, MenuItem, PopUpButton, PullDownButton, RadioGroup,
     SegmentClicked, SegmentMode, SegmentedControl, SegmentsChanged, SelectionChanged, Switch,
     TextField, Toggled,
 };
-use ui_core::{
+use noa_gpui_core::{
     Event, Key, Message, Modifiers, OverlayOptions, Placement, PointerButton, Shortcut, Style,
     UiTree, WidgetId,
 };
-use ui_scene::{DrawCommand, Point, Rect, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_scene::{DrawCommand, Point, Rect, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(500.0, 400.0);
 
@@ -27,7 +27,7 @@ impl Harness {
             None,
             Container::new(Style {
                 flex_direction: FlexDirection::Column,
-                align_items: ui_core::style::AlignItems::START,
+                align_items: noa_gpui_core::style::AlignItems::START,
                 size: LayoutSize {
                     width: percent(1.0),
                     height: percent(1.0),
@@ -45,7 +45,7 @@ impl Harness {
         }
     }
 
-    fn add(&mut self, widget: impl ui_core::Widget) -> WidgetId {
+    fn add(&mut self, widget: impl noa_gpui_core::Widget) -> WidgetId {
         self.tree.insert(Some(self.root), widget)
     }
 
@@ -487,7 +487,7 @@ fn a_segmented_control_created_hidden_paints_once_shown() {
 
 #[test]
 fn assistive_technology_can_operate_the_controls() {
-    use ui_core::accesskit::{Action, ActionRequest, Role, Toggled as AxToggled, TreeId};
+    use noa_gpui_core::accesskit::{Action, ActionRequest, Role, Toggled as AxToggled, TreeId};
     let mut h = Harness::new();
     let check = h.add(Checkbox::new("Wrap lines").checked(true));
     let switch = h.add(Switch::new(false));
@@ -498,7 +498,7 @@ fn assistive_technology_can_operate_the_controls() {
         update
             .nodes
             .iter()
-            .find(|(n, _)| *n == ui_core::access_id(id))
+            .find(|(n, _)| *n == noa_gpui_core::access_id(id))
             .map(|(_, node)| node.clone())
             .unwrap()
     };
@@ -512,7 +512,7 @@ fn assistive_technology_can_operate_the_controls() {
             &ActionRequest {
                 action: Action::Click,
                 target_tree: TreeId::ROOT,
-                target_node: ui_core::access_id(id),
+                target_node: noa_gpui_core::access_id(id),
                 data: None,
             },
             &mut h.text,
@@ -531,7 +531,7 @@ fn assistive_technology_can_operate_the_controls() {
 
 #[test]
 fn control_sizes_scale_every_control() {
-    use ui_core::widgets::ControlSize;
+    use noa_gpui_core::widgets::ControlSize;
     let mut h = Harness::new();
     let sizes = [
         ControlSize::Mini,
@@ -567,8 +567,8 @@ fn control_sizes_scale_every_control() {
 
 #[test]
 fn radio_options_and_segments_are_separate_accessibility_items() {
-    use ui_core::accesskit::{Action, ActionRequest, Role, Toggled as AxToggled, TreeId};
-    use ui_core::{access_id, access_item_id};
+    use noa_gpui_core::accesskit::{Action, ActionRequest, Role, Toggled as AxToggled, TreeId};
+    use noa_gpui_core::{access_id, access_item_id};
     let mut h = Harness::new();
     let radio = h.add(RadioGroup::new(["Small", "Medium", "Large"]).selected_index(1));
     let tabs = h.add(SegmentedControl::new(
@@ -644,24 +644,25 @@ fn a_button_shows_a_detail_after_its_label_in_its_own_smaller_muted_type() {
     let width = |id| h.tree.window_rect(id).unwrap().width;
     assert!(width(counted) > width(plain));
 
-    let texts: Vec<(String, Rect, ui_scene::Color, bool)> = (h.tree.display_list().commands())
-        .iter()
-        .filter_map(|c| match c {
-            DrawCommand::Text {
-                rect,
-                layout,
-                color,
-            } => {
-                let line = &h.text.layouts().buffer(*layout).lines[0];
-                let named = matches!(
-                    line.attrs_list().defaults().family,
-                    ui_text::cosmic_text::Family::Name(_)
-                );
-                Some((line.text().to_owned(), *rect, *color, named))
-            }
-            _ => None,
-        })
-        .collect();
+    let texts: Vec<(String, Rect, noa_gpui_scene::Color, bool)> =
+        (h.tree.display_list().commands())
+            .iter()
+            .filter_map(|c| match c {
+                DrawCommand::Text {
+                    rect,
+                    layout,
+                    color,
+                } => {
+                    let line = &h.text.layouts().buffer(*layout).lines[0];
+                    let named = matches!(
+                        line.attrs_list().defaults().family,
+                        noa_gpui_text::cosmic_text::Family::Name(_)
+                    );
+                    Some((line.text().to_owned(), *rect, *color, named))
+                }
+                _ => None,
+            })
+            .collect();
     let bounds = h.tree.window_rect(counted).unwrap();
     let (label, detail) = {
         let mut inside = texts
@@ -682,7 +683,7 @@ fn a_button_shows_a_detail_after_its_label_in_its_own_smaller_muted_type() {
 
     let update = h.tree.accessibility_update(1.0);
     let node = &(update.nodes.iter())
-        .find(|(n, _)| *n == ui_core::access_id(counted))
+        .find(|(n, _)| *n == noa_gpui_core::access_id(counted))
         .unwrap()
         .1;
     assert_eq!(node.label(), Some("Containers 12"));
@@ -735,7 +736,7 @@ fn selected_buttons_are_filled_and_framed_in_any_style() {
         update
             .nodes
             .iter()
-            .find(|(n, _)| *n == ui_core::access_id(id))
+            .find(|(n, _)| *n == noa_gpui_core::access_id(id))
             .unwrap()
             .1
             .is_selected()
@@ -745,15 +746,15 @@ fn selected_buttons_are_filled_and_framed_in_any_style() {
 
 #[test]
 fn a_pressable_box_is_one_button_over_whatever_it_holds() {
-    use ui_core::widgets::{Label, Pressable};
+    use noa_gpui_core::widgets::{Label, Pressable};
     let mut h = Harness::new();
     let row = Style {
         flex_direction: FlexDirection::Row,
         gap: LayoutSize {
-            width: ui_core::style::length(6.0),
-            height: ui_core::style::length(0.0),
+            width: noa_gpui_core::style::length(6.0),
+            height: noa_gpui_core::style::length(0.0),
         },
-        padding: ui_core::style::Rect::length(4.0),
+        padding: noa_gpui_core::style::Rect::length(4.0),
         ..Default::default()
     };
     let engine = h.add(
@@ -815,7 +816,7 @@ fn a_pressable_box_is_one_button_over_whatever_it_holds() {
     );
     let update = h.tree.accessibility_update(1.0);
     let node = &(update.nodes.iter())
-        .find(|(n, _)| *n == ui_core::access_id(engine))
+        .find(|(n, _)| *n == noa_gpui_core::access_id(engine))
         .unwrap()
         .1;
     assert_eq!(node.label(), Some("Engine: Docker Desktop"));
@@ -834,7 +835,7 @@ fn a_pressable_box_is_one_button_over_whatever_it_holds() {
 
 #[test]
 fn underlined_segments_are_tabs_with_a_line_under_the_selected_one() {
-    use ui_core::widgets::{SEGMENT_UNDERLINE, SegmentStyle};
+    use noa_gpui_core::widgets::{SEGMENT_UNDERLINE, SegmentStyle};
     let mut h = Harness::new();
     let tabs = h.add(
         SegmentedControl::new(["Logs", "Inspect", "Stats"], SegmentMode::SelectOne)

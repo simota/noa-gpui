@@ -1,6 +1,6 @@
-use ui_layout::style::*;
-use ui_layout::{LayoutTree, Style};
-use ui_scene::Size as Viewport;
+use noa_gpui_layout::style::*;
+use noa_gpui_layout::{LayoutTree, Style};
+use noa_gpui_scene::Size as Viewport;
 
 #[test]
 fn stretched_wrapping_items_depend_on_their_contents() {

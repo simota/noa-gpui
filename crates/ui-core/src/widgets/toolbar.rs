@@ -1,7 +1,7 @@
-use ui_layout::Style;
-use ui_layout::style::{Size as LayoutSize, length, percent};
-use ui_scene::{Border, Color, Direction, Point, Rect};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{Size as LayoutSize, length, percent};
+use noa_gpui_scene::{Border, Color, Direction, Point, Rect};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::editable::SingleLine;
 use super::{CachedText, Icon, MenuItem, TextSubmitted, pressed_tint};

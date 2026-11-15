@@ -1,13 +1,13 @@
-use ui_core::style::{
+use noa_gpui_core::style::{
     AlignItems, FlexDirection, Position, Size as LayoutSize, auto, length, percent,
 };
-use ui_core::widgets::{
+use noa_gpui_core::widgets::{
     Badge, Button, ButtonClicked, Container, EmptyState, HoverCard, Image, Kbd, Label,
     NotificationBanner, Skeleton, StatusBar, Switch, Tag, TagRemoved, TagStyle, Toast, ToastAction,
     Toggled, Tone,
 };
-use ui_core::{Key, Message, Role, Shortcut, Style, WidgetId, WindowCorner};
-use ui_scene::Size;
+use noa_gpui_core::{Key, Message, Role, Shortcut, Style, WidgetId, WindowCorner};
+use noa_gpui_scene::Size;
 
 use super::kit::{DIVIDER, Kit, gap, row_style};
 use super::{Demo, DemoCx, SectionSpec};
@@ -128,7 +128,7 @@ struct BannerDemo {
     reset: WidgetId,
 }
 
-fn add_banners(tree: &mut ui_core::UiTree, column: WidgetId) {
+fn add_banners(tree: &mut noa_gpui_core::UiTree, column: WidgetId) {
     let banners = [
         NotificationBanner::new("A new version is ready to install.").action("Restart"),
         NotificationBanner::new("Your changes were saved.").tone(Tone::Success),

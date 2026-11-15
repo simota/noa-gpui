@@ -1,6 +1,6 @@
-use ui_layout::Style;
-use ui_layout::style::{Overflow, Point as LayoutPoint, Rect as LayoutRect, length};
-use ui_scene::{Point, Rect, Size};
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{Overflow, Point as LayoutPoint, Rect as LayoutRect, length};
+use noa_gpui_scene::{Point, Rect, Size};
 
 use super::scroller::{LEGACY_TRACK, Scroller};
 use crate::event::Event;

@@ -1,6 +1,8 @@
-use ui_layout::Style;
-use ui_layout::style::{AlignItems, FlexDirection, Rect as LayoutRect, Size as LayoutSize, length};
-use ui_scene::Border;
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{
+    AlignItems, FlexDirection, Rect as LayoutRect, Size as LayoutSize, length,
+};
+use noa_gpui_scene::Border;
 
 use super::appear::{Appear, shadow};
 use crate::event::Event;

@@ -1,17 +1,17 @@
 use std::borrow::Cow;
 
-use ui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
-use ui_core::widgets::{
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
+use noa_gpui_core::widgets::{
     ComboBox, Container, InlineEditableLabel, Label, ResizableBox, ResizeEdges, SearchField,
     SplitPane, SplitView, TABLE_HEADER, TableColumn, TableData, TableView, TextArea, TextField,
     WindowManager,
 };
-use ui_core::{
+use noa_gpui_core::{
     Cursor, DragData, Event, EventCx, Key, Modifiers, PaintCx, PointerButton, Style, UiTree,
     Widget, WidgetId,
 };
-use ui_scene::{Point, Rect, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_scene::{Point, Rect, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(800.0, 600.0);
 

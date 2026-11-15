@@ -1,7 +1,7 @@
-use ui_core::{Event, Message, UiTree};
-use ui_platform::{FrameReport, Screen};
-use ui_scene::{Border, Color, DisplayList, Point, Rect, Size, TextLayoutId};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_core::{Event, Message, UiTree};
+use noa_gpui_platform::{FrameReport, Screen};
+use noa_gpui_scene::{Border, Color, DisplayList, Point, Rect, Size, TextLayoutId};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use crate::assets::Assets;
 use crate::bench::Meter;
@@ -197,7 +197,7 @@ impl Scene {
             ([40.0; 4], 0xffffff, 3.0),
         ];
         for (i, (radius, color, border)) in samples.into_iter().enumerate() {
-            list.push(ui_scene::DrawCommand::Quad {
+            list.push(noa_gpui_scene::DrawCommand::Quad {
                 rect: Rect::new(x0 + i as f32 * 104.0, y, 92.0, 72.0),
                 radius,
                 color: Color::hex(color),

@@ -1,21 +1,21 @@
-use ui_core::style::{
+use noa_gpui_core::style::{
     AlignItems, Display, FlexDirection, GridTemplateComponent, JustifyContent, Rect as LayoutRect,
     Size as LayoutSize, fr, length, percent,
 };
-use ui_core::widgets::{
+use noa_gpui_core::widgets::{
     Alert, Badge, Button, ButtonClicked, ButtonStyle, Container, Label, MenuBar, MenuBarChosen,
     MenuBarMenu, MenuItem, OutlineItem, OutlineView, RowSelectionChanged, SearchField,
     SelectionMode, TableColumn, TableView, TextArea, TextChanged, WindowEvent, WindowManager,
     menu_item,
 };
-use ui_core::{
+use noa_gpui_core::{
     Appearance, Design, Event, Message, OverlayDismissed, Role, Style, UiTree, WidgetId,
 };
-use ui_scene::{Color, Rect, Size};
-use ui_text::TextStore;
+use noa_gpui_scene::{Color, Rect, Size};
+use noa_gpui_text::TextStore;
 
 use crate::bench::Meter;
-use ui_platform::{FrameReport, Screen};
+use noa_gpui_platform::{FrameReport, Screen};
 
 mod notifications;
 mod switcher;
@@ -301,7 +301,7 @@ fn files(folder: usize) -> Vec<Vec<String>> {
 impl MiniOs {
     pub fn new() -> Self {
         let mut tree = UiTree::new();
-        tree.set_shortcut_glyphs(ui_platform::command_is_meta());
+        tree.set_shortcut_glyphs(noa_gpui_platform::command_is_meta());
         let root = tree.insert(
             None,
             Container::new(Style {
@@ -598,7 +598,7 @@ impl MiniOs {
                 let styles = tree.insert(
                     Some(body),
                     Container::new(Style {
-                        flex_wrap: ui_core::style::FlexWrap::Wrap,
+                        flex_wrap: noa_gpui_core::style::FlexWrap::Wrap,
                         ..row(8.0)
                     }),
                 );
@@ -613,7 +613,7 @@ impl MiniOs {
                 let colors = tree.insert(
                     Some(body),
                     Container::new(Style {
-                        flex_wrap: ui_core::style::FlexWrap::Wrap,
+                        flex_wrap: noa_gpui_core::style::FlexWrap::Wrap,
                         ..row(8.0)
                     }),
                 );
@@ -736,7 +736,7 @@ impl MiniOs {
                     &mut self.tree,
                     &self.manager,
                     |w| Self::app_color(apps, w),
-                    ui_core::Modifiers::default(),
+                    noa_gpui_core::Modifiers::default(),
                     false,
                 );
             }
@@ -1057,10 +1057,10 @@ impl Screen for MiniOs {
 mod tests {
     use super::*;
     use crate::bench::center_of;
-    use ui_core::widgets::InnerWindow;
-    use ui_core::{Key, Modifiers, PointerButton};
-    use ui_scene::Point;
-    use ui_text::FontOptions;
+    use noa_gpui_core::widgets::InnerWindow;
+    use noa_gpui_core::{Key, Modifiers, PointerButton};
+    use noa_gpui_scene::Point;
+    use noa_gpui_text::FontOptions;
 
     const VIEWPORT: Size = Size::new(1100.0, 720.0);
     const ALT: Modifiers = Modifiers {
@@ -1098,8 +1098,8 @@ mod tests {
 
     #[test]
     fn windows_and_the_finder_come_back_as_they_were_left() {
-        use ui_core::ViewState;
-        use ui_core::widgets::{TableView, WindowPlacement};
+        use noa_gpui_core::ViewState;
+        use noa_gpui_core::widgets::{TableView, WindowPlacement};
         let (mut os, mut text) = setup();
         let finder = os.apps[0].0;
         let start = os.tree.window_rect(finder).unwrap();
@@ -1268,7 +1268,11 @@ mod tests {
         assert_eq!(os.notifications.unread(), 1);
         assert_eq!(unread_badge(&os).as_deref(), Some("1"));
         let toast = os.notifications.toasts().next().expect("a toast");
-        assert!(os.tree.get::<ui_core::widgets::Toast>(toast).is_some());
+        assert!(
+            os.tree
+                .get::<noa_gpui_core::widgets::Toast>(toast)
+                .is_some()
+        );
 
         os.notify(&mut text, "Notes", "Saved", "Shopping list");
         os.after_input();
@@ -1374,7 +1378,7 @@ mod tests {
                 .collect()
         };
         let mut width = |title: &str, weight: u16| {
-            let style = ui_text::TextStyle::new(12.0).weight(weight);
+            let style = noa_gpui_text::TextStyle::new(12.0).weight(weight);
             let id = text.create(title, style, None);
             let width = text.size(id).width;
             text.remove(id);
@@ -1555,7 +1559,7 @@ mod tests {
             .tree
             .get::<TableView>(table)
             .unwrap()
-            .export_text(ui_core::widgets::TableText::Csv);
+            .export_text(noa_gpui_core::widgets::TableText::Csv);
         assert!(
             cell.contains("Report.pdf,PDF document,2.4 MB,\"Nov 10, 2026\""),
             "{cell}"

@@ -1,7 +1,7 @@
 //! Icons written as SVG the way icon sets ship them: stroked outlines (24-unit grid,
 //! 2 wide, round caps) and filled glyphs.
 
-use ui_scene::VectorIcon;
+use noa_gpui_scene::VectorIcon;
 
 const HOUSE: &str = r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-6h4v6"/></svg>"#;
 const BELL: &str = r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>"#;

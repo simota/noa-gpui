@@ -32,6 +32,9 @@ pub use app::{App, AppOptions, FrameReport, Setup};
 #[cfg(feature = "native")]
 pub use headless::Headless;
 pub use input::command_is_meta;
+pub use noa_gpui_render_wgpu::{GpuContext, InitError, wgpu};
+#[cfg(not(target_arch = "wasm32"))]
+pub use noa_gpui_render_wgpu::{RenderError, RgbaImage};
 #[cfg(all(feature = "native", any(target_os = "macos", target_os = "linux")))]
 pub use pty::Pty;
 pub use screen::Screen;
@@ -39,10 +42,7 @@ pub use screen::Screen;
 pub use screen::{Detached, FileDialogRequest, FileDialogResult, WindowRequest};
 #[cfg(feature = "native")]
 pub use stylesheet::{StyleSheetLoad, StyleSheetLoadError, StyleSheetWatcher};
-pub use ui_render_wgpu::{GpuContext, InitError, wgpu};
-#[cfg(not(target_arch = "wasm32"))]
-pub use ui_render_wgpu::{RenderError, RgbaImage};
 #[cfg(feature = "native")]
 pub use view_state::{MAIN_WINDOW_KEY, MainWindowState, ViewStateFile};
 pub use wake::{Wake, Waker};
-pub use {ui_core, ui_render_wgpu, ui_scene, ui_text, winit};
+pub use {noa_gpui_core, noa_gpui_render_wgpu, noa_gpui_scene, noa_gpui_text, winit};

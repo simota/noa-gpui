@@ -1,10 +1,10 @@
-use ui_core::style::{FlexDirection, Rect as LayoutRect, Size as LayoutSize, percent};
-use ui_core::widgets::{Button, ButtonClicked, Container, Label, TextArea};
-use ui_core::{Message, Role, Style, Theme, UiTree, WidgetId};
-use ui_text::TextStore;
+use noa_gpui_core::style::{FlexDirection, Rect as LayoutRect, Size as LayoutSize, percent};
+use noa_gpui_core::widgets::{Button, ButtonClicked, Container, Label, TextArea};
+use noa_gpui_core::{Message, Role, Style, Theme, UiTree, WidgetId};
+use noa_gpui_text::TextStore;
 
 use super::kit::gap;
-use ui_platform::Screen;
+use noa_gpui_platform::Screen;
 
 pub struct NoteWindow {
     tree: UiTree,
@@ -74,7 +74,7 @@ impl Screen for NoteWindow {
     }
 }
 
-/// Opened with [`ui_platform::WindowRequest::floating`] so it stays above the other
+/// Opened with [`noa_gpui_platform::WindowRequest::floating`] so it stays above the other
 /// windows.
 pub struct PanelWindow {
     tree: UiTree,
@@ -82,7 +82,7 @@ pub struct PanelWindow {
 
 impl PanelWindow {
     pub fn new(theme: Theme) -> Self {
-        use ui_core::widgets::{Slider, Switch};
+        use noa_gpui_core::widgets::{Slider, Switch};
         let mut tree = UiTree::new();
         tree.set_theme(theme);
         let root = tree.insert(
@@ -132,12 +132,12 @@ pub struct TornWindow {
     title: String,
     content: WidgetId,
     back: WidgetId,
-    detached: Option<ui_platform::Detached>,
+    detached: Option<noa_gpui_platform::Detached>,
     closing: bool,
 }
 
 impl TornWindow {
-    pub fn new(detached: ui_platform::Detached, theme: Theme) -> Self {
+    pub fn new(detached: noa_gpui_platform::Detached, theme: Theme) -> Self {
         let mut tree = UiTree::new();
         tree.set_theme(theme);
         let root = tree.insert(
@@ -191,7 +191,7 @@ impl TornWindow {
             .into_iter()
             .filter_map(|c| self.tree.take_subtree(c))
             .collect();
-        self.detached = Some(ui_platform::Detached {
+        self.detached = Some(noa_gpui_platform::Detached {
             title: self.title.clone(),
             content,
         });
@@ -219,7 +219,7 @@ impl Screen for TornWindow {
         self.give_back();
     }
 
-    fn take_detached(&mut self) -> Option<ui_platform::Detached> {
+    fn take_detached(&mut self) -> Option<noa_gpui_platform::Detached> {
         self.detached.take()
     }
 

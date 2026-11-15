@@ -1,11 +1,11 @@
 use std::collections::VecDeque;
 use std::ops::Range;
 
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{Dimension, Size as LayoutSize, length, percent};
+use noa_gpui_scene::{Border, Point, Rect, Size};
+use noa_gpui_text::{TextStore, TextStyle};
 use regex::Regex;
-use ui_layout::Style;
-use ui_layout::style::{Dimension, Size as LayoutSize, length, percent};
-use ui_scene::{Border, Point, Rect, Size};
-use ui_text::{TextStore, TextStyle};
 
 use super::find::{FOUND, FOUND_CURRENT, FindAction, FindError, FindOptions, FindStatus, compile};
 use super::rows::TextCache;

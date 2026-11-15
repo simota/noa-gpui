@@ -13,9 +13,9 @@
 use std::any::Any;
 use std::collections::HashSet;
 
-use ui_layout::{LayoutId, LayoutTree, NodeLayout};
-use ui_scene::{DisplayList, DrawCommand, Point, Rect, Size};
-use ui_text::TextStore;
+use noa_gpui_layout::{LayoutId, LayoutTree, NodeLayout};
+use noa_gpui_scene::{DisplayList, DrawCommand, Point, Rect, Size};
+use noa_gpui_text::TextStore;
 
 use crate::clipboard::{Clipboard, MemoryClipboard};
 use crate::event::{Cursor, DragData, Event, Key, Message, PointerButton};
@@ -108,13 +108,13 @@ impl Node {
         self.widget.clips_children() || self.style().clips()
     }
 
-    fn layout_style(&self) -> ui_layout::Style {
+    fn layout_style(&self) -> noa_gpui_layout::Style {
         let mut style = widget_layout_style(self.widget.as_ref());
         if let Some(patch) = &self.resolved_style {
             patch.apply_layout(&mut style);
         }
         if self.is_hidden() {
-            style.display = ui_layout::style::Display::None;
+            style.display = noa_gpui_layout::style::Display::None;
         }
         style
     }
@@ -123,12 +123,12 @@ impl Node {
 /// The layout style of `widget` before stylesheets. A widget that clips its children
 /// clips them in layout too: what it cuts off is not overflow that a scroll view around
 /// it makes room for (`Clip` changes nothing else in layout).
-fn widget_layout_style(widget: &dyn Widget) -> ui_layout::Style {
+fn widget_layout_style(widget: &dyn Widget) -> noa_gpui_layout::Style {
     let mut style = widget.style();
     if widget.clips_children() {
         for axis in [&mut style.overflow.x, &mut style.overflow.y] {
-            if *axis == ui_layout::style::Overflow::Visible {
-                *axis = ui_layout::style::Overflow::Clip;
+            if *axis == noa_gpui_layout::style::Overflow::Visible {
+                *axis = noa_gpui_layout::style::Overflow::Clip;
             }
         }
     }
@@ -363,7 +363,7 @@ impl UiTree {
         });
         let mut style = widget_layout_style(widget.as_ref());
         if hidden_by_parent {
-            style.display = ui_layout::style::Display::None;
+            style.display = noa_gpui_layout::style::Display::None;
         }
         let layout_id = self.layout.add(style, widget.measures().then_some(id));
         self.slots[index as usize].node = Some(Node {
@@ -3519,8 +3519,8 @@ fn paint_style_box(cx: &mut PaintCx) {
         style.border_color,
         style.border_radius.unwrap_or(0.0),
     );
-    let fill = fill.map_or(ui_scene::Color::TRANSPARENT, |p| cx.color(p));
-    let border = ui_scene::Border {
+    let fill = fill.map_or(noa_gpui_scene::Color::TRANSPARENT, |p| cx.color(p));
+    let border = noa_gpui_scene::Border {
         width: border_width,
         color: cx.color(border_color.unwrap_or(crate::theme::Role::Outline.into())),
     };

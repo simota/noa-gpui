@@ -1,12 +1,12 @@
 use std::any::Any;
 use std::rc::Rc;
 
-use ui_layout::{MeasureInput, Style};
-use ui_scene::{
+use noa_gpui_layout::{MeasureInput, Style};
+use noa_gpui_scene::{
     Border, Color, Direction, DrawCommand, ImageId, Point, Rect, Shape, Size, TextLayoutId,
     VectorIcon,
 };
-use ui_text::TextStore;
+use noa_gpui_text::TextStore;
 
 use crate::clipboard::Clipboard;
 use crate::event::{Cursor, DragData, Event, Modifiers};
@@ -837,7 +837,7 @@ mod tests {
     #[test]
     fn the_last_path_segment_is_what_rsplit_gives() {
         for name in [
-            "ui_core::widgets::label::Label",
+            "noa_gpui_core::widgets::label::Label",
             "Label",
             "",
             "::",
@@ -845,9 +845,9 @@ mod tests {
             "a::",
             "::b",
             "a:b::c",
-            "app::Wrapper<ui_core::widgets::label::Label>",
+            "app::Wrapper<noa_gpui_core::widgets::label::Label>",
             "app::Pair<(u8, alloc::string::String)>",
-            "[ui_core::widgets::button::Button; 2]",
+            "[noa_gpui_core::widgets::button::Button; 2]",
         ] {
             assert_eq!(
                 last_path_segment(name),

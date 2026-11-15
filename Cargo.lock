@@ -846,11 +846,11 @@ name = "demo"
 version = "0.1.0"
 dependencies = [
  "log",
- "ui-core",
- "ui-platform",
- "ui-render-wgpu",
- "ui-scene",
- "ui-text",
+ "noa-gpui-core",
+ "noa-gpui-platform",
+ "noa-gpui-render-wgpu",
+ "noa-gpui-scene",
+ "noa-gpui-text",
  "web-sys",
  "web-time",
 ]
@@ -1857,6 +1857,74 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee6cda3051665f1fb8d9e08fc35c96d5a244fb1be711a03b71118828afc9a873"
 dependencies = [
  "jni-sys 0.3.1",
+]
+
+[[package]]
+name = "noa-gpui-core"
+version = "0.1.0"
+dependencies = [
+ "accesskit",
+ "noa-gpui-layout",
+ "noa-gpui-scene",
+ "noa-gpui-text",
+ "regex",
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "noa-gpui-layout"
+version = "0.1.0"
+dependencies = [
+ "noa-gpui-scene",
+ "taffy",
+]
+
+[[package]]
+name = "noa-gpui-platform"
+version = "0.1.0"
+dependencies = [
+ "accesskit_winit",
+ "arboard",
+ "ksni",
+ "log",
+ "noa-gpui-core",
+ "noa-gpui-render-wgpu",
+ "noa-gpui-scene",
+ "noa-gpui-text",
+ "objc2 0.6.5",
+ "objc2-app-kit 0.3.2",
+ "pollster 1.0.1",
+ "rfd",
+ "tray-icon",
+ "web-sys",
+ "web-time",
+ "winit",
+]
+
+[[package]]
+name = "noa-gpui-render-wgpu"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "glyphon",
+ "log",
+ "noa-gpui-scene",
+ "noa-gpui-text",
+ "pollster 1.0.1",
+ "wgpu",
+]
+
+[[package]]
+name = "noa-gpui-scene"
+version = "0.1.0"
+
+[[package]]
+name = "noa-gpui-text"
+version = "0.1.0"
+dependencies = [
+ "cosmic-text",
+ "noa-gpui-scene",
+ "sys-locale",
 ]
 
 [[package]]
@@ -3253,74 +3321,6 @@ dependencies = [
  "memoffset",
  "tempfile",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "ui-core"
-version = "0.1.0"
-dependencies = [
- "accesskit",
- "regex",
- "ui-layout",
- "ui-scene",
- "ui-text",
- "unicode-segmentation",
-]
-
-[[package]]
-name = "ui-layout"
-version = "0.1.0"
-dependencies = [
- "taffy",
- "ui-scene",
-]
-
-[[package]]
-name = "ui-platform"
-version = "0.1.0"
-dependencies = [
- "accesskit_winit",
- "arboard",
- "ksni",
- "log",
- "objc2 0.6.5",
- "objc2-app-kit 0.3.2",
- "pollster 1.0.1",
- "rfd",
- "tray-icon",
- "ui-core",
- "ui-render-wgpu",
- "ui-scene",
- "ui-text",
- "web-sys",
- "web-time",
- "winit",
-]
-
-[[package]]
-name = "ui-render-wgpu"
-version = "0.1.0"
-dependencies = [
- "bytemuck",
- "glyphon",
- "log",
- "pollster 1.0.1",
- "ui-scene",
- "ui-text",
- "wgpu",
-]
-
-[[package]]
-name = "ui-scene"
-version = "0.1.0"
-
-[[package]]
-name = "ui-text"
-version = "0.1.0"
-dependencies = [
- "cosmic-text",
- "sys-locale",
- "ui-scene",
 ]
 
 [[package]]

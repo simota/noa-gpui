@@ -1,6 +1,6 @@
-use ui_layout::{MeasureInput, Style};
-use ui_scene::{Border, Color, Direction, Point, Rect, Size};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_layout::{MeasureInput, Style};
+use noa_gpui_scene::{Border, Color, Direction, Point, Rect, Size};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::{CachedText, ControlSize, SelectionChanged, Toggled, focus_ring, knob_stretch};
 use crate::animation::{Easing, Transition};
@@ -527,9 +527,9 @@ impl Switch {
 impl Widget for Switch {
     fn style(&self) -> Style {
         Style {
-            size: ui_layout::style::Size {
-                width: ui_layout::style::length(TRACK_W * self.size.scale()),
-                height: ui_layout::style::length(TRACK_H * self.size.scale()),
+            size: noa_gpui_layout::style::Size {
+                width: noa_gpui_layout::style::length(TRACK_W * self.size.scale()),
+                height: noa_gpui_layout::style::length(TRACK_H * self.size.scale()),
             },
             flex_shrink: 0.0,
             ..Default::default()

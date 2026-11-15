@@ -1,16 +1,16 @@
-use ui_core::widgets::{
+use noa_gpui_core::widgets::{
     Button, ButtonClicked, CollectionItem, CollectionView, ComboBox, DatePicker, DatePickerStyle,
     DateRangeChanged, FIND_SHORTCUT, FindBar, FormField, InlineEditableLabel, ItemRenamed,
     LabelEdited, LabelPosition, NumberInput, OutlineItem, OutlineView, RangeChanged,
     SecureTextField, ShortcutChanged, ShortcutRecorder, Slider, TextChanged, TextField, TextView,
     TokenField, TokensChanged, ValueChanged, drive_find,
 };
-use ui_core::{DateTime, Message, Role, Shortcut, ShortcutPressed, WidgetId};
-use ui_scene::Color;
+use noa_gpui_core::{DateTime, Message, Role, Shortcut, ShortcutPressed, WidgetId};
+use noa_gpui_scene::Color;
 
 use super::kit::{Kit, row_style};
 use super::{Demo, DemoCx, SectionSpec};
-use ui_core::widgets::{Container, Label};
+use noa_gpui_core::widgets::{Container, Label};
 
 pub const SECTIONS: [SectionSpec; 8] = [
     SectionSpec {

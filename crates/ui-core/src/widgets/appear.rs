@@ -71,11 +71,11 @@ impl Appear {
 
 /// `rect` is in widget coordinates. In Noa's dark theme, where a shadow would not show on
 /// the charcoal, it draws a faint accent glow instead.
-pub(crate) fn shadow(cx: &mut crate::widget::PaintCx, rect: ui_scene::Rect, radius: f32) {
+pub(crate) fn shadow(cx: &mut crate::widget::PaintCx, rect: noa_gpui_scene::Rect, radius: f32) {
     use crate::theme::Design;
     let dark = cx.theme().appearance == crate::theme::Appearance::Dark;
     let alpha = if dark { 0.22 } else { 0.07 };
-    let mut color = ui_scene::Color::BLACK;
+    let mut color = noa_gpui_scene::Color::BLACK;
     let (steps, spread, drop, alpha) = match cx.theme().design {
         Design::FlatVibrancy => (3, 2.0, 1.0, alpha * 0.9),
         Design::BigSur => (4, 2.5, 1.5, alpha),
@@ -91,7 +91,7 @@ pub(crate) fn shadow(cx: &mut crate::widget::PaintCx, rect: ui_scene::Rect, radi
     };
     for step in 1..=steps {
         let grow = step as f32 * spread;
-        let r = ui_scene::Rect::new(
+        let r = noa_gpui_scene::Rect::new(
             rect.x - grow,
             rect.y - grow + step as f32 * drop,
             rect.width + 2.0 * grow,
@@ -101,7 +101,7 @@ pub(crate) fn shadow(cx: &mut crate::widget::PaintCx, rect: ui_scene::Rect, radi
             r,
             radius + grow,
             color.with_alpha(alpha / step as f32),
-            ui_scene::Border::default(),
+            noa_gpui_scene::Border::default(),
         );
     }
 }

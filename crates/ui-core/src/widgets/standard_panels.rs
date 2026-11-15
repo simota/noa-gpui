@@ -3,10 +3,10 @@
 //! the responder chain, which GPU-drawn widgets are not part of. Open and save panels
 //! use the OS's own (see the demo app).
 
-use ui_layout::Style;
-use ui_layout::style::{AlignItems, FlexDirection, Size as LayoutSize, length};
-use ui_scene::{Color, Point};
-use ui_text::TextStore;
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{AlignItems, FlexDirection, Size as LayoutSize, length};
+use noa_gpui_scene::{Color, Point};
+use noa_gpui_text::TextStore;
 
 use super::{
     ColorChanged, ColorPicker, Container, Label, Panel, PopUpButton, RowSelectionChanged,

@@ -1,9 +1,9 @@
 use std::ops::Range;
 
-use ui_layout::Style;
-use ui_layout::style::{Dimension, Size as LayoutSize, length, percent};
-use ui_scene::{Border, Direction, Point, Rect, Size};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{Dimension, Size as LayoutSize, length, percent};
+use noa_gpui_scene::{Border, Direction, Point, Rect, Size};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::inline_label::{ItemRenamed, RenameStep, Renamer};
 use super::rows::{
@@ -1367,7 +1367,7 @@ impl OutlineView {
         let v = self.viewport();
         let rh = self.row_height;
         let fade = self.title_fade();
-        let faded = |c: ui_scene::Color, t: f32| c.with_alpha(c.a * t);
+        let faded = |c: noa_gpui_scene::Color, t: f32| c.with_alpha(c.a * t);
         let rail_x = v.x + (OUTLINE_RAIL_WIDTH - ICON) / 2.0;
         let row_style = TextStyle::new(13.0);
         let heading_style = TextStyle::new(11.0).weight(700);
@@ -1525,12 +1525,12 @@ impl OutlineView {
 #[derive(Debug, Clone, Copy)]
 struct RowLook {
     sidebar: bool,
-    surface: ui_scene::Color,
-    selected_fill: ui_scene::Color,
-    selected_ink: ui_scene::Color,
-    ink: ui_scene::Color,
-    muted: ui_scene::Color,
-    stripe: ui_scene::Color,
+    surface: noa_gpui_scene::Color,
+    selected_fill: noa_gpui_scene::Color,
+    selected_ink: noa_gpui_scene::Color,
+    ink: noa_gpui_scene::Color,
+    muted: noa_gpui_scene::Color,
+    stripe: noa_gpui_scene::Color,
 }
 
 impl Widget for OutlineView {

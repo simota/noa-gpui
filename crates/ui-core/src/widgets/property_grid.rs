@@ -1,4 +1,4 @@
-use ui_scene::Color;
+use noa_gpui_scene::Color;
 
 use super::{
     ColorChanged, ColorWell, ControlSize, GridCell, GridPlacementMode, GridTrack, GridView, Label,

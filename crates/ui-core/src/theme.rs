@@ -3,7 +3,7 @@
 //! [`Theme`] with [`crate::UiTree::set_theme`] restyles everything. A design changes
 //! how widgets are drawn, never their size.
 
-use ui_scene::Color;
+use noa_gpui_scene::Color;
 
 use crate::widgets::{LEVEL_CRITICAL, LEVEL_NORMAL, LEVEL_WARNING};
 

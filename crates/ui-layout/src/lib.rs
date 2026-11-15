@@ -19,8 +19,8 @@ pub use taffy::{AvailableSpace, NodeId as LayoutId, Style};
 use std::collections::HashMap;
 use std::hash::{BuildHasherDefault, Hasher};
 
+use noa_gpui_scene::{Rect, Size};
 use taffy::TaffyTree;
-use ui_scene::{Rect, Size};
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct NodeLayout {
@@ -414,14 +414,14 @@ mod tests {
             None,
         );
         tree.set_children(root, &[a, text]);
-        tree.compute(root, ui_scene::Size::new(100.0, 50.0), |key, _| {
+        tree.compute(root, noa_gpui_scene::Size::new(100.0, 50.0), |key, _| {
             assert_eq!(*key, 7);
-            ui_scene::Size::new(30.0, 12.0)
+            noa_gpui_scene::Size::new(30.0, 12.0)
         });
 
         assert_eq!(
             tree.layout(a).rect,
-            ui_scene::Rect::new(2.0, 2.0, 10.0, 10.0)
+            noa_gpui_scene::Rect::new(2.0, 2.0, 10.0, 10.0)
         );
         let t = tree.layout(text).rect;
         assert_eq!((t.x, t.y, t.width), (16.0, 2.0, 30.0));
@@ -444,9 +444,9 @@ mod tests {
             tree.set_children(root, children);
             tree.mark_dirty(root);
             let mut keys = Vec::new();
-            tree.compute(root, ui_scene::Size::new(100.0, 100.0), |key, _| {
+            tree.compute(root, noa_gpui_scene::Size::new(100.0, 100.0), |key, _| {
                 keys.push(*key);
-                ui_scene::Size::new(10.0, *key as f32)
+                noa_gpui_scene::Size::new(10.0, *key as f32)
             });
             keys.sort_unstable();
             keys.dedup();
@@ -500,9 +500,9 @@ mod tests {
         let mut measured = Vec::new();
         let run = |tree: &mut LayoutTree<u32>, measured: &mut Vec<u32>| {
             measured.clear();
-            tree.compute(root, ui_scene::Size::new(100.0, 100.0), |key, _| {
+            tree.compute(root, noa_gpui_scene::Size::new(100.0, 100.0), |key, _| {
                 measured.push(*key);
-                ui_scene::Size::new(20.0, 10.0)
+                noa_gpui_scene::Size::new(20.0, 10.0)
             });
         };
         run(&mut tree, &mut measured);
@@ -637,17 +637,17 @@ mod tests {
         );
         tree.set_children(root, &rows);
         assert!(rows.iter().all(|&r| tree.is_boundary(r)));
-        let viewport = ui_scene::Size::new(200.0, 100.0);
+        let viewport = noa_gpui_scene::Size::new(200.0, 100.0);
         let measure = |w: &[f32]| {
             let w = w.to_vec();
-            move |key: &mut u32, _: MeasureInput| ui_scene::Size::new(w[*key as usize], 10.0)
+            move |key: &mut u32, _: MeasureInput| noa_gpui_scene::Size::new(w[*key as usize], 10.0)
         };
         tree.compute(root, viewport, measure(&widths));
         let row_before = tree.layout(rows[1]);
 
         widths[1] = 50.0;
         tree.mark_dirty(leaves[1]);
-        let size = ui_scene::Size::new(row_before.rect.width, row_before.rect.height);
+        let size = noa_gpui_scene::Size::new(row_before.rect.width, row_before.rect.height);
         tree.compute_subtree(rows[1], size, measure(&widths));
         let partial = tree.layout(leaves[1]);
 
@@ -711,22 +711,22 @@ mod tests {
         );
         tree.set_children(item, &[content, frame, pinned]);
         tree.set_children(root, &[item]);
-        tree.compute(root, ui_scene::Size::new(800.0, 600.0), |_, _| {
-            ui_scene::Size::default()
+        tree.compute(root, noa_gpui_scene::Size::new(800.0, 600.0), |_, _| {
+            noa_gpui_scene::Size::default()
         });
 
         assert_eq!(
             tree.layout(item).rect,
-            ui_scene::Rect::new(40.0, 10.0, 60.0, 30.0)
+            noa_gpui_scene::Rect::new(40.0, 10.0, 60.0, 30.0)
         );
         assert_eq!(
             tree.layout(frame).rect,
-            ui_scene::Rect::new(0.0, 0.0, 60.0, 30.0),
+            noa_gpui_scene::Rect::new(0.0, 0.0, 60.0, 30.0),
             "100% of the item, at the item's origin"
         );
         assert_eq!(
             tree.layout(pinned).rect,
-            ui_scene::Rect::new(5.0, 5.0, 4.0, 4.0)
+            noa_gpui_scene::Rect::new(5.0, 5.0, 4.0, 4.0)
         );
     }
 
@@ -750,8 +750,8 @@ mod tests {
             None,
         );
         tree.set_children(scroller, &[child]);
-        tree.compute(scroller, ui_scene::Size::new(200.0, 200.0), |_, _| {
-            ui_scene::Size::default()
+        tree.compute(scroller, noa_gpui_scene::Size::new(200.0, 200.0), |_, _| {
+            noa_gpui_scene::Size::default()
         });
         let layout = tree.layout(scroller);
         assert_eq!(layout.rect.height, 100.0);

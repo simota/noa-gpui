@@ -1,6 +1,6 @@
-use ui_core::{UiTree, WidgetId};
-use ui_platform::FrameReport;
-use ui_scene::Point;
+use noa_gpui_core::{UiTree, WidgetId};
+use noa_gpui_platform::FrameReport;
+use noa_gpui_scene::Point;
 
 use crate::app::Config;
 use crate::timing::FrameTimer;

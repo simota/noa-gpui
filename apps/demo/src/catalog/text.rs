@@ -1,11 +1,11 @@
-use ui_core::widgets::{
+use noa_gpui_core::widgets::{
     Button, ButtonClicked, ComboBox, FindBar, Label, LogLine, LogView, SearchField,
     SearchSubmitted, SecureTextField, SelectionChanged, Terminal, TerminalInput, TextChanged,
     TextField, TextSubmitted, TextView, TokenField, TokensChanged, Truncation, drive_find,
 };
-use ui_core::{Message, Paint, Role, WidgetId};
-use ui_scene::Color;
-use ui_text::TextAlign;
+use noa_gpui_core::{Message, Paint, Role, WidgetId};
+use noa_gpui_scene::Color;
+use noa_gpui_text::TextAlign;
 
 use super::kit::Kit;
 use super::{Demo, DemoCx, SectionSpec};
@@ -70,7 +70,7 @@ pub const SECTIONS: [SectionSpec; 9] = [
     SectionSpec {
         title: "Terminal",
         description: "A VT100 / xterm screen for a program in a pseudo-terminal (on desktop, \
-                      ui_platform::Pty): colors, cursor movement, the alternate screen of \
+                      noa_gpui_platform::Pty): colors, cursor movement, the alternate screen of \
                       full-screen programs and a scrollback the wheel scrolls. Keys become the \
                       bytes a program reads (TerminalInput). Here a tiny line editor answers \
                       instead of a shell.",

@@ -4,7 +4,7 @@ use std::any::Any;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use ui_scene::Point;
+use noa_gpui_scene::Point;
 
 use crate::tree::WidgetId;
 

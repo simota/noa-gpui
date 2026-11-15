@@ -1,11 +1,11 @@
 //! The tree opens and closes tooltips (see [`crate::UiTree::next_timer`]); a widget
 //! only says what its tooltip is, through [`crate::Widget::tooltip`].
 
-use ui_layout::style::Rect as LayoutRect;
-use ui_layout::style::length;
-use ui_layout::{MeasureInput, Style};
-use ui_scene::{Border, Rect, Size};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_layout::style::Rect as LayoutRect;
+use noa_gpui_layout::style::length;
+use noa_gpui_layout::{MeasureInput, Style};
+use noa_gpui_scene::{Border, Rect, Size};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::CachedText;
 use super::appear::Appear;

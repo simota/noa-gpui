@@ -1,14 +1,14 @@
-use ui_core::style::{
+use noa_gpui_core::style::{
     AlignItems, FlexDirection, FlexWrap, LengthPercentage, Rect as LayoutRect, Size as LayoutSize,
     auto, length, percent,
 };
-use ui_core::widgets::{Container, GroupBox, Label, Separator};
-use ui_core::{
+use noa_gpui_core::widgets::{Container, GroupBox, Label, Separator};
+use noa_gpui_core::{
     Event, EventCx, MeasureCx, MeasureInput, PaintCx, PointerButton, Role, Style, UiTree, Widget,
     WidgetId,
 };
-use ui_scene::{Border, Rect, Size, TextLayoutId};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_scene::{Border, Rect, Size, TextLayoutId};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use crate::assets::Assets;
 
@@ -153,7 +153,7 @@ pub fn zero() -> LengthPercentage {
 /// Emitted by a [`NavItem`] when it is clicked.
 pub struct NavSelected;
 
-/// Defined here rather than in `ui-core` to show that apps can implement [`Widget`].
+/// Defined here rather than in `noa-gpui-core` to show that apps can implement [`Widget`].
 pub struct NavItem {
     label: String,
     pressed: bool,
@@ -248,13 +248,13 @@ impl Widget for NavItem {
         }
     }
 
-    fn accessibility_role(&self) -> Option<ui_core::accesskit::Role> {
-        Some(ui_core::accesskit::Role::Link)
+    fn accessibility_role(&self) -> Option<noa_gpui_core::accesskit::Role> {
+        Some(noa_gpui_core::accesskit::Role::Link)
     }
 
-    fn accessibility(&self, node: &mut ui_core::accesskit::Node) {
+    fn accessibility(&self, node: &mut noa_gpui_core::accesskit::Node) {
         node.set_label(self.label.clone());
-        node.add_action(ui_core::accesskit::Action::Click);
+        node.add_action(noa_gpui_core::accesskit::Action::Click);
     }
 
     fn removed(&mut self, text: &mut TextStore) {

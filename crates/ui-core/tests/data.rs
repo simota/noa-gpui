@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
-use ui_core::style::{FlexDirection, Size as LayoutSize, percent};
-use ui_core::widgets::{
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, percent};
+use noa_gpui_core::widgets::{
     BrowserPathChanged, BrowserView, CellActionClicked, CellButton, CellButtonClicked, CellLook,
     CollectionItem, CollectionView, ColumnResized, ColumnSort, ColumnVisibilityChanged, Container,
     GroupActionClicked, GroupRowClicked, ItemExpanded, ItemsMoved, Menu, OutlineItem, OutlineView,
@@ -10,12 +10,12 @@ use ui_core::widgets::{
     TABLE_HEADER, TABLE_ROW, TableColumn, TableData, TableText, TableView, TextView, Tone,
     Truncation,
 };
-use ui_core::{
+use noa_gpui_core::{
     Event, Key, Message, Modifiers, PointerButton, Style, Theme, UiTree, Widget, WidgetId,
 };
-use ui_scene::{Color, DrawCommand, Point, Rect, Size, VectorIcon};
-use ui_text::cosmic_text::Family;
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_scene::{Color, DrawCommand, Point, Rect, Size, VectorIcon};
+use noa_gpui_text::cosmic_text::Family;
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(800.0, 600.0);
 /// A table this tall shows exactly ten rows.
@@ -34,7 +34,7 @@ impl Harness {
             None,
             Container::new(Style {
                 flex_direction: FlexDirection::Column,
-                align_items: ui_core::style::AlignItems::START,
+                align_items: noa_gpui_core::style::AlignItems::START,
                 size: LayoutSize {
                     width: percent(1.0),
                     height: percent(1.0),
@@ -52,7 +52,7 @@ impl Harness {
         }
     }
 
-    fn add(&mut self, widget: impl ui_core::Widget) -> WidgetId {
+    fn add(&mut self, widget: impl noa_gpui_core::Widget) -> WidgetId {
         let id = self.tree.insert(Some(self.root), widget);
         self.prepare();
         id
@@ -696,7 +696,7 @@ fn tables_and_text_views_fill_the_height_their_parent_has_left() {
     let toolbar = Style {
         size: LayoutSize {
             width: percent(1.0),
-            height: ui_core::style::length(40.0),
+            height: noa_gpui_core::style::length(40.0),
         },
         flex_shrink: 0.0,
         ..Default::default()
@@ -911,7 +911,7 @@ fn drawn_texts(h: &Harness, id: WidgetId) -> Vec<(String, Rect, bool)> {
         .collect()
 }
 
-fn quads(h: &Harness) -> Vec<(Rect, Color, ui_scene::Border)> {
+fn quads(h: &Harness) -> Vec<(Rect, Color, noa_gpui_scene::Border)> {
     h.tree
         .display_list()
         .commands()
@@ -965,7 +965,7 @@ fn cell_buttons_have_tooltips_and_names_for_assistive_technology() {
     let mut h = Harness::new();
     let t = stacks(&mut h, |t| t);
     let y = TABLE_HEADER + 1.5 * TABLE_ROW;
-    let tip = |x: f32| ui_core::Widget::tooltip(get(&h, t), Point::new(x, y));
+    let tip = |x: f32| noa_gpui_core::Widget::tooltip(get(&h, t), Point::new(x, y));
     assert_eq!(tip(229.0 + 10.0).as_deref(), Some("Stop"));
     assert_eq!(tip(229.0 + 24.0 + 10.0), None);
     assert_eq!(tip(229.0 + 48.0 + 10.0), None);
@@ -974,7 +974,7 @@ fn cell_buttons_have_tooltips_and_names_for_assistive_technology() {
     let row = update
         .nodes
         .iter()
-        .find(|(id, _)| *id == ui_core::access_item_id(t, 1))
+        .find(|(id, _)| *id == noa_gpui_core::access_item_id(t, 1))
         .map(|(_, node)| node)
         .unwrap();
     assert_eq!(row.label(), Some("web-1, running, Stop, Logs"));
@@ -1193,7 +1193,7 @@ fn outlined_badges_are_framed_in_the_themes_status_color() {
     assert_eq!(framed, 1);
     let dark = Theme::light()
         .with_status_colors(green, green, green)
-        .with_appearance(ui_core::Appearance::Dark);
+        .with_appearance(noa_gpui_core::Appearance::Dark);
     assert_eq!(
         (dark.success, dark.warning, dark.critical),
         (green, green, green)
@@ -1222,10 +1222,10 @@ fn header_check(h: &Harness, table: WidgetId) -> Point {
 }
 
 /// The checkboxes assistive technology is told about: label and state.
-fn check_nodes(h: &mut Harness) -> Vec<(String, ui_core::accesskit::Toggled)> {
+fn check_nodes(h: &mut Harness) -> Vec<(String, noa_gpui_core::accesskit::Toggled)> {
     let update = h.tree.accessibility_update(1.0);
     (update.nodes.iter())
-        .filter(|(_, node)| node.role() == ui_core::accesskit::Role::CheckBox)
+        .filter(|(_, node)| node.role() == noa_gpui_core::accesskit::Role::CheckBox)
         .map(|(_, node)| (node.label().unwrap().to_owned(), node.toggled().unwrap()))
         .collect()
 }
@@ -1315,7 +1315,7 @@ fn a_rows_checkbox_adds_or_removes_only_that_row_and_does_not_scroll() {
 
 #[test]
 fn the_header_checkbox_selects_all_or_none_and_is_mixed_in_between() {
-    use ui_core::accesskit::Toggled;
+    use noa_gpui_core::accesskit::Toggled;
     let mut h = Harness::new();
     let t = checked_table(&mut h, 30);
     assert_eq!(
@@ -1404,7 +1404,7 @@ fn the_checkboxes_are_not_a_column_of_the_data() {
 
 #[test]
 fn group_rows_have_no_checkbox_and_cell_buttons_keep_their_column() {
-    use ui_core::accesskit::{Action, ActionRequest, Toggled, TreeId};
+    use noa_gpui_core::accesskit::{Action, ActionRequest, Toggled, TreeId};
     let mut h = Harness::new();
     let t = stacks(&mut h, |t| t.selection_checkboxes(true));
     let y = |pos: usize| TABLE_HEADER + (pos as f32 + 0.5) * TABLE_ROW;
@@ -1441,7 +1441,7 @@ fn group_rows_have_no_checkbox_and_cell_buttons_keep_their_column() {
             &ActionRequest {
                 action: Action::Click,
                 target_tree: TreeId::ROOT,
-                target_node: ui_core::access_item_id(t, item),
+                target_node: noa_gpui_core::access_item_id(t, item),
                 data: None,
             },
             &mut h.text,
@@ -2575,7 +2575,7 @@ fn rule_editor_cancels_composition_when_focus_leaves() {
         operator: RuleOperator::Contains,
         value: "ab".into(),
     }]));
-    let other = h.add(ui_core::widgets::Button::new("Other"));
+    let other = h.add(noa_gpui_core::widgets::Button::new("Other"));
     h.tree.set_focus(Some(e));
     h.key_with(Key::Char('a'), CMD);
     h.tree.dispatch(
@@ -3133,7 +3133,7 @@ fn a_table_without_its_frame_reaches_its_edges_on_its_own_background() {
 
 #[test]
 fn row_separators_draw_a_line_dashed_or_none_under_each_row() {
-    let lines = |h: &Harness| -> Vec<(Rect, Color, ui_scene::Border)> {
+    let lines = |h: &Harness| -> Vec<(Rect, Color, noa_gpui_scene::Border)> {
         quads(h)
             .into_iter()
             .filter(|(r, ..)| r.height == 1.0 && r.y > TABLE_HEADER)
@@ -3394,7 +3394,7 @@ fn a_cell_button_can_be_lower_than_the_row() {
 
 #[test]
 fn the_cell_padding_follows_the_apps_spacing() {
-    use ui_core::widgets::TABLE_CELL_PADDING;
+    use noa_gpui_core::widgets::TABLE_CELL_PADDING;
     let mut h = Harness::new();
     let t = compose(&mut h, |t| {
         t.bordered(false).content_inset(16.0).cell_padding(12.0)

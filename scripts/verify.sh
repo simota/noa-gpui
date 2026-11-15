@@ -28,17 +28,17 @@ run() { # run <name> <command> [args...]
 
 run fmt    cargo fmt --all --check
 run clippy cargo clippy --workspace --exclude web --features demo/native --all-targets
-run test   cargo test --workspace --exclude web --exclude ui-render-wgpu --features demo/native
+run test   cargo test --workspace --exclude web --exclude noa-gpui-render-wgpu --features demo/native
 # Renders offscreen and reads pixels back: needs a GPU adapter (CI uses Mesa lavapipe).
-run gpu    cargo test -p ui-render-wgpu --features native
+run gpu    cargo test -p noa-gpui-render-wgpu --features native
 
 if [ "${1:-}" = "--full" ]; then
   run clippy-webgpu cargo clippy -p web -p demo --target wasm32-unknown-unknown --features web/webgpu
   run clippy-webgl2 cargo clippy -p web -p demo --target wasm32-unknown-unknown --features web/webgl2
-  run bench env BENCH_ROWS=2000 cargo bench -p ui-core --bench ui_tree
+  run bench env BENCH_ROWS=2000 cargo bench -p noa-gpui-core --bench ui_tree
   # Each fails when any frame takes longer than 16 ms.
-  run bench-table   cargo bench -p ui-core --bench table
-  run bench-desktop cargo bench -p ui-core --bench desktop
+  run bench-table   cargo bench -p noa-gpui-core --bench table
+  run bench-desktop cargo bench -p noa-gpui-core --bench desktop
 fi
 
 echo "not covered: release builds per OS and the wasm-release builds (CI matrix jobs only), the MSRV (rust-version 1.89), running the web build in a browser, secret scanning"

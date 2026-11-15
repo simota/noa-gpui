@@ -1,5 +1,5 @@
-use ui_layout::{MeasureInput, Style};
-use ui_scene::{Border, Color, Rect, Size};
+use noa_gpui_layout::{MeasureInput, Style};
+use noa_gpui_scene::{Border, Color, Rect, Size};
 
 use crate::event::Event;
 use crate::theme::{Corner, Role, mix};

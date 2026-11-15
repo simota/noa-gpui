@@ -1,4 +1,4 @@
-use ui_text::{FontOptions, TextStore, TextStyle};
+use noa_gpui_text::{FontOptions, TextStore, TextStyle};
 
 #[test]
 fn independent_stores_never_reuse_layout_revisions() {

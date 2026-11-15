@@ -1,10 +1,10 @@
-use ui_layout::Style;
-use ui_layout::style::{
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{
     AlignItems, Dimension, FlexDirection, Rect as LayoutRect, Size as LayoutSize, auto, length,
     percent,
 };
-use ui_scene::{Color, Rect};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_scene::{Color, Rect};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::{CachedText, Tone};
 use crate::theme::Role;

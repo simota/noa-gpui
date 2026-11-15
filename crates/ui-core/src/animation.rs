@@ -5,7 +5,7 @@
 //!
 //! Times are seconds on the application's monotonic clock ([`crate::UiTree::set_now`]).
 
-use ui_scene::Color;
+use noa_gpui_scene::Color;
 
 /// How progress (0 to 1) maps to the interpolated value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

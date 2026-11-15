@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
-use ui_core::style::{AlignItems, FlexDirection, Size as LayoutSize, auto, length, percent};
-use ui_core::widgets::{
+use noa_gpui_core::style::{AlignItems, FlexDirection, Size as LayoutSize, auto, length, percent};
+use noa_gpui_core::widgets::{
     BrowserPathChanged, BrowserView, Button, ButtonClicked, CellActionClicked, CellButton,
     CellButtonClicked, CellEdited, CellLook, CellSelectionChanged, Chart, ChartPointActivated,
     ChartSeries, CollectionItem, CollectionView, ColumnAlign, ColumnSort, ColumnVisibilityChanged,
@@ -11,8 +11,8 @@ use ui_core::widgets::{
     RuleEditor, RuleField, RulesChanged, ScrollView, SearchField, SortChanged, TableColumn,
     TableData, TableView, TextChanged, Tone, from_hsv, hex_string,
 };
-use ui_core::{Message, Role, Style, UiTree, WidgetId};
-use ui_scene::{Color, ImageId, VectorIcon};
+use noa_gpui_core::{Message, Role, Style, UiTree, WidgetId};
+use noa_gpui_scene::{Color, ImageId, VectorIcon};
 
 use super::kit::{Kit, gap, row_style};
 use super::{Demo, DemoCx, SectionSpec};
@@ -212,7 +212,7 @@ impl TableData for Files {
 
 /// A table tall enough for the header and the six container rows.
 const TABLE_HEADER_ROWS: f32 =
-    ui_core::widgets::TABLE_HEADER + 6.0 * ui_core::widgets::TABLE_ROW + 1.0;
+    noa_gpui_core::widgets::TABLE_HEADER + 6.0 * noa_gpui_core::widgets::TABLE_ROW + 1.0;
 
 struct Services;
 
@@ -714,7 +714,7 @@ fn tables(kit: &mut Kit) -> Box<dyn Demo> {
         .header_uppercase(true)
         .header_font_family("monospace")
         .header_background(Role::SurfaceAlt)
-        .selection_mode(ui_core::widgets::SelectionMode::Single)
+        .selection_mode(noa_gpui_core::widgets::SelectionMode::Single)
         .height(TABLE_HEADER_ROWS),
     );
     kit.tree.set_accessible_label(containers, "Containers");
@@ -750,8 +750,8 @@ fn tables(kit: &mut Kit) -> Box<dyn Demo> {
         .alternating(false)
         .floats_group_rows(false)
         .row_height(38.0)
-        .selection_mode(ui_core::widgets::SelectionMode::Single)
-        .height(ui_core::widgets::TABLE_HEADER + 6.0 * 38.0),
+        .selection_mode(noa_gpui_core::widgets::SelectionMode::Single)
+        .height(noa_gpui_core::widgets::TABLE_HEADER + 6.0 * 38.0),
     );
     kit.tree.set_accessible_label(stack_list, "Stacks");
     let stack_list_status = status_label(kit, list_card, "click a stack to fold it");
@@ -912,7 +912,7 @@ fn project_tree() -> Vec<OutlineItem> {
                 OutlineItem::new("crates")
                     .expanded(true)
                     .child(
-                        OutlineItem::new("ui-core")
+                        OutlineItem::new("noa-gpui-core")
                             .child(OutlineItem::new("src").children(files(&[
                                 "lib.rs",
                                 "tree.rs",
@@ -925,8 +925,8 @@ fn project_tree() -> Vec<OutlineItem> {
                                 "text.rs",
                             ]))),
                     )
-                    .child(OutlineItem::new("ui-scene").children(files(&["lib.rs"])))
-                    .child(OutlineItem::new("ui-render-wgpu").children(files(&[
+                    .child(OutlineItem::new("noa-gpui-scene").children(files(&["lib.rs"])))
+                    .child(OutlineItem::new("noa-gpui-render-wgpu").children(files(&[
                         "lib.rs",
                         "renderer.rs",
                         "backdrop.rs",
@@ -1270,7 +1270,7 @@ struct GridDemo {
 /// long ones are cut to the columns. The error says why there is nothing to show.
 #[cfg(feature = "native")]
 fn grid_rows_from_csv(text: &str) -> Result<Vec<Vec<String>>, String> {
-    let mut rows = ui_core::widgets::TableText::Csv.read(text);
+    let mut rows = noa_gpui_core::widgets::TableText::Csv.read(text);
     if rows
         .first()
         .and_then(|r| r.first())
@@ -1315,7 +1315,7 @@ impl Demo for GridDemo {
             if message.downcast_ref::<ButtonClicked>().is_some() {
                 let save = message.source == export;
                 let csv = vec![("CSV".to_owned(), vec!["csv".to_owned()])];
-                cx.file_dialogs.push(ui_platform::FileDialogRequest {
+                cx.file_dialogs.push(noa_gpui_platform::FileDialogRequest {
                     save,
                     title: if save { "Export CSV" } else { "Import CSV" }.into(),
                     file_name: if save { "figures.csv" } else { "" }.into(),
@@ -1378,15 +1378,19 @@ impl Demo for GridDemo {
     }
 
     #[cfg(feature = "native")]
-    fn file_dialog_finished(&mut self, cx: &mut DemoCx, result: &ui_platform::FileDialogResult) {
-        use ui_platform::FileDialogResult;
+    fn file_dialog_finished(
+        &mut self,
+        cx: &mut DemoCx,
+        result: &noa_gpui_platform::FileDialogResult,
+    ) {
+        use noa_gpui_platform::FileDialogResult;
         let Some(save) = self.choosing.take() else {
             return;
         };
         let text = match result {
             FileDialogResult::Saved(path) if save => {
                 let grid = cx.tree.get::<TableView>(self.grid).unwrap();
-                let csv = grid.export_text(ui_core::widgets::TableText::Csv);
+                let csv = grid.export_text(noa_gpui_core::widgets::TableText::Csv);
                 match std::fs::write(path, csv + "\n") {
                     Ok(()) => format!("exported {} rows to {}", self.rows.len(), path.display()),
                     Err(e) => format!("could not export: {e}"),
@@ -1732,7 +1736,7 @@ fn inspector(kit: &mut Kit) -> Box<dyn Demo> {
 const LOG_LINES: [&str; 6] = [
     "connected to build server",
     "resolving dependencies",
-    "compiling ui-core",
+    "compiling noa-gpui-core",
     "compiling demo",
     "running 412 tests",
     "all tests passed",
@@ -1818,7 +1822,7 @@ fn follow_end(kit: &mut Kit) -> Box<dyn Demo> {
                 width: percent(1.0),
                 height: auto(),
             },
-            padding: ui_core::style::Rect::length(8.0),
+            padding: noa_gpui_core::style::Rect::length(8.0),
             flex_shrink: 0.0,
             ..Default::default()
         })

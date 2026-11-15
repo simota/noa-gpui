@@ -2,7 +2,7 @@
 //! to its content, is painted after the main tree and hit-tested before it. Overlays
 //! opened later are on top.
 
-use ui_scene::{Point, Rect, Size};
+use noa_gpui_scene::{Point, Rect, Size};
 
 /// Gap between an anchor and an overlay placed next to it.
 pub const ANCHOR_GAP: f32 = 4.0;

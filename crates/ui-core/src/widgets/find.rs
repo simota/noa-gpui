@@ -1,10 +1,10 @@
 use std::ops::Range;
 
+use noa_gpui_layout::style::{Dimension, Size as LayoutSize, percent};
+use noa_gpui_layout::{MeasureInput, Style};
+use noa_gpui_scene::{Border, Color, Direction, Point, Rect, Size};
+use noa_gpui_text::{TextStore, TextStyle};
 use regex::{Regex, RegexBuilder};
-use ui_layout::style::{Dimension, Size as LayoutSize, percent};
-use ui_layout::{MeasureInput, Style};
-use ui_scene::{Border, Color, Direction, Point, Rect, Size};
-use ui_text::{TextStore, TextStyle};
 
 use super::editable::{Editable, SingleLine};
 use super::{CachedText, LogView, TextArea, TextView};

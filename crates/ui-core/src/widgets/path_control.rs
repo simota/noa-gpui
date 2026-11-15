@@ -1,12 +1,12 @@
 use std::ops::Range;
 
-use ui_layout::style::{
+use noa_gpui_layout::style::{
     AvailableSpace, Dimension, Overflow, Point as LayoutPoint, Size as LayoutSize, auto, length,
     percent,
 };
-use ui_layout::{MeasureInput, Style};
-use ui_scene::{Border, Direction, Point, Rect, Size};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_layout::{MeasureInput, Style};
+use noa_gpui_scene::{Border, Direction, Point, Rect, Size};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::{CachedText, ControlSize, Icon, MenuItem, focus_ring, pressed_tint};
 use crate::event::{Event, Key, PointerButton};
@@ -627,7 +627,13 @@ impl Widget for PathControl {
 }
 
 impl PathControl {
-    fn paint_separator(&self, cx: &mut PaintCx, right: f32, height: f32, ink: ui_scene::Color) {
+    fn paint_separator(
+        &self,
+        cx: &mut PaintCx,
+        right: f32,
+        height: f32,
+        ink: noa_gpui_scene::Color,
+    ) {
         let space = self.separator_space();
         match self.separator {
             PathSeparator::Chevron => {

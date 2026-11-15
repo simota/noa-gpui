@@ -171,8 +171,8 @@ pub use tooltip::Tooltip;
 pub use tsv::TableText;
 pub use vt::{CellStyle as TerminalCellStyle, TermColor, TerminalCell};
 
-use ui_scene::{Border, Color, Rect, Size, TextLayoutId};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_scene::{Border, Color, Rect, Size, TextLayoutId};
+use noa_gpui_text::{TextStore, TextStyle};
 
 /// The four macOS control sizes; metrics and text scale from the regular size.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -219,8 +219,8 @@ pub struct MenuChosen(pub usize);
 
 /// Set the height of a scrolling view: `Some` fixes it, `None` fills the space the
 /// parent has left along a column (or the cross axis of a row), down to `min`.
-pub(crate) fn view_height(style: &mut ui_layout::Style, height: Option<f32>, min: f32) {
-    use ui_layout::style::{auto, length};
+pub(crate) fn view_height(style: &mut noa_gpui_layout::Style, height: Option<f32>, min: f32) {
+    use noa_gpui_layout::style::{auto, length};
     match height {
         Some(height) => {
             style.size.height = length(height);

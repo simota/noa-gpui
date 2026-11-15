@@ -1,9 +1,9 @@
 use std::ops::Range;
 
-use ui_layout::style::{Dimension, Rect as LayoutRect, Size as LayoutSize, length, percent};
-use ui_layout::{AvailableSpace, MeasureInput, Style};
-use ui_scene::{Point, Rect, Size};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_layout::style::{Dimension, Rect as LayoutRect, Size as LayoutSize, length, percent};
+use noa_gpui_layout::{AvailableSpace, MeasureInput, Style};
+use noa_gpui_scene::{Point, Rect, Size};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::editable::Editable;
 use super::find::{FindAction, FindStatus, Finder};
@@ -231,7 +231,7 @@ impl Widget for TextView {
                 Rect::new(size.width - BAR - 1.0, y, 5.0, thumb),
                 2.5,
                 color,
-                ui_scene::Border::default(),
+                noa_gpui_scene::Border::default(),
             );
         }
     }

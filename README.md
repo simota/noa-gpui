@@ -7,7 +7,7 @@ A cross-platform UI framework written in Rust, with its own 2D renderer on top o
 > - Widget Tree, layout with Taffy, incremental updates, Hit Testing, Focus management
 > - Component foundations: pointer shapes (an I-beam over text; resize cursors for dividers, column borders, and window edges and corners; a grabbing hand while dragging), themes (designs Flat + Vibrancy / Big Sur / Liquid Glass / Aero / Metro / Fluent 2 / Noa, light / dark, accent color, an increase-contrast setting), disabled state, overlays (menus, popovers, modals), animation (a reduce-motion setting), focus groups and shortcuts, text selection, undo, and clipboard, drag and drop, tooltips
 > - Layout containers: Container, StackView, GridView, GroupBox, SplitView, TabView (`documents` gives editor- or browser-style document tabs: close buttons, a + button, reordering by drag and keyboard, an unsaved marker; `TabView::add_tab` / `close_tab` open and close a tab together with its page), DisclosureGroup, ScrollView, VisualEffectView
-> - Text: Label (multi-line center and end alignment), TextField, SecureTextField, SearchField, TokenField, ComboBox, TextView, LogView (an ever-growing monospaced log, with per-line colors, search, and copy), Terminal (a VT100 / xterm screen; on desktop macOS and Linux, `ui_platform::Pty` connects it to a program in a pseudo-terminal)
+> - Text: Label (multi-line center and end alignment), TextField, SecureTextField, SearchField, TokenField, ComboBox, TextView, LogView (an ever-growing monospaced log, with per-line colors, search, and copy), Terminal (a VT100 / xterm screen; on desktop macOS and Linux, `noa_gpui_platform::Pty` connects it to a program in a pseudo-terminal)
 > - Buttons: Button (the various macOS styles, default / cancel), Checkbox, RadioGroup, Switch, Disclosure, PopUpButton, PullDownButton, ComboButton, SegmentedControl
 > - Value input and status display: Slider, Stepper, ColorWell, DatePicker (`DateFormat` picks the order of the date fields, the separators, and the 12-hour clock from the locale), PathControl, ProgressBar, Spinner, LevelIndicator, Image, SvgIcon (vector icons drawn from SVG paths or small SVG files; [#18](https://github.com/simota/noa-gpui/issues/18))
 > - Additional input components: NumberInput (number parsing, clamping to a range, scrubbing, a built-in Stepper), ShortcutRecorder, FormField (label, required marker, help text, error message), InlineEditableLabel (also supports in-place renaming in OutlineView and CollectionView), FindBar (find and replace in TextView / TextArea, with case sensitivity, whole words, and regular expressions), range selection for Slider, period selection for DatePicker, leading and trailing accessories for TextField, completion lists for TokenField / ComboBox (dynamically fetched candidates, highlighting of the matched part, multiple selection) ([#19](https://github.com/simota/noa-gpui/issues/19))
@@ -75,24 +75,24 @@ Only GPU rendering is built in-house; text shaping and layout use mature librari
 | `crates/ui-core` | Widget Tree (an Arena with Generational IDs), events, Hit Testing, Focus, Dirty Flags, themes, overlays, animation, text editing, drag and drop, accessibility, tooltips, and the parts corresponding to macOS standard components |
 | `crates/ui-render-wgpu` | Three pipelines (Quad / Image / Text), the vector icon atlas, background blur, GPU initialization, windowless rendering (GPU offscreen, and CPU rendering for environments without a GPU) and PNG export |
 | `crates/ui-platform` | The winit application. Windows, input translation, the frame loop, multiple windows, the clipboard, screen readers, system menus and the tray, file dialogs, wake-ups from other threads (`Waker`), pseudo-terminals (`Pty`), windowless rendering (`Headless`), stylesheet file watching (`StyleSheetWatcher`). Also the entry point that re-exports the other crates |
-| `apps/demo` | Demo screens shared by desktop and the Web (an example of using `ui-platform`) |
+| `apps/demo` | Demo screens shared by desktop and the Web (an example of using `noa-gpui-platform`) |
 | `apps/desktop` | The desktop executable `noa-demo` |
 | `apps/web` | The Web Wasm (two variants, WebGPU and WebGL2) and the loader |
 
 ## Using it from your own app
 
-Add only `ui-platform` as a dependency. On desktop, enable `native`; on the Web, enable exactly one of `webgpu` or `webgl2`.
+Add only `noa-gpui-platform` as a dependency. On desktop, enable `native`; on the Web, enable exactly one of `webgpu` or `webgl2`.
 
 ```toml
 [dependencies]
-ui-platform = { git = "https://github.com/simota/noa-gpui", features = ["native"] }
+noa-gpui-platform = { version = "0.1", features = ["native"] }
 ```
 
-A screen is a type that implements the `Screen` trait and holds the Widget Tree and the reactions to messages emitted by Widgets. Pass it to `App::new` and call `run` to open a window and run it. Crates such as `ui-core` are re-exported, as in `ui_platform::ui_core`. The minimal example is in `crates/ui-platform/examples/hello.rs`.
+A screen is a type that implements the `Screen` trait and holds the Widget Tree and the reactions to messages emitted by Widgets. Pass it to `App::new` and call `run` to open a window and run it. Crates such as `noa-gpui-core` are re-exported, as in `noa_gpui_platform::noa_gpui_core`. The minimal example is in `crates/ui-platform/examples/hello.rs`.
 
 ```sh
-cargo run -p ui-platform --example hello --features native
-cargo run -p ui-platform --example snapshot --features native -- snapshot.png   # Render to PNG without opening a window
+cargo run -p noa-gpui-platform --example hello --features native
+cargo run -p noa-gpui-platform --example snapshot --features native -- snapshot.png   # Render to PNG without opening a window
 ```
 
 On the Web, initialize the GPU from a canvas and then use `App::with_gpu` (`apps/web/src/lib.rs`).
@@ -137,7 +137,7 @@ On desktop, the open / save file panels use the OS's standard dialogs (`NSOpenPa
 
 The catalog app's menus (File / View / Go / Help) appear in the OS menu bar on macOS desktop, and at the top of the window on Windows, Linux, and the Web. The desktop version also shows a menu bar extra (a system tray icon on Windows, a StatusNotifierItem icon on Linux; it does not appear on desktops without a supporting panel).
 
-Each group is laid out section by section. The navigation on the left moves to each section, and scrolling the page keeps the navigation's selection in sync. The navigation items and the reorderable rows are custom Widgets defined in `apps/demo/src/catalog/`, and double as an example of implementing Widgets outside `ui-core`.
+Each group is laid out section by section. The navigation on the left moves to each section, and scrolling the page keeps the navigation's selection in sync. The navigation items and the reorderable rows are custom Widgets defined in `apps/demo/src/catalog/`, and double as an example of implementing Widgets outside `noa-gpui-core`.
 
 The mini OS (`--scene=minios`, `?scene=minios` on the Web) is a desktop inside a single window. It has a menu bar, windows inside the window, a dock for minimized windows, and an app launcher, with four apps built only from framework parts: Finder (a sidebar and file list, search within a folder), Notes (creating, editing, deleting, and full-text searching notes; the first line is the title), Calculator, and Settings (style, appearance, accent color) (`apps/demo/src/mini_os/`).
 
@@ -161,43 +161,43 @@ Open `http://127.0.0.1:8765/`: if a WebGPU adapter can be obtained, the WebGPU v
 ```sh
 ./scripts/verify.sh          # fmt, clippy, tests, GPU tests
 ./scripts/verify.sh --full   # The above, plus the wasm clippy and benchmarks (same as CI)
-cargo test --workspace --exclude web --features demo/native,ui-render-wgpu/native   # Tests only
+cargo test --workspace --exclude web --features demo/native,noa-gpui-render-wgpu/native   # Tests only
 ```
 
-The `ui-render-wgpu` tests actually render offscreen on the GPU and read the pixels back to verify them (a GPU adapter is required). The full output of a failed check goes to `.verify/<check-name>.log`. The command that runs only one feature's tests is in [docs/feature-map.md](docs/feature-map.md).
+The `noa-gpui-render-wgpu` tests actually render offscreen on the GPU and read the pixels back to verify them (a GPU adapter is required). The full output of a failed check goes to `.verify/<check-name>.log`. The command that runs only one feature's tests is in [docs/feature-map.md](docs/feature-map.md).
 
 ### Benchmarks (no GPU needed)
 
 ```sh
-cargo bench -p ui-core --bench ui_tree                     # 10,000 rows (40,002 Widgets)
-BENCH_ROWS=50000 cargo bench -p ui-core --bench ui_tree
+cargo bench -p noa-gpui-core --bench ui_tree                     # 10,000 rows (40,002 Widgets)
+BENCH_ROWS=50000 cargo bench -p noa-gpui-core --bench ui_tree
 ```
 
 Prints the p50 / p95 / p99 of `UiTree::prepare` (layout, repaint, Display List assembly) for scroll-only frames and for frames that change one row's text while scrolling.
 
 ```sh
-cargo bench -p ui-core --bench table                       # A 100,000-row table
-BENCH_ROWS=1000000 cargo bench -p ui-core --bench table
+cargo bench -p noa-gpui-core --bench table                       # A 100,000-row table
+BENCH_ROWS=1000000 cargo bench -p noa-gpui-core --bench table
 ```
 
 Prints the time of one frame, from input handling to `UiTree::prepare`, for scrolling, click selection, range selection, keyboard selection, and select-all in the table view. Fails if any frame exceeds 16ms.
 
 ```sh
-cargo bench -p ui-core --bench desktop                     # 20 windows × 500 Widgets
-BENCH_WINDOWS=50 BENCH_WIDGETS=1000 cargo bench -p ui-core --bench desktop
+cargo bench -p noa-gpui-core --bench desktop                     # 20 windows × 500 Widgets
+BENCH_WINDOWS=50 BENCH_WIDGETS=1000 cargo bench -p noa-gpui-core --bench desktop
 ```
 
 Prints the time of one frame for dragging a title bar, resizing from a corner, and bringing a window to the front, for windows inside a window. Fails if any frame exceeds 16ms.
 
 ```sh
-cargo bench -p ui-core --bench styling                     # A stylesheet on 2,000 rows (8,101 Widgets)
-BENCH_ROWS=10000 cargo bench -p ui-core --bench styling
+cargo bench -p noa-gpui-core --bench styling                     # A stylesheet on 2,000 rows (8,101 Widgets)
+BENCH_ROWS=10000 cargo bench -p noa-gpui-core --bench styling
 ```
 
 For a stylesheet (type, class, ID, state, descendant and child selectors, `:nth-child`, `:not()`, `!important`), prints the time of `UiTree::set_stylesheet`, which re-resolves every Widget, and the time of one frame when the pointer moves to a different row every frame.
 
 ```sh
-cargo bench -p ui-render-wgpu --features native --bench gpu_frame   # CPU / GPU time of a full repaint (GPU required)
+cargo bench -p noa-gpui-render-wgpu --features native --bench gpu_frame   # CPU / GPU time of a full repaint (GPU required)
 ```
 
 ## Documentation

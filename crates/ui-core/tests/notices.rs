@@ -1,16 +1,16 @@
-use ui_core::style::{AlignItems, FlexDirection, Size as LayoutSize, percent};
-use ui_core::tree::{HOVER_CARD_CLOSE_DELAY, HOVER_CARD_DELAY};
-use ui_core::widgets::{
+use noa_gpui_core::style::{AlignItems, FlexDirection, Size as LayoutSize, percent};
+use noa_gpui_core::tree::{HOVER_CARD_CLOSE_DELAY, HOVER_CARD_DELAY};
+use noa_gpui_core::widgets::{
     Badge, BannerAction, BannerClosed, Button, ButtonClicked, Container, EmptyState, HoverCard,
     Kbd, Label, NotificationBanner, SHIMMER_PERIOD, STATUS_BAR_HEIGHT, Skeleton, StatusBar,
     TOAST_DURATION, TOAST_WIDTH, Tag, TagRemoved, Toast, ToastAction, ToastClosed, Tone,
 };
-use ui_core::{
+use noa_gpui_core::{
     Event, Key, Message, Modifiers, PointerButton, Shortcut, Style, UiTree, WidgetId, access_id,
     accesskit,
 };
-use ui_scene::{Point, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_scene::{Point, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(600.0, 400.0);
 
@@ -47,7 +47,7 @@ impl Harness {
         h
     }
 
-    fn add(&mut self, widget: impl ui_core::Widget) -> WidgetId {
+    fn add(&mut self, widget: impl noa_gpui_core::Widget) -> WidgetId {
         let id = self.tree.insert(Some(self.root), widget);
         self.prepare();
         id
@@ -151,10 +151,10 @@ fn badges_cap_their_count_and_hide_at_zero() {
 fn an_attached_badge_sits_over_its_parents_top_right_corner() {
     let mut h = Harness::new();
     let icon = h.add(Container::new(Style {
-        position: ui_core::style::Position::Relative,
+        position: noa_gpui_core::style::Position::Relative,
         size: LayoutSize {
-            width: ui_core::style::length(32.0),
-            height: ui_core::style::length(32.0),
+            width: noa_gpui_core::style::length(32.0),
+            height: noa_gpui_core::style::length(32.0),
         },
         ..Default::default()
     }));
@@ -190,8 +190,8 @@ fn removable_tags_emit_removed_from_the_cross_or_the_keyboard() {
 
 #[test]
 fn outlined_tags_are_framed_badges_outside_a_table() {
-    use ui_core::widgets::TagStyle;
-    use ui_scene::DrawCommand;
+    use noa_gpui_core::widgets::TagStyle;
+    use noa_gpui_scene::DrawCommand;
     let mut h = Harness::new();
     let pill = h.add(Tag::new("running").tone(Tone::Success));
     let outlined = h.add(
@@ -232,7 +232,7 @@ fn outlined_tags_are_framed_badges_outside_a_table() {
                     let line = &h.text.layouts().buffer(*layout).lines[0];
                     let family = line.attrs_list().defaults().family;
                     // "monospace" resolves to a font's name.
-                    let named = matches!(family, ui_text::cosmic_text::Family::Name(_));
+                    let named = matches!(family, noa_gpui_text::cosmic_text::Family::Name(_));
                     Some((*color, named))
                 }
                 _ => None,
@@ -364,8 +364,8 @@ fn banners_fill_their_container_and_remove_themselves_when_closed() {
     let column = h.add(Container::new(Style {
         flex_direction: FlexDirection::Column,
         size: LayoutSize {
-            width: ui_core::style::length(400.0),
-            height: ui_core::style::auto(),
+            width: noa_gpui_core::style::length(400.0),
+            height: noa_gpui_core::style::auto(),
         },
         ..Default::default()
     }));
@@ -396,8 +396,8 @@ fn a_long_banner_message_wraps_and_the_cross_closes_it() {
     let column = h.add(Container::new(Style {
         flex_direction: FlexDirection::Column,
         size: LayoutSize {
-            width: ui_core::style::length(300.0),
-            height: ui_core::style::auto(),
+            width: noa_gpui_core::style::length(300.0),
+            height: noa_gpui_core::style::auto(),
         },
         ..Default::default()
     }));

@@ -1,7 +1,7 @@
-use ui_layout::Style;
-use ui_layout::style::{Dimension, Rect as LayoutRect, Size as LayoutSize, length};
-use ui_scene::{Point, Rect, Size};
-use ui_text::{CaretPosition, TextStore, TextStyle};
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{Dimension, Rect as LayoutRect, Size as LayoutSize, length};
+use noa_gpui_scene::{Point, Rect, Size};
+use noa_gpui_text::{CaretPosition, TextStore, TextStyle};
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::CachedText;
@@ -430,17 +430,17 @@ impl Editable {
         cx: &mut PaintCx,
         origin: Point,
         focused: bool,
-        color: ui_scene::Color,
+        color: noa_gpui_scene::Color,
     ) {
         let at = |r: &Rect| r.translate(origin.x, origin.y);
         if !self.found_spans.is_empty() || !self.current_spans.is_empty() {
             let found = cx.color(super::find::FOUND);
             let current = cx.color(super::find::FOUND_CURRENT);
             for rect in &self.found_spans {
-                cx.rounded_rect(at(rect), 2.0, found, ui_scene::Border::default());
+                cx.rounded_rect(at(rect), 2.0, found, noa_gpui_scene::Border::default());
             }
             for rect in &self.current_spans {
-                cx.rounded_rect(at(rect), 2.0, current, ui_scene::Border::default());
+                cx.rounded_rect(at(rect), 2.0, current, noa_gpui_scene::Border::default());
             }
         }
         if focused {

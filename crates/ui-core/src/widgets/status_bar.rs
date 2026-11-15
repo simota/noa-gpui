@@ -1,9 +1,9 @@
-use ui_layout::Style;
-use ui_layout::style::{
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{
     AlignItems, FlexDirection, JustifyContent, Rect as LayoutRect, Size as LayoutSize, auto,
     length, percent,
 };
-use ui_scene::{ImageId, Rect, Size};
+use noa_gpui_scene::{ImageId, Rect, Size};
 
 use super::{Button, Image, Label};
 use crate::theme::Role;

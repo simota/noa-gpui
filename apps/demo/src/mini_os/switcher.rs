@@ -6,14 +6,14 @@
 //! the focus inside the tree, so the Mini OS screen passes keys to [`Switcher::event`]
 //! before the tree.
 
-use ui_core::style::{Size as LayoutSize, length};
-use ui_core::widgets::{InnerWindow, WindowManager};
-use ui_core::{
+use noa_gpui_core::style::{Size as LayoutSize, length};
+use noa_gpui_core::widgets::{InnerWindow, WindowManager};
+use noa_gpui_core::{
     Event, EventCx, Key, Modifiers, OverlayOptions, PaintCx, Placement, PointerButton, Role, Style,
     UiTree, Widget, WidgetId,
 };
-use ui_scene::{Border, Color, Point, Rect, TextLayoutId};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_scene::{Border, Color, Point, Rect, TextLayoutId};
+use noa_gpui_text::{TextStore, TextStyle};
 
 const TILE: f32 = 104.0;
 const TILE_H: f32 = 108.0;
@@ -76,9 +76,9 @@ impl SwitcherView {
         changed
     }
 
-    fn size(n: usize) -> ui_scene::Size {
+    fn size(n: usize) -> noa_gpui_scene::Size {
         let n = n as f32;
-        ui_scene::Size::new(
+        noa_gpui_scene::Size::new(
             2.0 * PAD + n * TILE + (n - 1.0).max(0.0) * GAP,
             2.0 * PAD + TILE_H,
         )
@@ -104,7 +104,7 @@ fn shaped(
     store: &mut TextStore,
     text: &str,
     style: TextStyle,
-) -> (TextLayoutId, ui_scene::Size) {
+) -> (TextLayoutId, noa_gpui_scene::Size) {
     let id = *slot.get_or_insert_with(|| store.create(text, style, None));
     (id, store.size(id))
 }
@@ -186,11 +186,11 @@ impl Widget for SwitcherView {
         }
     }
 
-    fn accessibility_role(&self) -> Option<ui_core::accesskit::Role> {
-        Some(ui_core::accesskit::Role::ListBox)
+    fn accessibility_role(&self) -> Option<noa_gpui_core::accesskit::Role> {
+        Some(noa_gpui_core::accesskit::Role::ListBox)
     }
 
-    fn accessibility(&self, node: &mut ui_core::accesskit::Node) {
+    fn accessibility(&self, node: &mut noa_gpui_core::accesskit::Node) {
         node.set_label("Windows");
         if let Some(item) = self.items.get(self.selected) {
             node.set_value(item.title.clone());

@@ -1,10 +1,11 @@
 [package]
-name = "ui-render-wgpu"
+name = "noa-gpui-render-wgpu"
 description = "wgpu renderer for the noa-gpui display list"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [features]
 default = []
@@ -13,8 +14,8 @@ webgpu = ["wgpu/webgpu"]
 webgl2 = ["wgpu/webgl"]
 
 [dependencies]
-ui-scene.workspace = true
-ui-text.workspace = true
+noa-gpui-scene.workspace = true
+noa-gpui-text.workspace = true
 wgpu.workspace = true
 glyphon.workspace = true
 bytemuck.workspace = true

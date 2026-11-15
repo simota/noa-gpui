@@ -68,7 +68,7 @@ fn check(result: c_int) -> io::Result<c_int> {
 /// thread, which wakes the event loop; [`Pty::read`] takes it on the main thread.
 ///
 /// ```no_run
-/// # use ui_platform::{Pty, Waker};
+/// # use noa_gpui_platform::{Pty, Waker};
 /// # let waker = Waker::default();
 /// let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
 /// let mut pty = Pty::spawn(std::process::Command::new(shell), 80, 24, waker)?;

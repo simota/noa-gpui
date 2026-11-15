@@ -1,6 +1,6 @@
-use ui_layout::{MeasureInput, Style};
-use ui_scene::{Border, Color, Point, Rect, Size};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_layout::{MeasureInput, Style};
+use noa_gpui_scene::{Border, Color, Point, Rect, Size};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::{CachedText, ControlSize, focus_ring};
 use crate::event::{Event, Key, PointerButton};

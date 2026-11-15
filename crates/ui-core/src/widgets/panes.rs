@@ -1,10 +1,10 @@
-use ui_layout::Style;
-use ui_layout::style::{
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{
     Dimension, Display, FlexDirection, GridTemplateComponent, Rect as LayoutRect,
     Size as LayoutSize, auto, fr, length, minmax, percent,
 };
-use ui_scene::{Border, Point, Rect, Size};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_scene::{Border, Point, Rect, Size};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::{
     CachedText, Container, SelectionChanged, Separator, Toggled, focus_ring, pressed_tint,

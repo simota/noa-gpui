@@ -1,7 +1,7 @@
-use ui_layout::style::{Position, Rect as LayoutRect, auto, length};
-use ui_layout::{MeasureInput, Style};
-use ui_scene::{Border, Point, Rect, Size};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_layout::style::{Position, Rect as LayoutRect, auto, length};
+use noa_gpui_layout::{MeasureInput, Style};
+use noa_gpui_scene::{Border, Point, Rect, Size};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::tone::Tone;
 use super::{CachedText, focus_ring};
@@ -182,8 +182,8 @@ pub(crate) fn pill(
     cx: &mut PaintCx,
     rect: Rect,
     radius: f32,
-    fill: ui_scene::Color,
-    label: Option<(ui_scene::TextLayoutId, Size, ui_scene::Color)>,
+    fill: noa_gpui_scene::Color,
+    label: Option<(noa_gpui_scene::TextLayoutId, Size, noa_gpui_scene::Color)>,
 ) {
     cx.rounded_rect(rect, radius, fill, Border::default());
     if let Some((layout, size, ink)) = label {
@@ -200,7 +200,13 @@ pub(crate) fn centered(rect: Rect, size: Size) -> Rect {
     )
 }
 
-pub(crate) fn cross(cx: &mut PaintCx, rect: Rect, arm: f32, width: f32, color: ui_scene::Color) {
+pub(crate) fn cross(
+    cx: &mut PaintCx,
+    rect: Rect,
+    arm: f32,
+    width: f32,
+    color: noa_gpui_scene::Color,
+) {
     let (x, y) = (rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
     cx.line(
         Point::new(x - arm, y - arm),

@@ -1,13 +1,13 @@
 //! Renders one small settings panel in every Design x Appearance, with noa-gpui's
 //! own Headless renderer, for the landing page's theme gallery.
-use ui_platform::Headless;
-use ui_platform::ui_core::style::{AlignItems, JustifyContent};
-use ui_platform::ui_core::widgets::{
+use noa_gpui_platform::Headless;
+use noa_gpui_platform::noa_gpui_core::style::{AlignItems, JustifyContent};
+use noa_gpui_platform::noa_gpui_core::widgets::{
     Button, Checkbox, Container, Label, ProgressBar, SegmentMode, SegmentedControl, Slider,
     Switch, TextField,
 };
-use ui_platform::ui_core::{Appearance, Design, Role, Theme, UiTree};
-use ui_platform::ui_text::{FontOptions, TextStore};
+use noa_gpui_platform::noa_gpui_core::{Appearance, Design, Role, Theme, UiTree};
+use noa_gpui_platform::noa_gpui_text::{FontOptions, TextStore};
 
 fn panel(theme: Theme) -> UiTree {
     let mut t = UiTree::new();

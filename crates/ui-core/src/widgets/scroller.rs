@@ -1,4 +1,4 @@
-use ui_scene::{Border, Point, Rect, Size};
+use noa_gpui_scene::{Border, Point, Rect, Size};
 
 use crate::event::{Event, PointerButton};
 use crate::theme::Role;

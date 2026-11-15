@@ -8,16 +8,16 @@ license.workspace = true
 publish = false
 
 [features]
-native = ["ui-platform/native"]
-webgpu = ["ui-platform/webgpu"]
-webgl2 = ["ui-platform/webgl2"]
+native = ["noa-gpui-platform/native"]
+webgpu = ["noa-gpui-platform/webgpu"]
+webgl2 = ["noa-gpui-platform/webgl2"]
 
 [dependencies]
-ui-platform.workspace = true
-ui-scene.workspace = true
-ui-core.workspace = true
-ui-text.workspace = true
-ui-render-wgpu.workspace = true
+noa-gpui-platform.workspace = true
+noa-gpui-scene.workspace = true
+noa-gpui-core.workspace = true
+noa-gpui-text.workspace = true
+noa-gpui-render-wgpu.workspace = true
 log.workspace = true
 web-time.workspace = true
 

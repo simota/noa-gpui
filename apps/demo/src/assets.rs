@@ -1,7 +1,7 @@
 //! Procedurally generated images, so the demo ships no image files.
 
-use ui_render_wgpu::{Renderer, wgpu};
-use ui_scene::ImageId;
+use noa_gpui_render_wgpu::{Renderer, wgpu};
+use noa_gpui_scene::ImageId;
 
 const ICON: u32 = 32;
 

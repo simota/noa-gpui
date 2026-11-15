@@ -1,17 +1,17 @@
-use ui_core::style::{
+use noa_gpui_core::style::{
     AlignItems, Dimension, FlexDirection, JustifyContent, Rect as LayoutRect, Size as LayoutSize,
     auto, length, percent,
 };
-use ui_core::widgets::{
+use noa_gpui_core::widgets::{
     Button, ButtonClicked, Container, Image, Label, ScrollView, TextChanged, TextField,
 };
-use ui_core::{Event, Message, Role, Style, UiTree, WidgetId};
-use ui_scene::{Color, Point, Size};
-use ui_text::TextStore;
+use noa_gpui_core::{Event, Message, Role, Style, UiTree, WidgetId};
+use noa_gpui_scene::{Color, Point, Size};
+use noa_gpui_text::TextStore;
 
 use crate::assets::Assets;
 use crate::bench::{Meter, center_of};
-use ui_platform::{FrameReport, Screen};
+use noa_gpui_platform::{FrameReport, Screen};
 
 const HEADER_BG: Color = Color::hex(0x1e2230);
 const ROW_HEIGHT: f32 = 36.0;
@@ -344,7 +344,7 @@ impl UiDemo {
     }
 }
 
-fn zero() -> ui_core::style::LengthPercentage {
+fn zero() -> noa_gpui_core::style::LengthPercentage {
     length(0.0)
 }
 

@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use ui_scene::VectorIcon;
+use noa_gpui_scene::VectorIcon;
 
 /// Capped at the device's texture limit.
 const ATLAS_SIZE: u32 = 1024;

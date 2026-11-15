@@ -4,18 +4,20 @@
 //! each. Fails when any frame takes longer than 16 ms (one frame at 60 Hz).
 //!
 //! ```sh
-//! cargo bench -p ui-core --bench table
-//! BENCH_ROWS=1000000 cargo bench -p ui-core --bench table
+//! cargo bench -p noa-gpui-core --bench table
+//! BENCH_ROWS=1000000 cargo bench -p noa-gpui-core --bench table
 //! ```
 
 use std::borrow::Cow;
 use std::time::{Duration, Instant};
 
-use ui_core::style::{FlexDirection, Size as LayoutSize, percent};
-use ui_core::widgets::{ColumnAlign, ColumnSort, Container, TableColumn, TableData, TableView};
-use ui_core::{Event, Key, Modifiers, PointerButton, Style, UiTree, WidgetId};
-use ui_scene::{Point, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, percent};
+use noa_gpui_core::widgets::{
+    ColumnAlign, ColumnSort, Container, TableColumn, TableData, TableView,
+};
+use noa_gpui_core::{Event, Key, Modifiers, PointerButton, Style, UiTree, WidgetId};
+use noa_gpui_scene::{Point, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(1280.0, 800.0);
 const FRAMES: usize = 300;

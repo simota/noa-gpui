@@ -1,15 +1,15 @@
-use ui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
-use ui_core::widgets::{
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
+use noa_gpui_core::widgets::{
     Button, Container, ContextMenuArea, Menu, MenuBar, MenuBarChosen, MenuBarMenu, MenuChosen,
     MenuItem, TextChanged, TextSubmitted, Toolbar, ToolbarItem, ToolbarItemClicked, ToolbarSymbol,
     menu_index, menu_item,
 };
-use ui_core::{
+use noa_gpui_core::{
     Event, Key, Message, Modifiers, PointerButton, Shortcut, Style, UiTree, WidgetId, access_id,
     access_item_id, accesskit,
 };
-use ui_scene::{Point, Rect, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_scene::{Point, Rect, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(900.0, 600.0);
 const PAD: f32 = 5.0;
@@ -30,7 +30,7 @@ impl Harness {
             None,
             Container::new(Style {
                 flex_direction: FlexDirection::Column,
-                align_items: ui_core::style::AlignItems::START,
+                align_items: noa_gpui_core::style::AlignItems::START,
                 size: LayoutSize {
                     width: percent(1.0),
                     height: percent(1.0),
@@ -48,13 +48,13 @@ impl Harness {
         }
     }
 
-    fn add_to(&mut self, parent: WidgetId, widget: impl ui_core::Widget) -> WidgetId {
+    fn add_to(&mut self, parent: WidgetId, widget: impl noa_gpui_core::Widget) -> WidgetId {
         let id = self.tree.insert(Some(parent), widget);
         self.prepare();
         id
     }
 
-    fn add(&mut self, widget: impl ui_core::Widget) -> WidgetId {
+    fn add(&mut self, widget: impl noa_gpui_core::Widget) -> WidgetId {
         self.add_to(self.root, widget)
     }
 
@@ -560,7 +560,7 @@ fn menu_bar_keyboard_moves_between_titles_and_menus() {
 fn menu_bar_shortcuts_choose_items_without_opening_menus() {
     let mut h = Harness::new();
     let b = bar(&mut h);
-    let field = h.add(ui_core::widgets::TextField::new("", 100.0));
+    let field = h.add(noa_gpui_core::widgets::TextField::new("", 100.0));
     h.tree.set_focus(Some(field));
     h.key_with(Key::Char('n'), CMD);
     // ⇧⌘G sits in the second menu at depth-first index 10.

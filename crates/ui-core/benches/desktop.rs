@@ -3,17 +3,17 @@
 //! when any frame takes longer than 16 ms (one frame at 60 Hz).
 //!
 //! ```sh
-//! cargo bench -p ui-core --bench desktop
-//! BENCH_WINDOWS=50 BENCH_WIDGETS=1000 cargo bench -p ui-core --bench desktop
+//! cargo bench -p noa-gpui-core --bench desktop
+//! BENCH_WINDOWS=50 BENCH_WIDGETS=1000 cargo bench -p noa-gpui-core --bench desktop
 //! ```
 
 use std::time::{Duration, Instant};
 
-use ui_core::style::{FlexDirection, FlexWrap, Size as LayoutSize, length, percent};
-use ui_core::widgets::{Container, Label, WINDOW_TITLE_BAR, WindowManager};
-use ui_core::{Event, Key, Modifiers, PointerButton, Style, UiTree, WidgetId};
-use ui_scene::{Point, Rect, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_core::style::{FlexDirection, FlexWrap, Size as LayoutSize, length, percent};
+use noa_gpui_core::widgets::{Container, Label, WINDOW_TITLE_BAR, WindowManager};
+use noa_gpui_core::{Event, Key, Modifiers, PointerButton, Style, UiTree, WidgetId};
+use noa_gpui_scene::{Point, Rect, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(1600.0, 1000.0);
 const FRAMES: usize = 300;

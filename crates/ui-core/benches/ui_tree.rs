@@ -2,19 +2,19 @@
 //! GPU, with and without one visible row's text changing every frame.
 //!
 //! ```sh
-//! cargo bench -p ui-core --bench ui_tree            # 10,000 rows
-//! BENCH_ROWS=50000 cargo bench -p ui-core --bench ui_tree
+//! cargo bench -p noa-gpui-core --bench ui_tree            # 10,000 rows
+//! BENCH_ROWS=50000 cargo bench -p noa-gpui-core --bench ui_tree
 //! ```
 
 use std::time::{Duration, Instant};
 
-use ui_core::style::{
+use noa_gpui_core::style::{
     AlignItems, FlexDirection, Rect as LayoutRect, Size as LayoutSize, length, percent,
 };
-use ui_core::widgets::{Container, Image, Label, ScrollView};
-use ui_core::{Event, Style, UiTree, UpdateStats, WidgetId};
-use ui_scene::{Color, ImageId, Point, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_core::widgets::{Container, Image, Label, ScrollView};
+use noa_gpui_core::{Event, Style, UiTree, UpdateStats, WidgetId};
+use noa_gpui_scene::{Color, ImageId, Point, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(1280.0, 800.0);
 const FRAMES: usize = 600;

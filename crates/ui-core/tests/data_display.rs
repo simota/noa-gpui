@@ -1,16 +1,18 @@
 use std::path::PathBuf;
 
-use ui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
-use ui_core::widgets::{
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
+use noa_gpui_core::widgets::{
     CellEdited, CellRange, CellSelectionChanged, Chart, ChartKind, ChartPointActivated,
     ChartSeries, ChartSeriesToggled, ColorWell, ColumnSort, Container, DescriptionList,
     FileDialogRequested, FileDropZone, FilesDropped, FindAction, FindOptions, Label, LogView,
     NumberInput, PopUpButton, PropertyChanged, PropertyGrid, PropertyValue, RowActivated,
     ScrollView, Switch, TABLE_HEADER, TABLE_ROW, TableColumn, TableView, ValueChanged,
 };
-use ui_core::{DragData, Event, Key, Message, Modifiers, PointerButton, Style, UiTree, WidgetId};
-use ui_scene::{Color, DrawCommand, Point, Rect, Shape, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_core::{
+    DragData, Event, Key, Message, Modifiers, PointerButton, Style, UiTree, WidgetId,
+};
+use noa_gpui_scene::{Color, DrawCommand, Point, Rect, Shape, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(800.0, 600.0);
 
@@ -87,7 +89,7 @@ impl Harness {
             None,
             Container::new(Style {
                 flex_direction: FlexDirection::Column,
-                align_items: ui_core::style::AlignItems::START,
+                align_items: noa_gpui_core::style::AlignItems::START,
                 size: LayoutSize {
                     width: percent(1.0),
                     height: percent(1.0),
@@ -105,7 +107,7 @@ impl Harness {
         }
     }
 
-    fn add(&mut self, widget: impl ui_core::Widget) -> WidgetId {
+    fn add(&mut self, widget: impl noa_gpui_core::Widget) -> WidgetId {
         let id = self.tree.insert(Some(self.root), widget);
         self.prepare();
         id
@@ -226,7 +228,7 @@ fn log_view(h: &mut Harness, rows: usize, follows: bool) -> (WidgetId, WidgetId)
             flex_direction: FlexDirection::Column,
             size: LayoutSize {
                 width: percent(1.0),
-                height: ui_core::style::auto(),
+                height: noa_gpui_core::style::auto(),
             },
             flex_shrink: 0.0,
             ..Default::default()
@@ -463,7 +465,7 @@ fn description_lists_can_rule_off_items_and_set_the_values_font() {
     let box_ = h.add(Container::new(Style {
         size: LayoutSize {
             width: length(400.0),
-            height: ui_core::style::auto(),
+            height: noa_gpui_core::style::auto(),
         },
         flex_shrink: 0.0,
         ..Default::default()
@@ -500,7 +502,7 @@ fn description_lists_can_rule_off_items_and_set_the_values_font() {
                 {
                     let buffer = h.text.layouts().buffer(*layout);
                     let family = buffer.lines[0].attrs_list().defaults().family;
-                    let named = matches!(family, ui_text::cosmic_text::Family::Name(_));
+                    let named = matches!(family, noa_gpui_text::cosmic_text::Family::Name(_));
                     Some((buffer.metrics().font_size, named))
                 }
                 _ => None,
@@ -1486,7 +1488,7 @@ fn undo_and_redo_for_an_edit_menu_return_the_changes_and_new_data_forgets_them()
 #[derive(Clone)]
 struct AppRows(Vec<Vec<String>>);
 
-impl ui_core::widgets::TableData for AppRows {
+impl noa_gpui_core::widgets::TableData for AppRows {
     fn row_count(&self) -> usize {
         self.0.len()
     }
@@ -1769,7 +1771,7 @@ fn a_position_set_before_the_layout_is_not_taken_for_the_end() {
             flex_direction: FlexDirection::Column,
             size: LayoutSize {
                 width: percent(1.0),
-                height: ui_core::style::auto(),
+                height: noa_gpui_core::style::auto(),
             },
             flex_shrink: 0.0,
             ..Default::default()
@@ -1949,8 +1951,11 @@ fn the_legend_hides_and_shows_a_series_and_the_axis_and_readout_follow() {
 fn chart_access(
     h: &Harness,
     id: WidgetId,
-) -> (ui_core::accesskit::Node, Vec<ui_core::accesskit::Node>) {
-    use ui_core::{access_id, access_item_id};
+) -> (
+    noa_gpui_core::accesskit::Node,
+    Vec<noa_gpui_core::accesskit::Node>,
+) {
+    use noa_gpui_core::{access_id, access_item_id};
     let update = h.tree.accessibility_update(1.0);
     let node = |n| {
         update
@@ -1965,13 +1970,14 @@ fn chart_access(
 
 #[test]
 fn a_screen_reader_reads_and_toggles_the_legend_entries_as_check_boxes() {
-    use ui_core::access_item_id;
-    use ui_core::accesskit::{Action, ActionRequest, Role, Toggled, TreeId};
+    use noa_gpui_core::access_item_id;
+    use noa_gpui_core::accesskit::{Action, ActionRequest, Role, Toggled, TreeId};
     let mut h = Harness::new();
     let id = line_chart(&mut h);
     let (figure, entries) = chart_access(&h, id);
     assert_eq!(figure.children().len(), 2);
-    let read = |n: &ui_core::accesskit::Node| (n.role(), n.label().map(str::to_owned), n.toggled());
+    let read =
+        |n: &noa_gpui_core::accesskit::Node| (n.role(), n.label().map(str::to_owned), n.toggled());
     assert_eq!(
         entries.iter().map(read).collect::<Vec<_>>(),
         [

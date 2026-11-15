@@ -1,8 +1,8 @@
-use ui_core::style::{FlexDirection, Size as LayoutSize, percent};
-use ui_core::widgets::{Button, Container, TermColor, Terminal, TerminalInput};
-use ui_core::{Event, Key, Message, Modifiers, Style, UiTree, WidgetId};
-use ui_scene::Size;
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, percent};
+use noa_gpui_core::widgets::{Button, Container, TermColor, Terminal, TerminalInput};
+use noa_gpui_core::{Event, Key, Message, Modifiers, Style, UiTree, WidgetId};
+use noa_gpui_scene::Size;
+use noa_gpui_text::{FontOptions, TextStore};
 
 struct Harness {
     tree: UiTree,
@@ -375,12 +375,12 @@ fn the_wheel_scrolls_back_through_earlier_lines_and_typing_returns() {
     assert!(h.term().scrollback_len() >= 7);
     let pos = {
         let r = h.tree.window_rect(h.term).unwrap();
-        ui_scene::Point::new(r.x + 20.0, r.y + 20.0)
+        noa_gpui_scene::Point::new(r.x + 20.0, r.y + 20.0)
     };
     h.tree.dispatch(
         Event::Wheel {
             pos,
-            delta: ui_scene::Point::new(0.0, 200.0),
+            delta: noa_gpui_scene::Point::new(0.0, 200.0),
         },
         &mut h.text,
     );

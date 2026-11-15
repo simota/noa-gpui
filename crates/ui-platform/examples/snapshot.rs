@@ -2,14 +2,16 @@
 //! there is no GPU adapter, on the CPU.
 //!
 //! ```text
-//! cargo run -p ui-platform --example snapshot --features native -- snapshot.png
+//! cargo run -p noa-gpui-platform --example snapshot --features native -- snapshot.png
 //! ```
 
-use ui_platform::Headless;
-use ui_platform::ui_core::style::{AlignItems, FlexDirection, JustifyContent, Size, percent};
-use ui_platform::ui_core::widgets::{Button, Container, Label};
-use ui_platform::ui_core::{Role, Style, UiTree};
-use ui_platform::ui_text::{FontOptions, TextStore};
+use noa_gpui_platform::Headless;
+use noa_gpui_platform::noa_gpui_core::style::{
+    AlignItems, FlexDirection, JustifyContent, Size, percent,
+};
+use noa_gpui_platform::noa_gpui_core::widgets::{Button, Container, Label};
+use noa_gpui_platform::noa_gpui_core::{Role, Style, UiTree};
+use noa_gpui_platform::noa_gpui_text::{FontOptions, TextStore};
 
 fn main() {
     let path = std::env::args()
