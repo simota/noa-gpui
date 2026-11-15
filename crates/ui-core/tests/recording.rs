@@ -176,7 +176,7 @@ fn every_input_event_survives_the_saved_form() {
     let shift_cmd = Modifiers {
         shift: true,
         command: true,
-        ..Default::default()
+        ..Modifiers::on_apple()
     };
     let events = [
         Event::PointerMove {
@@ -206,6 +206,14 @@ fn every_input_event_survives_the_saved_form() {
         Event::KeyDown {
             key: Key::PageDown,
             modifiers: Modifiers::default(),
+        },
+        Event::KeyDown {
+            key: Key::F5,
+            modifiers: Modifiers::default(),
+        },
+        Event::KeyDown {
+            key: Key::F12,
+            modifiers: shift_cmd,
         },
         Event::Text("a \"quoted\" \\ line\nand tab\t".into()),
         Event::Composition {

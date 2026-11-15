@@ -155,6 +155,7 @@ const CMD: Modifiers = Modifiers {
     alt: false,
     meta: true,
     command: true,
+    command_is_meta: true,
 };
 /// Ctrl on a Mac, where it is not the command key.
 const MAC_CTRL: Modifiers = Modifiers {
@@ -163,6 +164,7 @@ const MAC_CTRL: Modifiers = Modifiers {
     alt: false,
     meta: false,
     command: false,
+    command_is_meta: false,
 };
 const SHIFT: Modifiers = Modifiers {
     shift: true,
@@ -170,6 +172,7 @@ const SHIFT: Modifiers = Modifiers {
     alt: false,
     meta: false,
     command: false,
+    command_is_meta: false,
 };
 
 fn edit_menu() -> Vec<MenuItem> {

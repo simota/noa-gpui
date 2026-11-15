@@ -76,6 +76,7 @@ impl InputState {
                     alt: state.alt_key(),
                     meta,
                     command: if command_is_meta() { meta } else { ctrl },
+                    command_is_meta: command_is_meta(),
                 };
                 vec![Event::ModifiersChanged(self.modifiers)]
             }
@@ -205,7 +206,18 @@ fn named_key(key: NamedKey) -> Key {
         NamedKey::End => Key::End,
         NamedKey::PageUp => Key::PageUp,
         NamedKey::PageDown => Key::PageDown,
+        NamedKey::F1 => Key::F1,
+        NamedKey::F2 => Key::F2,
+        NamedKey::F3 => Key::F3,
+        NamedKey::F4 => Key::F4,
+        NamedKey::F5 => Key::F5,
+        NamedKey::F6 => Key::F6,
+        NamedKey::F7 => Key::F7,
+        NamedKey::F8 => Key::F8,
+        NamedKey::F9 => Key::F9,
         NamedKey::F10 => Key::F10,
+        NamedKey::F11 => Key::F11,
+        NamedKey::F12 => Key::F12,
         NamedKey::ContextMenu => Key::ContextMenu,
         _ => Key::Other,
     }
@@ -214,6 +226,28 @@ fn named_key(key: NamedKey) -> Key {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_function_key_has_its_own_key() {
+        let keys = [
+            NamedKey::F1,
+            NamedKey::F2,
+            NamedKey::F3,
+            NamedKey::F4,
+            NamedKey::F5,
+            NamedKey::F6,
+            NamedKey::F7,
+            NamedKey::F8,
+            NamedKey::F9,
+            NamedKey::F10,
+            NamedKey::F11,
+            NamedKey::F12,
+        ];
+        for (n, named) in (1..).zip(keys) {
+            assert_eq!(named_key(named), Key::function(n).unwrap());
+        }
+        assert_eq!(named_key(NamedKey::F13), Key::Other);
+    }
 
     #[test]
     fn files_dropped_together_arrive_as_one_drop() {

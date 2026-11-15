@@ -190,10 +190,11 @@ fn button_name(button: PointerButton) -> &'static str {
     }
 }
 
-const MODIFIERS: [&str; 5] = ["shift", "ctrl", "alt", "meta", "cmd"];
+/// `apple`: Cmd is the command key ([`Modifiers::command_is_meta`]).
+const MODIFIERS: [&str; 6] = ["shift", "ctrl", "alt", "meta", "cmd", "apple"];
 
 fn modifier_names(m: Modifiers) -> String {
-    let names: Vec<&str> = [m.shift, m.ctrl, m.alt, m.meta, m.command]
+    let names: Vec<&str> = [m.shift, m.ctrl, m.alt, m.meta, m.command, m.command_is_meta]
         .into_iter()
         .zip(MODIFIERS)
         .filter_map(|(on, name)| on.then_some(name))
@@ -320,11 +321,15 @@ fn parse_key(word: &str) -> Result<Key, String> {
         "End" => Key::End,
         "PageUp" => Key::PageUp,
         "PageDown" => Key::PageDown,
-        "F10" => Key::F10,
         "ContextMenu" => Key::ContextMenu,
         "Other" => Key::Other,
-        _ => return Err(format!("not a key: {word}")),
+        _ => function_key(word).ok_or_else(|| format!("not a key: {word}"))?,
     })
+}
+
+/// "F1" to "F12".
+fn function_key(word: &str) -> Option<Key> {
+    Key::function(word.strip_prefix('F')?.parse().ok()?)
 }
 
 fn parse_modifiers(word: &str) -> Result<Modifiers, String> {
@@ -339,6 +344,7 @@ fn parse_modifiers(word: &str) -> Result<Modifiers, String> {
             "alt" => &mut m.alt,
             "meta" => &mut m.meta,
             "cmd" => &mut m.command,
+            "apple" => &mut m.command_is_meta,
             _ => return Err(format!("not a modifier: {name}")),
         };
         *flag = true;
