@@ -56,6 +56,52 @@ pub enum Shape {
         end: Color,
         vertical: bool,
     },
+    /// The soft shadow of a rounded rectangle: `rect` with its edge blurred by a
+    /// Gaussian of standard deviation `blur / 2`, as CSS blurs a box shadow of blur
+    /// radius `blur`. It fades out within `1.5 * blur` around `rect`. Usually made with
+    /// [`BoxShadow::shape`].
+    Shadow {
+        rect: Rect,
+        radius: CornerRadii,
+        blur: f32,
+    },
+}
+
+/// A box shadow as CSS and gpui describe one.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct BoxShadow {
+    pub color: Color,
+    /// How far the shadow is moved from the box.
+    pub offset: Point,
+    /// The blur radius (twice the Gaussian's standard deviation); 0 is a sharp edge.
+    pub blur: f32,
+    /// How far the shadow grows past the box on every side before it is blurred
+    /// (negative shrinks it).
+    pub spread: f32,
+}
+
+impl BoxShadow {
+    /// The shadow of the box `rect` with corner radii `radius`, as a shape drawn in
+    /// [`BoxShadow::color`].
+    pub fn shape(&self, rect: Rect, radius: CornerRadii) -> Shape {
+        let s = self.spread;
+        let width = (rect.width + 2.0 * s).max(0.0);
+        let height = (rect.height + 2.0 * s).max(0.0);
+        let center = Point::new(
+            rect.x + rect.width / 2.0 + self.offset.x,
+            rect.y + rect.height / 2.0 + self.offset.y,
+        );
+        Shape::Shadow {
+            rect: Rect::new(
+                center.x - width / 2.0,
+                center.y - height / 2.0,
+                width,
+                height,
+            ),
+            radius: radius.map(|r| if r > 0.0 { (r + s).max(0.0) } else { 0.0 }),
+            blur: self.blur.max(0.0),
+        }
+    }
 }
 
 impl Shape {
@@ -78,6 +124,15 @@ impl Shape {
             } => {
                 let r = radius + width / 2.0;
                 Rect::new(center.x - r, center.y - r, 2.0 * r, 2.0 * r)
+            }
+            Shape::Shadow { rect, blur, .. } => {
+                let reach = 1.5 * blur;
+                Rect::new(
+                    rect.x - reach,
+                    rect.y - reach,
+                    rect.width + 2.0 * reach,
+                    rect.height + 2.0 * reach,
+                )
             }
         }
     }
@@ -118,6 +173,11 @@ impl Shape {
                 radius,
                 end,
                 vertical,
+            },
+            Shape::Shadow { rect, radius, blur } => Shape::Shadow {
+                rect: rect.translate(dx, dy),
+                radius,
+                blur,
             },
         }
     }
@@ -404,6 +464,14 @@ impl DisplayList {
         self.modified();
     }
 
+    /// The shadow of the box `rect` with corner radii `radius`; draw it before the box.
+    pub fn box_shadow(&mut self, rect: Rect, radius: CornerRadii, shadow: &BoxShadow) {
+        self.push(DrawCommand::Shape {
+            shape: shadow.shape(rect, radius),
+            color: shadow.color,
+        });
+    }
+
     pub fn push_clip(&mut self, rect: Rect) {
         self.push(DrawCommand::PushClip { rect });
     }
@@ -416,6 +484,47 @@ impl DisplayList {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_box_shadow_moves_grows_and_reaches_past_its_blur() {
+        let shadow = BoxShadow {
+            color: Color::BLACK,
+            offset: Point::new(2.0, 4.0),
+            blur: 10.0,
+            spread: 3.0,
+        };
+        let shape = shadow.shape(Rect::new(10.0, 10.0, 40.0, 20.0), [4.0, 0.0, 4.0, 4.0]);
+        assert_eq!(
+            shape,
+            Shape::Shadow {
+                rect: Rect::new(9.0, 11.0, 46.0, 26.0),
+                radius: [7.0, 0.0, 7.0, 7.0],
+                blur: 10.0,
+            }
+        );
+        assert_eq!(shape.bounds(), Rect::new(-6.0, -4.0, 76.0, 56.0));
+        assert_eq!(
+            shape.translated(1.0, 1.0).bounds(),
+            Rect::new(-5.0, -3.0, 76.0, 56.0)
+        );
+        // A negative spread shrinks the box, never below nothing.
+        let inset = BoxShadow {
+            spread: -30.0,
+            ..shadow
+        };
+        let Shape::Shadow { rect, radius, .. } =
+            inset.shape(Rect::new(0.0, 0.0, 40.0, 20.0), [4.0; 4])
+        else {
+            unreachable!()
+        };
+        assert_eq!((rect.width, rect.height, radius), (0.0, 0.0, [0.0; 4]));
+        let mut list = DisplayList::new();
+        list.box_shadow(Rect::new(0.0, 0.0, 10.0, 10.0), [0.0; 4], &shadow);
+        let [DrawCommand::Shape { color, .. }] = list.commands() else {
+            panic!("one shape");
+        };
+        assert_eq!(*color, Color::BLACK);
+    }
 
     #[test]
     fn fading_scales_every_color_but_not_clips_or_images() {

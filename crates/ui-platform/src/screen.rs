@@ -63,6 +63,39 @@ pub enum WindowDrag {
     Resize(winit::window::ResizeDirection),
 }
 
+/// A question a screen wants asked in the OS's own alert (`NSAlert` on macOS, a task
+/// dialog on Windows, zenity on Linux): a confirm and a cancel button, such as
+/// "Delete" and "Cancel".
+///
+/// Windows shows OK and Cancel in place of the labels.
+#[cfg(feature = "native")]
+#[derive(Debug, Clone, PartialEq)]
+pub struct AlertRequest {
+    pub level: AlertLevel,
+    pub title: String,
+    pub message: String,
+    pub confirm: String,
+    pub cancel: String,
+}
+
+/// The icon an [`AlertRequest`] shows.
+#[cfg(feature = "native")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AlertLevel {
+    #[default]
+    Info,
+    Warning,
+    Error,
+}
+
+#[cfg(feature = "native")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AlertResult {
+    Confirmed,
+    /// The cancel button, Escape, or closing the alert.
+    Cancelled,
+}
+
 pub trait Screen {
     fn tree(&self) -> &UiTree;
     fn tree_mut(&mut self) -> &mut UiTree;
@@ -116,6 +149,16 @@ pub trait Screen {
 
     #[cfg(feature = "native")]
     fn file_dialog_finished(&mut self, _result: FileDialogResult, _text: &mut TextStore) {}
+
+    /// Alerts to show, collected since the last call. They are shown one after the
+    /// other, each answered through [`Screen::alert_finished`] before the next.
+    #[cfg(feature = "native")]
+    fn take_alerts(&mut self) -> Vec<AlertRequest> {
+        Vec::new()
+    }
+
+    #[cfg(feature = "native")]
+    fn alert_finished(&mut self, _result: AlertResult, _text: &mut TextStore) {}
 
     /// Content this screen (in a secondary window) gives back to the main window.
     #[cfg(feature = "native")]
