@@ -737,7 +737,10 @@ impl Widget for RuleEditor {
                     cx.set_handled();
                 }
             }
-            Event::KeyDown { .. } | Event::Text(_) | Event::Composition { .. }
+            Event::KeyDown { .. }
+            | Event::Text(_)
+            | Event::Composition { .. }
+            | Event::ImeSelect(_)
                 if cx.is_focused() =>
             {
                 self.forward(cx, event);

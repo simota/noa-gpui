@@ -594,10 +594,27 @@ impl Editable {
                 Some(start..start + self.preedit.len()),
             )
         };
+        // Only the caret's paragraph of what is shown: the rest is not copied.
+        let content = self.editor.text();
+        let replaced = self.editor.selection();
+        let start = content[..replaced.start].rfind('\n').map_or(0, |i| i + 1);
+        let end = content[replaced.end..]
+            .find('\n')
+            .map_or(content.len(), |i| replaced.end + i);
+        let shown = if self.preedit.is_empty() {
+            std::borrow::Cow::Borrowed(&content[start..end])
+        } else {
+            std::borrow::Cow::Owned(format!(
+                "{}{}{}",
+                &content[start..replaced.start],
+                self.preedit,
+                &content[replaced.end..end]
+            ))
+        };
         Some(crate::ImeContext::of_layout(
             text,
             layout,
-            &self.display(),
+            (&shown, start),
             selection,
             composition,
             origin,

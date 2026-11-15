@@ -91,6 +91,9 @@ unsafe impl Encode for CGRect {
 /// A view's context and the UTF-16 offsets of its text.
 struct Snapshot {
     context: ImeContext,
+    /// Bytes of the text the input method replaces with the composition it has just
+    /// started over other text than the selection, until the next copy shows it.
+    replacing: Option<Range<usize>>,
 }
 
 impl Snapshot {
@@ -127,19 +130,50 @@ impl Snapshot {
     /// Where a composition starts or will start.
     fn anchor(&self) -> usize {
         let context = &self.context;
-        self.utf16(
-            context
-                .composition
-                .as_ref()
-                .unwrap_or(&context.selection)
-                .start,
-        )
+        let start = match (&context.composition, &self.replacing) {
+            (Some(composition), _) => composition.start,
+            (None, Some(replacing)) => replacing.start,
+            (None, None) => context.selection.start,
+        };
+        self.utf16(start)
+    }
+
+    /// `markedRange` while winit holds a composition `composing` UTF-16 units long:
+    /// winit knows its length, the copy where it starts.
+    fn marked(&self, composing: Option<usize>) -> NSRange {
+        match composing {
+            Some(length) => NSRange::of(self.anchor()..self.anchor() + length),
+            None => NSRange::NONE,
+        }
+    }
+
+    /// `firstRectForCharacterRange:` for `range` (the caret when none): the box in
+    /// window coordinates and the UTF-16 range it covers.
+    fn first_rect(&self, range: NSRange) -> (Rect, Range<usize>) {
+        let units = range.range().unwrap_or_else(|| {
+            let selection = self.utf16_range(&self.context.selection);
+            selection.start..selection.start
+        });
+        let bytes = self.bytes(units);
+        let (rect, covered) = self.context.first_rect(bytes);
+        (rect, self.utf16_range(&covered))
+    }
+
+    /// `selectedRange`, for a composition `composing` units long that winit holds.
+    fn selected(&self, composing: Option<usize>) -> NSRange {
+        match (self.context.composition.as_ref(), composing) {
+            // winit has just begun a composition the copy has not seen yet.
+            (None, Some(length)) => NSRange::of(self.anchor() + length..self.anchor() + length),
+            _ => NSRange::of(self.utf16_range(&self.context.selection)),
+        }
     }
 }
 
 thread_local! {
     /// By view.
     static SNAPSHOTS: RefCell<HashMap<usize, Snapshot>> = RefCell::default();
+    /// The views [`sync`] has run for.
+    static SYNCED: RefCell<std::collections::HashSet<usize>> = RefCell::default();
     /// A range the input method is about to replace, in bytes of the text shown, by
     /// view, until the composition it starts is handed on.
     static REPLACING: RefCell<HashMap<usize, Range<usize>>> = RefCell::default();
@@ -159,14 +193,26 @@ pub fn sync(window: &Window, context: Option<ImeContext>) {
     let Some(view) = view_of(window) else {
         return;
     };
+    SYNCED.with_borrow_mut(|synced| synced.insert(view));
     SNAPSHOTS.with_borrow_mut(|snapshots| match context {
         Some(context) => {
-            snapshots.insert(view, Snapshot { context });
+            snapshots.insert(
+                view,
+                Snapshot {
+                    context,
+                    replacing: None,
+                },
+            );
         }
         None => {
             snapshots.remove(&view);
         }
     });
+}
+
+/// Whether [`sync`] has run for `window` (since it was last [forgotten](forget)).
+pub fn is_synced(window: &Window) -> bool {
+    view_of(window).is_some_and(|view| SYNCED.with_borrow(|synced| synced.contains(&view)))
 }
 
 /// The range the input method replaces with the composition it has just started
@@ -181,6 +227,7 @@ pub fn take_replacement(window: &Window) -> Option<Range<usize>> {
 pub fn forget(window: &Window) {
     if let Some(view) = view_of(window) {
         SNAPSHOTS.with_borrow_mut(|s| s.remove(&view));
+        SYNCED.with_borrow_mut(|s| s.remove(&view));
         REPLACING.with_borrow_mut(|r| r.remove(&view));
     }
 }
@@ -225,25 +272,14 @@ unsafe fn original<F: Copy>(imp: Imp) -> F {
 
 unsafe extern "C-unwind" fn selected_range(this: *mut AnyObject, cmd: Sel) -> NSRange {
     let marked = unsafe { original::<RangeFn>(originals().marked_range)(this, cmd) };
-    let answer = with_snapshot(this, |s| {
-        match (s.context.composition.as_ref(), marked.range()) {
-            // winit has just begun a composition the copy has not seen yet.
-            (None, Some(marked)) => {
-                NSRange::of(s.anchor() + marked.len()..s.anchor() + marked.len())
-            }
-            _ => NSRange::of(s.utf16_range(&s.context.selection)),
-        }
-    });
+    let answer = with_snapshot(this, |s| s.selected(marked.range().map(|r| r.len())));
     answer.unwrap_or_else(|| unsafe { original::<RangeFn>(originals().selected_range)(this, cmd) })
 }
 
 unsafe extern "C-unwind" fn marked_range(this: *mut AnyObject, cmd: Sel) -> NSRange {
-    // winit knows how long the composition is; the copy knows where it starts.
     let marked = unsafe { original::<RangeFn>(originals().marked_range)(this, cmd) };
-    let Some(length) = marked.range().map(|r| r.len()) else {
-        return NSRange::NONE;
-    };
-    with_snapshot(this, |s| NSRange::of(s.anchor()..s.anchor() + length)).unwrap_or(marked)
+    let composing = marked.range().map(|r| r.len());
+    with_snapshot(this, |s| s.marked(composing)).unwrap_or(marked)
 }
 
 unsafe extern "C-unwind" fn substring(
@@ -333,14 +369,7 @@ unsafe extern "C-unwind" fn first_rect(
     range: NSRange,
     actual: *mut NSRange,
 ) -> CGRect {
-    let found = with_snapshot(this, |s| {
-        let units = range.range().unwrap_or_else(|| {
-            let selection = s.utf16_range(&s.context.selection);
-            selection.start..selection.start
-        });
-        let bytes = s.bytes(units);
-        (s.context.first_rect(bytes.clone()), s.utf16_range(&bytes))
-    });
+    let found = with_snapshot(this, |s| s.first_rect(range));
     let Some((rect, units)) = found else {
         return unsafe { original::<RectFn>(originals().first_rect)(this, cmd, range, actual) };
     };
@@ -386,13 +415,18 @@ unsafe extern "C-unwind" fn set_marked_text(
     // A composition that replaces other text than the selection: converting a word
     // again that the input method found around the caret.
     let replacing = replacement.range().and_then(|units| {
-        with_snapshot(this, |s| {
+        SNAPSHOTS.with_borrow_mut(|snapshots| {
+            let s = snapshots.get_mut(&(this as usize))?;
             let bytes = s.bytes(units);
             let context = &s.context;
-            (context.composition.is_none() && bytes != context.selection)
-                .then(|| context.base + bytes.start..context.base + bytes.end)
+            if context.composition.is_some() || bytes == context.selection {
+                return None;
+            }
+            let shown = context.base + bytes.start..context.base + bytes.end;
+            // Answers start the composition there until the next copy shows it.
+            s.replacing = Some(bytes);
+            Some(shown)
         })
-        .flatten()
     });
     if let Some(range) = replacing {
         REPLACING.with_borrow_mut(|r| r.insert(this as usize, range));
@@ -477,7 +511,42 @@ mod tests {
                 selection,
                 ..Default::default()
             },
+            replacing: None,
         }
+    }
+
+    /// A range over two lines: the box is the first line's, and the range it covers
+    /// says so, so the input method asks again for the rest.
+    #[test]
+    fn the_first_rect_covers_only_the_first_line() {
+        let line = |x: f32, y: f32| Rect::new(x, y, 8.0, 16.0);
+        let mut s = snapshot("abcd", 0..0);
+        s.context.clusters = vec![
+            (0..1, line(0.0, 0.0)),
+            (1..2, line(8.0, 0.0)),
+            (2..3, line(0.0, 16.0)),
+            (3..4, line(8.0, 16.0)),
+        ];
+        let (rect, covered) = s.first_rect(NSRange::of(1..4));
+        assert_eq!(rect, line(8.0, 0.0));
+        assert_eq!(covered, 1..2);
+        let (rect, covered) = s.first_rect(NSRange::of(2..4));
+        assert_eq!(rect, Rect::new(0.0, 16.0, 16.0, 16.0));
+        assert_eq!(covered, 2..4);
+    }
+
+    /// The input method converts "abc" again with the caret at the end: until the
+    /// next copy, its composition is where "abc" was, not at the caret.
+    #[test]
+    fn a_composition_over_other_text_starts_where_that_text_is() {
+        let mut s = snapshot("abc def", 7..7);
+        s.replacing = Some(0..3);
+        assert_eq!(s.marked(Some(3)), NSRange::of(0..3));
+        assert_eq!(s.selected(Some(3)), NSRange::of(3..3));
+        // Without one, at the selection.
+        s.replacing = None;
+        assert_eq!(s.marked(Some(3)), NSRange::of(7..10));
+        assert_eq!(s.marked(None), NSRange::NONE);
     }
 
     #[test]

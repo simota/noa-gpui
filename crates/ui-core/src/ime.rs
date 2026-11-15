@@ -33,17 +33,25 @@ pub struct ImeContext {
 }
 
 impl ImeContext {
-    /// The context of `layout` (made of `shown`) for a widget that draws it at `origin`:
-    /// the paragraph around `selection`, with `composition` if there is one.
+    /// The context of `layout` for a widget that draws it at `origin`: the paragraph
+    /// around `selection`, with `composition` if there is one. `shown` is the part of
+    /// the text laid out that starts at byte `shown_base` and holds that paragraph (at
+    /// least); the ranges are bytes of the whole text.
     pub fn of_layout(
         text: &TextStore,
         layout: TextLayoutId,
-        shown: &str,
+        (shown, shown_base): (&str, usize),
         selection: Range<usize>,
         composition: Option<Range<usize>>,
         origin: Point,
     ) -> Self {
-        let at = selection.start.min(shown.len());
+        let into_shown = |r: &Range<usize>| {
+            r.start.saturating_sub(shown_base).min(shown.len())
+                ..r.end.saturating_sub(shown_base).min(shown.len())
+        };
+        let selection = into_shown(&selection);
+        let composition = composition.as_ref().map(into_shown);
+        let at = selection.start;
         let mut start = shown[..at].rfind('\n').map_or(0, |i| i + 1);
         let mut end = shown[at..].find('\n').map_or(shown.len(), |i| at + i);
         start = start.max(floor_char(shown, at.saturating_sub(REACH)));
@@ -52,16 +60,19 @@ impl ImeContext {
         let local =
             |r: &Range<usize>| r.start.clamp(start, end) - start..r.end.clamp(start, end) - start;
         let to_window = |r: Rect| r.translate(origin.x, origin.y);
-        let caret = text.caret(layout, selection.end.min(shown.len()));
+        let caret = text.caret(layout, shown_base + selection.end);
         Self {
             text: shown[start..end].to_owned(),
-            base: start,
+            base: shown_base + start,
             selection: local(&selection),
             composition: composition.as_ref().map(local),
             clusters: text
-                .clusters(layout, start..end)
+                .clusters(layout, shown_base + start..shown_base + end)
                 .into_iter()
-                .map(|(bytes, rect)| (local(&bytes), to_window(rect)))
+                .map(|(bytes, rect)| {
+                    let bytes = bytes.start - shown_base..bytes.end - shown_base;
+                    (local(&bytes), to_window(rect))
+                })
                 .collect(),
             caret: to_window(Rect::new(caret.x, caret.top, 1.0, caret.height)),
         }
@@ -75,14 +86,15 @@ impl ImeContext {
         self
     }
 
-    /// The box of the first line of bytes `range`: from its first character to its
-    /// last one on the same line. An empty range is a caret's width at its start.
-    pub fn first_rect(&self, range: Range<usize>) -> Rect {
-        let mut first: Option<Rect> = None;
+    /// The box of the first line of bytes `range`, from its first character to its
+    /// last one on that line, and the bytes that box covers (all of `range` only when
+    /// it fits on one line). An empty range is a caret's width at its start.
+    pub fn first_rect(&self, range: Range<usize>) -> (Rect, Range<usize>) {
+        let mut first: Option<(Rect, Range<usize>)> = None;
         for (bytes, rect) in &self.clusters {
             if range.is_empty() {
                 if bytes.start >= range.start {
-                    return Rect::new(rect.x, rect.y, 0.0, rect.height);
+                    return (Rect::new(rect.x, rect.y, 0.0, rect.height), range);
                 }
                 continue;
             }
@@ -90,18 +102,25 @@ impl ImeContext {
                 continue;
             }
             match &mut first {
-                None => first = Some(*rect),
-                Some(line) if rect.y == line.y => *line = line.union(rect),
+                None => first = Some((*rect, bytes.start.max(range.start)..bytes.end)),
+                Some((line, covered)) if rect.y == line.y => {
+                    *line = line.union(rect);
+                    covered.end = bytes.end;
+                }
                 Some(_) => break,
             }
         }
-        first.unwrap_or_else(|| match self.clusters.last() {
+        if let Some((rect, covered)) = first {
+            return (rect, covered.start..covered.end.min(range.end));
+        }
+        let rect = match self.clusters.last() {
             // At the end of the text: just after the last character.
             Some((bytes, rect)) if range.start >= bytes.end => {
                 Rect::new(rect.right(), rect.y, 0.0, rect.height)
             }
             _ => self.caret,
-        })
+        };
+        (rect, range.start..range.start)
     }
 
     /// The byte index of the character under `pos`, or `None` when no character is
@@ -140,12 +159,13 @@ mod tests {
         let layout = text.create(shown, TextStyle::new(14.0), None);
         let origin = Point::new(10.0, 20.0);
         // "line" is selected.
-        let context = ImeContext::of_layout(&text, layout, shown, 13..17, None, origin);
+        let context = ImeContext::of_layout(&text, layout, (shown, 0), 13..17, None, origin);
         assert_eq!(context.text, "second line");
         assert_eq!(context.base, 6);
         assert_eq!(context.selection, 7..11);
         assert_eq!(context.clusters.len(), "second line".len());
-        let line = context.first_rect(7..11);
+        let (line, covered) = context.first_rect(7..11);
+        assert_eq!(covered, 7..11);
         let caret = |i| text.caret(layout, i);
         assert_eq!(line.x, origin.x + caret(13).x);
         assert_eq!(line.right(), origin.x + caret(17).x);
@@ -154,7 +174,7 @@ mod tests {
         assert_eq!(context.index_at(middle), Some(9));
         assert_eq!(context.index_at(Point::new(-50.0, -50.0)), None);
         // An empty range at the end sits after the last character.
-        let end = context.first_rect(11..11);
+        let (end, _) = context.first_rect(11..11);
         assert_eq!(end.x, origin.x + caret(17).x);
         assert_eq!(end.width, 0.0);
     }
@@ -165,8 +185,14 @@ mod tests {
         let shown = "あ".repeat(3000);
         let layout = text.create(&shown, TextStyle::new(14.0), None);
         let caret = 3 * 1500;
-        let context =
-            ImeContext::of_layout(&text, layout, &shown, caret..caret, None, Point::default());
+        let context = ImeContext::of_layout(
+            &text,
+            layout,
+            (&shown, 0),
+            caret..caret,
+            None,
+            Point::default(),
+        );
         assert!(context.text.len() <= 2 * REACH);
         assert_eq!(context.base + context.selection.start, caret);
         assert!(shown.is_char_boundary(context.base));

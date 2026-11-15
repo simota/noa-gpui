@@ -205,7 +205,7 @@ impl SecondaryWindow {
             self.screen.text_input_area(),
         );
         #[cfg(target_os = "macos")]
-        crate::app::sync_ime_context(&self.window, self.screen.as_ref(), text);
+        crate::app::sync_ime_context(&self.window, self.screen.as_ref(), text, changed);
         crate::app::sync_cursor(&self.window, &mut self.cursor, self.screen.tree().cursor());
         let animating = self.screen.tree().wants_animation_frame();
         if !self.needs_present {

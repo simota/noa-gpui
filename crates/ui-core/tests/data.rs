@@ -2358,6 +2358,34 @@ fn rule_rows_are_added_removed_and_typed_into() {
     assert_eq!(rules(&h, e).len(), 1);
 }
 
+/// Reconversion in a rule's value: the input method selects the word it converts
+/// again, and the result takes its place.
+#[test]
+fn a_rule_value_can_be_converted_again() {
+    let mut h = Harness::new();
+    let e = h.add(RuleEditor::new(fields(), 560.0));
+    h.tree.set_focus(Some(e));
+    h.type_text("にほんご です");
+    let context = h
+        .tree
+        .ime_context(&h.text)
+        .expect("the value field answers");
+    assert_eq!(context.text, "にほんご です");
+    let word = context.base..context.base + "にほんご".len();
+    h.tree.dispatch(Event::ImeSelect(word), &mut h.text);
+    h.prepare();
+    h.tree.dispatch(
+        Event::Composition {
+            text: "日本語".into(),
+            cursor: None,
+        },
+        &mut h.text,
+    );
+    h.prepare();
+    h.type_text("日本語");
+    assert_eq!(rules(&h, e)[0].value, "日本語 です");
+}
+
 #[test]
 fn rule_popups_choose_fields_operators_by_kind_and_all_or_any() {
     let mut h = Harness::new();

@@ -571,7 +571,7 @@ impl App {
         }
         sync_ime(&window, &mut self.ime_area, screen.text_input_area());
         #[cfg(all(feature = "native", target_os = "macos"))]
-        sync_ime_context(&window, screen.as_ref(), &self.text);
+        sync_ime_context(&window, screen.as_ref(), &self.text, changed);
         #[cfg(target_arch = "wasm32")]
         if let Some(web_ime) = &mut self.web_ime {
             web_ime.sync(screen.text_input_area());
@@ -1118,9 +1118,18 @@ fn on_a_monitor(event_loop: &ActiveEventLoop, (x, y): (i32, i32)) -> bool {
 }
 
 /// Keep what the input method may ask about the focused text of `window`, while it
-/// takes text.
+/// takes text. Only after a frame that `changed` something: finding the characters
+/// costs time in proportion to the text's lines.
 #[cfg(all(feature = "native", target_os = "macos"))]
-pub(crate) fn sync_ime_context(window: &Window, screen: &dyn Screen, text: &TextStore) {
+pub(crate) fn sync_ime_context(
+    window: &Window,
+    screen: &dyn Screen,
+    text: &TextStore,
+    changed: bool,
+) {
+    if !changed && crate::ime_macos::is_synced(window) {
+        return;
+    }
     let context = screen
         .text_input_area()
         .and_then(|_| screen.ime_context(text));

@@ -252,10 +252,22 @@ impl TextLayouts {
     /// candidate window or to find the character under the pointer.
     pub fn clusters(&self, id: TextLayoutId, range: Range<usize>) -> Vec<(Range<usize>, Rect)> {
         let layout = self.get(id);
-        let starts = layout.paragraph_starts();
+        let lines = &layout.buffer.lines;
+        // Paragraph starts, counted up as the runs reach them: the paragraphs before
+        // `range` cost an addition each, and those after it nothing.
+        let (mut line, mut base) = (0, 0);
         let mut clusters = Vec::new();
         for run in layout.buffer.layout_runs() {
-            let base = starts[run.line_i];
+            while line < run.line_i {
+                base += lines[line].text().len() + lines[line].ending().as_str().len();
+                line += 1;
+            }
+            if base > range.end {
+                break;
+            }
+            if base + lines[line].text().len() < range.start {
+                continue;
+            }
             for glyph in run.glyphs {
                 let bytes = base + glyph.start..base + glyph.end;
                 if bytes.end <= range.start || bytes.start >= range.end {
