@@ -48,6 +48,17 @@ pub enum FileDialogResult {
     Cancelled,
 }
 
+/// A move or resize of the window the OS carries out, following the pointer until the
+/// button is released: for a title bar or border the screen draws itself (see
+/// [`crate::AppOptions::decorations`]).
+#[cfg(feature = "native")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WindowDrag {
+    Move,
+    /// From the given edge or corner.
+    Resize(winit::window::ResizeDirection),
+}
+
 /// A question a screen wants asked in the OS's own alert (`NSAlert` on macOS, a task
 /// dialog on Windows, zenity on Linux): a confirm and a cancel button, such as
 /// "Delete" and "Cancel".
@@ -114,6 +125,15 @@ pub trait Screen {
     /// Windows to open, collected since the last call.
     #[cfg(feature = "native")]
     fn take_window_requests(&mut self) -> Vec<WindowRequest> {
+        Vec::new()
+    }
+
+    /// Window moves and resizes to start, collected since the last call. Read right
+    /// after each input event, so ask for one while handling a pointer press: the OS
+    /// starts it only while the button is down. The OS then takes the pointer, so the
+    /// widget pressed may not see the release.
+    #[cfg(feature = "native")]
+    fn take_window_drags(&mut self) -> Vec<WindowDrag> {
         Vec::new()
     }
 

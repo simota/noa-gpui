@@ -49,7 +49,7 @@ pub use pty::Pty;
 #[cfg(feature = "native")]
 pub use screen::{
     AlertLevel, AlertRequest, AlertResult, Detached, FileDialogRequest, FileDialogResult,
-    WindowRequest,
+    WindowDrag, WindowRequest,
 };
 pub use screen::{Screen, advance, replay};
 #[cfg(feature = "native")]

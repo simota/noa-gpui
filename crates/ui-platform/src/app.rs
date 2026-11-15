@@ -29,6 +29,10 @@ pub struct AppOptions {
     /// icon). It ends when the screen
     /// [wants to close](Screen::wants_close). Off by default: closing ends it.
     pub keep_running: bool,
+    /// Desktop: the OS draws the main window's title bar and borders. Off, the screen
+    /// draws its own and moves and resizes the window through
+    /// [`Screen::take_window_drags`]. On by default.
+    pub decorations: bool,
 }
 
 impl AppOptions {
@@ -41,7 +45,19 @@ impl AppOptions {
             version: None,
             size: (1280.0, 800.0),
             keep_running: false,
+            decorations: true,
         }
+    }
+
+    /// The main window as these options describe it, before a saved size and position
+    /// replace theirs.
+    fn window_attributes(&self) -> winit::window::WindowAttributes {
+        let attributes = Window::default_attributes().with_title(&self.title);
+        #[cfg(not(target_arch = "wasm32"))]
+        let attributes = attributes
+            .with_inner_size(winit::dpi::LogicalSize::new(self.size.0, self.size.1))
+            .with_decorations(self.decorations);
+        attributes
     }
 }
 
@@ -407,17 +423,12 @@ impl App {
         &self,
         #[cfg_attr(not(feature = "native"), expect(unused_variables))] event_loop: &ActiveEventLoop,
     ) -> winit::window::WindowAttributes {
-        let attributes = Window::default_attributes().with_title(&self.options.title);
+        let attributes = self.options.window_attributes();
         #[cfg(target_arch = "wasm32")]
         let attributes = {
             use winit::platform::web::WindowAttributesExtWebSys;
             attributes.with_canvas(Some(self.canvas.clone()))
         };
-        #[cfg(not(target_arch = "wasm32"))]
-        let attributes = attributes.with_inner_size(winit::dpi::LogicalSize::new(
-            self.options.size.0,
-            self.options.size.1,
-        ));
         #[cfg(feature = "native")]
         let attributes = match self.saved_main_window() {
             Some(saved) => {
@@ -806,6 +817,8 @@ impl App {
             }
             gfx.screen.dispatch(event, &mut self.text);
         }
+        #[cfg(feature = "native")]
+        start_window_drags(window, gfx.screen.as_mut());
         // The outline follows the pointer, and turning the inspector on or off redraws.
         if inspecting || self.inspector.as_ref().is_some_and(|i| i.is_active()) {
             self.needs_present = true;
@@ -1105,6 +1118,33 @@ fn on_a_monitor(event_loop: &ActiveEventLoop, (x, y): (i32, i32)) -> bool {
     })
 }
 
+/// Let the OS move or resize `window` as the screen asked, following the pointer until
+/// the button is released. Call it while the press that asked is being handled.
+#[cfg(feature = "native")]
+pub(crate) fn start_window_drags(window: &Window, screen: &mut dyn Screen) {
+    use crate::screen::WindowDrag;
+    start_window_drags_with(screen, |drag| {
+        match drag {
+            WindowDrag::Move => window.drag_window(),
+            WindowDrag::Resize(direction) => window.drag_resize_window(direction),
+        }
+        .map_err(|e| e.to_string())
+    });
+}
+
+/// Hand each move or resize the screen asked for to `start`, which asks the OS.
+#[cfg(feature = "native")]
+fn start_window_drags_with(
+    screen: &mut dyn Screen,
+    mut start: impl FnMut(crate::screen::WindowDrag) -> Result<(), String>,
+) {
+    for drag in screen.take_window_drags() {
+        if let Err(error) = start(drag) {
+            log::debug!("cannot {drag:?} the window: {error}");
+        }
+    }
+}
+
 /// The answer to `request` from what rfd reports: the confirm button's label, or OK
 /// where the labels could not be set (Windows without common controls 6).
 #[cfg(all(
@@ -1128,6 +1168,105 @@ fn alert_result(
 #[cfg(test)]
 mod tests {
     use super::visibility_change;
+
+    /// A title bar the screen draws: a press asks the OS to move the window.
+    #[cfg(feature = "native")]
+    #[test]
+    fn a_drag_asked_for_on_a_press_starts_right_after_it() {
+        use crate::screen::{Screen, WindowDrag};
+        use noa_gpui_core::widgets::Container;
+        use noa_gpui_core::{Event, EventCx, Message, PaintCx, PointerButton, UiTree, Widget};
+        use noa_gpui_scene::Point;
+        use noa_gpui_text::{FontOptions, TextStore};
+        use winit::window::ResizeDirection;
+
+        struct TitleBar;
+        struct Pressed(Point);
+        impl Widget for TitleBar {
+            fn style(&self) -> noa_gpui_core::Style {
+                noa_gpui_core::Style {
+                    size: noa_gpui_core::style::Size {
+                        width: noa_gpui_core::style::length(200.0),
+                        height: noa_gpui_core::style::length(28.0),
+                    },
+                    ..Default::default()
+                }
+            }
+            fn paint(&mut self, _cx: &mut PaintCx) {}
+            fn event(&mut self, cx: &mut EventCx, event: &Event) {
+                if let Event::PointerDown { pos, .. } = event {
+                    cx.emit(Pressed(cx.local(*pos)));
+                    cx.set_handled();
+                }
+            }
+        }
+        struct Window {
+            tree: UiTree,
+            drags: Vec<WindowDrag>,
+        }
+        impl Screen for Window {
+            fn tree(&self) -> &UiTree {
+                &self.tree
+            }
+            fn tree_mut(&mut self) -> &mut UiTree {
+                &mut self.tree
+            }
+            fn handle(&mut self, message: Message, _text: &mut TextStore) {
+                if let Some(Pressed(at)) = message.downcast_ref::<Pressed>() {
+                    // The right end resizes, the rest moves.
+                    self.drags.push(if at.x > 190.0 {
+                        WindowDrag::Resize(ResizeDirection::East)
+                    } else {
+                        WindowDrag::Move
+                    });
+                }
+            }
+            fn take_window_drags(&mut self) -> Vec<WindowDrag> {
+                std::mem::take(&mut self.drags)
+            }
+        }
+
+        let mut text = TextStore::new(FontOptions {
+            locale: "en-US".into(),
+            load_system_fonts: false,
+        });
+        let mut tree = UiTree::new();
+        let root = tree.insert(None, Container::new(Default::default()));
+        tree.insert(Some(root), TitleBar);
+        tree.prepare(noa_gpui_scene::Size::new(400.0, 300.0), &mut text);
+        let mut screen = Window {
+            tree,
+            drags: Vec::new(),
+        };
+        let mut started = Vec::new();
+        for x in [20.0, 195.0] {
+            let pos = Point::new(x, 10.0);
+            let button = PointerButton::Primary;
+            screen.dispatch(Event::PointerDown { pos, button }, &mut text);
+            super::start_window_drags_with(&mut screen, |drag| {
+                started.push(drag);
+                Ok(())
+            });
+        }
+        assert_eq!(
+            started,
+            [WindowDrag::Move, WindowDrag::Resize(ResizeDirection::East)]
+        );
+        // Each was taken once.
+        super::start_window_drags_with(&mut screen, |drag| panic!("{drag:?} again"));
+    }
+
+    #[test]
+    fn the_os_decorates_the_main_window_unless_told_otherwise() {
+        let options = super::AppOptions::new("Test");
+        assert!(options.decorations);
+        assert!(options.window_attributes().decorations);
+        let bare = super::AppOptions {
+            decorations: false,
+            ..options
+        };
+        assert!(!bare.window_attributes().decorations);
+    }
 
     #[cfg(all(
         feature = "native",
