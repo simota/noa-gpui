@@ -5,6 +5,7 @@ pub mod animation;
 pub mod clipboard;
 pub mod date;
 pub mod event;
+pub mod inspect;
 pub mod invalidation;
 pub mod kana;
 pub mod overlay;
@@ -26,8 +27,8 @@ pub use noa_gpui_layout::{MeasureInput, Style, style};
 pub use overlay::{Edge, OverlayDismissed, OverlayOptions, Placement, WindowCorner};
 pub use shortcut::{Shortcut, ShortcutPressed};
 pub use styling::{
-    Length, StyleError, StyleMeta, StyleNode, StylePatch, StyleSheet, StyleState, StyleTree,
-    TextProperty,
+    Length, MatchedRule, StyleError, StyleMeta, StyleNode, StylePatch, StyleSheet, StyleState,
+    StyleTree, TextProperty,
 };
 pub use theme::{Appearance, Corner, Design, Paint, Role, Theme};
 pub use tree::{ACCESS_ROOT, Subtree, UiTree, UpdateStats, WidgetId, access_id, access_item_id};

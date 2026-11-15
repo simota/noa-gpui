@@ -141,6 +141,8 @@ pub struct App {
     stylesheet: Option<crate::stylesheet::StyleSheetWatcher>,
     #[cfg(feature = "native")]
     view_state: Option<(crate::ViewStateFile, noa_gpui_core::ViewState)>,
+    /// Shows what the widget under the pointer is (see [`App::inspector`]).
+    inspector: Option<crate::inspector::Inspector>,
     /// Where the main window's input is written (see [`App::record_input`]).
     #[cfg(feature = "native")]
     recorder: Option<InputRecorder>,
@@ -216,6 +218,7 @@ impl App {
             stylesheet: None,
             #[cfg(feature = "native")]
             view_state: None,
+            inspector: None,
             #[cfg(feature = "native")]
             recorder: None,
         }
@@ -255,6 +258,16 @@ impl App {
             path,
             self.waker.clone(),
         ));
+        self
+    }
+
+    /// Let ⇧⌘I (Ctrl+Shift+I on Windows, Linux and the Web) turn on an inspector over
+    /// the main window: the widget under the pointer is outlined and a panel names it
+    /// as a selector would, with its state, frame, ancestors and the style rules that
+    /// apply (see [`noa_gpui_core::inspect`]). A click pins a widget instead of reaching
+    /// the app; Escape unpins, then closes. Meant for development builds.
+    pub fn inspector(mut self, enabled: bool) -> Self {
+        self.inspector = enabled.then(crate::inspector::Inspector::new);
         self
     }
 
@@ -519,13 +532,16 @@ impl App {
             }
             return;
         }
-        if let Err(e) = renderer.prepare(
-            &ctx.device,
-            &ctx.queue,
-            screen.display_list(),
-            &mut self.text,
-            viewport,
-        ) {
+        let list = match &mut self.inspector {
+            Some(inspector) if inspector.is_active() => inspector.compose(
+                screen.display_list(),
+                screen.tree(),
+                &mut self.text,
+                viewport.logical_size(),
+            ),
+            _ => screen.display_list(),
+        };
+        if let Err(e) = renderer.prepare(&ctx.device, &ctx.queue, list, &mut self.text, viewport) {
             log::error!("{e}");
             return;
         }
@@ -733,8 +749,19 @@ impl App {
         if self.recorder.is_some() && !gfx.screen.tree().is_recording() {
             gfx.screen.tree_mut().start_recording();
         }
+        let inspecting = self.inspector.as_ref().is_some_and(|i| i.is_active());
         for event in events {
+            if let Some(inspector) = &mut self.inspector
+                && inspector.filter(&event, gfx.screen.tree())
+            {
+                continue;
+            }
             gfx.screen.dispatch(event, &mut self.text);
+        }
+        // The outline follows the pointer, and turning the inspector on or off redraws.
+        if inspecting || self.inspector.as_ref().is_some_and(|i| i.is_active()) {
+            self.needs_present = true;
+            window.request_redraw();
         }
         #[cfg(feature = "native")]
         if let Some(recorder) = &mut self.recorder {

@@ -1511,6 +1511,11 @@ impl UiTree {
     }
 
     /// Inline declarations outrank matching rules.
+    pub fn has_inline_style(&self, id: WidgetId) -> bool {
+        self.node(id)
+            .is_some_and(|node| node.inline_style.is_some())
+    }
+
     pub fn set_inline_style(&mut self, id: WidgetId, style: StylePatch) {
         let Some(node) = self.node_mut(id) else {
             return;
@@ -2297,6 +2302,16 @@ impl UiTree {
     /// Overlays are tested first, topmost first; below a modal overlay nothing else is
     /// reachable (the modal overlay's root receives the event instead).
     pub fn hit_test(&self, pos: Point) -> Option<WidgetId> {
+        self.hit_test_with(pos, false)
+    }
+
+    /// [`UiTree::hit_test`], but disabled widgets count too, for pointing at them in an
+    /// inspector (where their `:disabled` styles matter).
+    pub fn hit_test_including_disabled(&self, pos: Point) -> Option<WidgetId> {
+        self.hit_test_with(pos, true)
+    }
+
+    fn hit_test_with(&self, pos: Point, disabled: bool) -> Option<WidgetId> {
         let root = self.root?;
         let viewport = self.viewport?;
         let window = Rect::new(0.0, 0.0, viewport.width, viewport.height);
@@ -2304,14 +2319,21 @@ impl UiTree {
             if overlay.options.pass_through {
                 continue;
             }
-            if let Some(found) = hit(&self.slots, overlay.root, Point::default(), window, pos) {
+            if let Some(found) = hit(
+                &self.slots,
+                overlay.root,
+                Point::default(),
+                window,
+                pos,
+                disabled,
+            ) {
                 return Some(found);
             }
             if overlay.options.modal {
                 return Some(overlay.root);
             }
         }
-        hit(&self.slots, root, Point::default(), window, pos)
+        hit(&self.slots, root, Point::default(), window, pos, disabled)
     }
 
     /// In window coordinates.
@@ -3467,12 +3489,14 @@ fn hit(
     parent_origin: Point,
     clip: Rect,
     pos: Point,
+    // Whether disabled widgets (and what is inside them) can be hit.
+    disabled: bool,
 ) -> Option<WidgetId> {
     let node = node_at(slots, id);
     let x = parent_origin.x + node.layout.rect.x;
     let y = parent_origin.y + node.layout.rect.y;
     let own = Rect::new(x, y, node.layout.rect.width, node.layout.rect.height);
-    if !node.enabled
+    if (!node.enabled && !disabled)
         || node.is_hidden()
         || !node.subtree_bounds.translate(x, y).contains(pos)
         || !clip.contains(pos)
@@ -3505,10 +3529,11 @@ fn hit(
         if node.widget.focus_scope()
             && let Some(modal) = modal_child_of(slots, node)
         {
-            return hit(slots, modal, origin, child_clip, pos).or(own.contains(pos).then_some(id));
+            return hit(slots, modal, origin, child_clip, pos, disabled)
+                .or(own.contains(pos).then_some(id));
         }
         for &child in node.children[band].iter().rev() {
-            if let Some(found) = hit(slots, child, origin, child_clip, pos) {
+            if let Some(found) = hit(slots, child, origin, child_clip, pos, disabled) {
                 return Some(found);
             }
         }

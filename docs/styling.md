@@ -123,6 +123,8 @@ App::new(options, build)
 
 Watching runs on a separate thread and checks the file's modification time and length every 250ms (no additional dependencies). A changed file is read once it has stayed unchanged until the next check (so that it does not read an empty file while an editor is emptying and rewriting it). If the contents are the same, it is not reloaded. For screens other than the main one, or to decide how to apply it yourself, use `StyleSheetWatcher` directly and `take` in `Screen::woken`.
 
+To see why a widget looks as it does, turn on the inspector (`App::inspector(true)`, then ⇧⌘I / Ctrl+Shift+I) and point at it: the panel lists the rules that apply, weakest first, as written in the sheet. In code, `StyleSheet::matching_rules(tree, id)` returns the same list, and `UiTree::inspect(id)` adds the widget's selector, state and frame.
+
 ```rust
 let watcher = StyleSheetWatcher::new("panel.noa.css", setup.waker.clone());
 // Inside Screen::woken
