@@ -2,17 +2,17 @@ use noa_gpui_core::widgets::{
     Button, ButtonClicked, CollectionItem, CollectionView, ComboBox, DatePicker, DatePickerStyle,
     DateRangeChanged, FIND_SHORTCUT, FindBar, FormField, InlineEditableLabel, ItemRenamed,
     LabelEdited, LabelPosition, NumberInput, OutlineItem, OutlineView, RangeChanged,
-    SecureTextField, ShortcutChanged, ShortcutRecorder, Slider, TextChanged, TextField, TextView,
-    TokenField, TokensChanged, ValueChanged, drive_find,
+    ReadingChanged, SecureTextField, ShortcutChanged, ShortcutRecorder, Slider, TextChanged,
+    TextField, TextView, TokenField, TokensChanged, ValueChanged, drive_find,
 };
-use noa_gpui_core::{DateTime, Message, Role, Shortcut, ShortcutPressed, WidgetId};
+use noa_gpui_core::{DateTime, Message, Role, Shortcut, ShortcutPressed, WidgetId, kana};
 use noa_gpui_scene::Color;
 
 use super::kit::{Kit, row_style};
 use super::{Demo, DemoCx, SectionSpec};
 use noa_gpui_core::widgets::{Container, Label};
 
-pub const SECTIONS: [SectionSpec; 8] = [
+pub const SECTIONS: [SectionSpec; 9] = [
     SectionSpec {
         title: "Number input",
         description: "A number typed into a field, read when committed (Return, Tab, \
@@ -73,6 +73,15 @@ pub const SECTIONS: [SectionSpec; 8] = [
                       from a fixed list or be fetched for each query; with multiple \
                       selection, ⌘Return or the check boxes pick several.",
         build: completions,
+    },
+    SectionSpec {
+        title: "Furigana",
+        description: "A name field captures the reading typed into the IME before each \
+                      conversion and fills the furigana field in katakana as you type \
+                      (type a name with a Japanese input method). The code field \
+                      normalizes widths: full-width letters and digits become half-width, \
+                      half-width katakana become full-width. Emits ReadingChanged.",
+        build: furigana,
     },
 ];
 
@@ -520,4 +529,67 @@ fn completions(kit: &mut Kit) -> Box<dyn Demo> {
     kit.tree.set_accessible_label(combo, "Favorite fruits");
     echo.watch(kit, card, combo);
     Box::new(echo)
+}
+
+struct FuriganaDemo {
+    name: WidgetId,
+    furigana: WidgetId,
+    code: WidgetId,
+}
+
+impl Demo for FuriganaDemo {
+    fn handle(&mut self, cx: &mut DemoCx, message: &Message) -> bool {
+        if message.source == self.name
+            && let Some(ReadingChanged(reading)) = message.downcast_ref()
+        {
+            let furigana = kana::to_katakana(reading);
+            cx.tree
+                .update::<TextField, _>(self.furigana, |f, cx| f.set_text(cx, furigana));
+            return true;
+        }
+        if message.source == self.code
+            && let Some(TextChanged(text)) = message.downcast_ref()
+        {
+            let normalized = kana::normalize_width(text);
+            if &normalized != text {
+                cx.tree
+                    .update::<TextField, _>(self.code, |f, cx| f.set_text(cx, normalized));
+            }
+            return true;
+        }
+        false
+    }
+}
+
+fn furigana(kit: &mut Kit) -> Box<dyn Demo> {
+    let card = kit.card("TextField::new(\"…\", 200.0).capture_reading(true)");
+    let form = kit.tree.insert(
+        Some(card),
+        FormField::new("氏名").label_position(LabelPosition::Leading(80.0)),
+    );
+    let name = kit.tree.insert(
+        Some(form),
+        TextField::new("山田 太郎", 200.0).capture_reading(true),
+    );
+    let form = kit.tree.insert(
+        Some(card),
+        FormField::new("フリガナ").label_position(LabelPosition::Leading(80.0)),
+    );
+    let furigana = kit
+        .tree
+        .insert(Some(form), TextField::new("ヤマダ タロウ", 200.0));
+
+    let card = kit.card("kana::normalize_width(text)");
+    let form = kit.tree.insert(
+        Some(card),
+        FormField::new("Code")
+            .label_position(LabelPosition::Leading(80.0))
+            .help("Try ＡＢＣ１２３ or ｶﾞｯｺｳ"),
+    );
+    let code = kit.tree.insert(Some(form), TextField::new("", 200.0));
+    Box::new(FuriganaDemo {
+        name,
+        furigana,
+        code,
+    })
 }

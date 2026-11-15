@@ -6,6 +6,7 @@ pub mod clipboard;
 pub mod date;
 pub mod event;
 pub mod invalidation;
+pub mod kana;
 pub mod overlay;
 pub mod shortcut;
 pub mod styling;

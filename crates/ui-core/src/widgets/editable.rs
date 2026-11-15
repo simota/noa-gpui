@@ -19,6 +19,44 @@ pub struct TextChanged(pub String);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TextSubmitted(pub String);
 
+/// Emitted by a [`super::TextField`] that captures readings
+/// ([`super::TextField::capture_reading`]) when its reading changes: the kana typed
+/// into the IME before conversion, for every committed piece of the text, as typed
+/// (usually hiragana). [`crate::kana::to_katakana`] gives the フリガナ form.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReadingChanged(pub String);
+
+/// The reading of the committed text, collected from IME compositions.
+#[derive(Debug, Default)]
+pub(crate) struct Reading {
+    pub text: String,
+    /// The last composition that was only kana: the reading of the next commit.
+    pending: Option<String>,
+}
+
+impl Reading {
+    /// A composition of kana, possibly with spaces between words (a family and a given
+    /// name), is the reading of what it will be converted to.
+    fn composed(&mut self, composition: &str) {
+        let words = composition
+            .split([' ', '\u{3000}'])
+            .filter(|w| !w.is_empty());
+        let mut words = words.peekable();
+        if words.peek().is_some() && words.all(crate::kana::is_kana) {
+            self.pending = Some(composition.to_owned());
+        }
+    }
+
+    /// The reading of `committed`: the kana composed before it was converted, or the
+    /// text itself when it was typed as kana. ASCII typed directly has no reading.
+    fn committed(&mut self, committed: &str) -> Option<String> {
+        match self.pending.take() {
+            Some(kana) if !committed.is_ascii() => Some(kana),
+            _ => crate::kana::is_kana(committed).then(|| committed.to_owned()),
+        }
+    }
+}
+
 const BULLET: &str = "\u{2022}";
 
 /// Seconds within which a second press counts as a double click.
@@ -54,6 +92,8 @@ pub(crate) struct Editable {
     base_style: TextStyle,
     /// The stylesheet's `color` for the typed text (the placeholder stays muted).
     pub text_color: Option<crate::theme::Paint>,
+    /// `Some` when the reading of the text is captured from the IME.
+    pub reading: Option<Reading>,
 }
 
 impl Editable {
@@ -84,6 +124,7 @@ impl Editable {
             current_spans: Vec::new(),
             base_style: style,
             text_color: None,
+            reading: None,
         }
     }
 
@@ -219,10 +260,14 @@ impl Editable {
     }
 
     /// `origin` is the text layout's origin in widget coordinates. Emits [`TextChanged`]
-    /// when the content changed.
+    /// when the content changed, and [`ReadingChanged`] when the captured reading did.
     pub fn event(&mut self, cx: &mut EventCx, event: &Event, origin: Point) {
+        let reading_before = self.reading.as_ref().map(|r| r.text.len());
         let changed = match event {
             Event::FocusChanged(false) => {
+                if let Some(reading) = &mut self.reading {
+                    reading.pending = None;
+                }
                 if !self.preedit.is_empty() {
                     self.preedit.clear();
                     cx.request_layout();
@@ -288,11 +333,18 @@ impl Editable {
                 self.preedit.clear();
                 self.preedit_cursor = None;
                 self.goal_x = None;
+                let piece = self.reading.as_mut().and_then(|r| r.committed(input));
                 let changed = self.editor.insert(input);
+                if let (true, Some(piece), Some(reading)) = (changed, piece, &mut self.reading) {
+                    reading.text.push_str(&piece);
+                }
                 cx.set_handled();
                 changed
             }
             Event::Composition { text, cursor } => {
+                if let Some(reading) = &mut self.reading {
+                    reading.composed(text);
+                }
                 self.preedit = text.clone();
                 self.preedit_cursor = cursor.filter(|(start, end)| {
                     *start <= *end && text.is_char_boundary(*start) && text.is_char_boundary(*end)
@@ -341,6 +393,9 @@ impl Editable {
                 if !outcome.handled {
                     return;
                 }
+                if let Some(reading) = &mut self.reading {
+                    reading.pending = None;
+                }
                 self.goal_x = None;
                 cx.set_handled();
                 outcome.changed
@@ -350,6 +405,14 @@ impl Editable {
         cx.request_layout();
         if changed {
             cx.emit(TextChanged(self.editor.text().to_owned()));
+            if let Some(reading) = &mut self.reading {
+                if self.editor.text().is_empty() {
+                    reading.text.clear();
+                }
+                if reading_before != Some(reading.text.len()) {
+                    cx.emit(ReadingChanged(reading.text.clone()));
+                }
+            }
         }
     }
 
