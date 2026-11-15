@@ -186,6 +186,9 @@ pub enum CellLook {
     /// one emits [`CellActionClicked`] and leaves the selection as it is; a click beside
     /// them selects the row as usual.
     Buttons,
+    /// A placeholder bar instead of the text, for a row that is still being loaded
+    /// (see [`super::RemoteRows`]). Read as "Loading" by assistive technology.
+    Loading,
 }
 
 /// Emitted when a [`CellLook::Button`] cell was clicked: the data row and column.
@@ -754,6 +757,9 @@ pub struct TableView {
     group_at: Vec<usize>,
     floats_group_rows: bool,
     sort: Option<(usize, bool)>,
+    /// Whether the table orders the rows itself when sorted (see
+    /// [`TableView::sorts_rows`]).
+    sorts_rows: bool,
     selection: Selection,
     checkboxes: bool,
     scroller: Scroller,
@@ -841,6 +847,7 @@ impl TableView {
             group_at: Vec::new(),
             floats_group_rows: true,
             sort: None,
+            sorts_rows: true,
             selection: Selection::new(SelectionMode::Multiple, rows),
             checkboxes: false,
             scroller,
@@ -1578,6 +1585,41 @@ impl TableView {
     }
 
     /// Sort by `column` as a header click would, without emitting [`SortChanged`].
+    /// Whether a click on a sortable header orders the rows (the default). Off, the
+    /// header still shows the sort and [`SortChanged`] is emitted, but the rows stay in
+    /// the data's order: for data sorted elsewhere, such as rows a server returns in
+    /// the order asked for (see [`super::RemoteRows`]), where sorting here would read
+    /// every row.
+    pub fn sorts_rows(mut self, sorts: bool) -> Self {
+        self.sorts_rows = sorts;
+        self
+    }
+
+    /// The data changed behind the table's back, through state it shares with the app
+    /// (see [`super::RemoteRows`]): draw the cells again. When the row count or the
+    /// group rows changed, the rows are taken again as by [`TableView::set_data`],
+    /// keeping the scroll position as far as the rows allow.
+    pub fn data_changed(&mut self, cx: &mut UpdateCx) {
+        let rows = self.data.row_count();
+        let same = rows == self.groups.len()
+            && (0..rows).all(|r| self.data.is_group_row(r) == self.groups[r]);
+        if !same {
+            self.all = (0..rows).collect();
+            self.groups = (0..rows).map(|r| self.data.is_group_row(r)).collect();
+            self.selection.resize(rows);
+            self.selection.set(None);
+            self.editor.cancel();
+            self.cell_focus = None;
+            self.cell_anchor = None;
+            self.pending_reveal = None;
+            self.history.clear();
+            self.apply_sort();
+            self.refilter();
+            cx.request_layout();
+        }
+        cx.request_paint();
+    }
+
     pub fn sort_by(&mut self, cx: &mut UpdateCx, column: usize, ascending: bool) {
         if column < self.columns.len() {
             self.sort = Some((column, ascending));
@@ -1965,6 +2007,9 @@ impl TableView {
         let Some((column, ascending)) = self.sort else {
             return;
         };
+        if !self.sorts_rows {
+            return;
+        }
         let data = &*self.data;
         let groups = &self.groups;
         // Rows are sorted within their groups; group rows stay where they are.
@@ -2218,8 +2263,10 @@ impl TableView {
     }
 
     fn accessible_cell_text(&self, row: usize, column: usize) -> String {
-        if self.data.cell_look(row, column) != CellLook::Buttons {
-            return self.cell_text(row, column, " ");
+        match self.data.cell_look(row, column) {
+            CellLook::Buttons => {}
+            CellLook::Loading => return "Loading".to_owned(),
+            _ => return self.cell_text(row, column, " "),
         }
         let buttons = self.data.cell_buttons(row, column);
         let names: Vec<&str> = buttons.iter().filter_map(CellButton::name).collect();
@@ -3076,6 +3123,19 @@ impl TableView {
             self.paint_buttons(cx, spot, left, selected, colors, style);
             return;
         }
+        if look == CellLook::Loading {
+            let room = (right - left - 2.0 * self.cell_pad).max(0.0);
+            let height = (rh * 0.3).round().max(4.0);
+            let bar = Rect::new(
+                left + self.cell_pad,
+                y + (rh - height) / 2.0,
+                (room * 0.6).round(),
+                height,
+            );
+            let fill = colors.ink.with_alpha(0.12);
+            cx.rounded_rect(bar, height / 2.0, fill, Border::default());
+            return;
+        }
         let text = self.data.cell(id, c);
         let inset = match look {
             CellLook::Badge(_) | CellLook::OutlinedBadge(_) | CellLook::StrongOutlinedBadge(_) => {
@@ -3180,7 +3240,7 @@ impl TableView {
             {
                 colors.selected_ink
             }
-            CellLook::Text | CellLook::Buttons => colors.ink,
+            CellLook::Text | CellLook::Buttons | CellLook::Loading => colors.ink,
             CellLook::Colored(tone) => tone.ink(cx),
             CellLook::Badge(tone) => {
                 let h = (size.height + 2.0).min(rh - 4.0);

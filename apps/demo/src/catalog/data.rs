@@ -7,9 +7,10 @@ use noa_gpui_core::widgets::{
     ChartPointActivated, ChartSeries, CollectionItem, CollectionView, ColumnAlign, ColumnSort,
     ColumnVisibilityChanged, Container, DescriptionList, DescriptionListParts, GroupActionClicked,
     GroupRowClicked, Grouping, ItemExpanded, ItemRenamed, ItemsMoved, Label, NumberInput,
-    OutlineItem, OutlineView, PropertyGrid, PropertyValue, RowActivated, RowSelectionChanged,
-    RowSeparator, RowsMoved, RuleEditor, RuleField, RulesChanged, ScrollView, SearchField,
-    SortChanged, TableColumn, TableData, TableView, TextChanged, Tone, from_hsv, hex_string,
+    OutlineItem, OutlineView, PageRequest, PropertyGrid, PropertyValue, RemoteRows, RowActivated,
+    RowSelectionChanged, RowSeparator, RowsMoved, RuleEditor, RuleField, RulesChanged, ScrollView,
+    SearchField, SortChanged, TableColumn, TableData, TableView, TextChanged, Tone, from_hsv,
+    hex_string,
 };
 use noa_gpui_core::{Message, Role, Style, UiTree, WidgetId};
 use noa_gpui_scene::{Color, ImageId, VectorIcon};
@@ -17,7 +18,7 @@ use noa_gpui_scene::{Color, ImageId, VectorIcon};
 use super::kit::{Kit, gap, row_style};
 use super::{Demo, DemoCx, SectionSpec};
 
-pub const SECTIONS: [SectionSpec; 11] = [
+pub const SECTIONS: [SectionSpec; 12] = [
     SectionSpec {
         title: "Table view",
         description: "Columns with headers: click a header to sort (again to reverse), drag \
@@ -129,6 +130,14 @@ pub const SECTIONS: [SectionSpec; 11] = [
                       their columns. Click a group row to fold or unfold it; sorting \
                       orders the rows within their groups.",
         build: grouping,
+    },
+    SectionSpec {
+        title: "Remote rows",
+        description: "A million rows that live on a (simulated) server, loaded a page at a \
+                      time as they scroll into view; rows on their way show placeholders. \
+                      Sorting is the server's: a header click asks for the rows again in \
+                      the new order.",
+        build: remote,
     },
 ];
 
@@ -1936,4 +1945,182 @@ fn grouping(kit: &mut Kit) -> Box<dyn Demo> {
     );
     kit.tree.set_accessible_label(table, "Orders by category");
     Box::new(GroupingDemo { table, grouping })
+}
+
+const REMOTE_ROWS: usize = 1_000_000;
+const REMOTE_PAGE: usize = 50;
+/// Orders by amount are orders by id times this, modulo the row count (coprime with
+/// it), so either order is computed without sorting a million rows.
+const AMOUNT_STEP: usize = 7_919;
+const CUSTOMERS: [&str; 6] = ["Aoki", "Baker", "Chen", "Diaz", "Endo", "Fischer"];
+
+/// The simulated server: the rows at `rows` sorted by `sort` (column, ascending).
+fn remote_rows(rows: std::ops::Range<usize>, sort: Option<(usize, bool)>) -> Vec<Vec<String>> {
+    // The inverse of AMOUNT_STEP modulo REMOTE_ROWS, so an id's amount rank is known.
+    const INVERSE: usize = {
+        let (mut t, mut new_t, mut r, mut new_r) =
+            (0i64, 1i64, REMOTE_ROWS as i64, AMOUNT_STEP as i64);
+        while new_r != 0 {
+            let q = r / new_r;
+            (t, new_t) = (new_t, t - q * new_t);
+            (r, new_r) = (new_r, r - q * new_r);
+        }
+        (t.rem_euclid(REMOTE_ROWS as i64)) as usize
+    };
+    rows.map(|i| {
+        let (column, ascending) = sort.unwrap_or((0, true));
+        let at = if ascending { i } else { REMOTE_ROWS - 1 - i };
+        // In u64: the products pass u32::MAX, the size of usize on the Web.
+        let modulo = |a: usize, b: usize| (a as u64 * b as u64 % REMOTE_ROWS as u64) as usize;
+        let (id, rank) = if column == 2 {
+            (modulo(at, AMOUNT_STEP), at)
+        } else {
+            (at, modulo(at, INVERSE))
+        };
+        vec![
+            format!("#{id:07}"),
+            CUSTOMERS[id % CUSTOMERS.len()].to_owned(),
+            format!("{:.2}", 1.0 + rank as f64 / 100.0),
+        ]
+    })
+    .collect()
+}
+
+type Delivery = (PageRequest, Vec<Vec<String>>);
+
+struct RemoteDemo {
+    table: WidgetId,
+    status: WidgetId,
+    rows: RemoteRows,
+    sort: Option<(usize, bool)>,
+    waker: Option<noa_gpui_platform::Waker>,
+    sender: std::sync::mpsc::Sender<Delivery>,
+    arrived: std::sync::mpsc::Receiver<Delivery>,
+}
+
+impl RemoteDemo {
+    fn fetch(&self, request: PageRequest) {
+        let (sender, sort) = (self.sender.clone(), self.sort);
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let waker = self.waker.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(300));
+                let rows = remote_rows(request.rows.clone(), sort);
+                let _ = sender.send((request, rows));
+                if let Some(waker) = waker {
+                    waker.wake();
+                }
+            });
+        }
+        // No threads on the Web: the "server" answers at once.
+        #[cfg(target_arch = "wasm32")]
+        {
+            let rows = remote_rows(request.rows.clone(), sort);
+            let _ = sender.send((request, rows));
+            if let Some(waker) = &self.waker {
+                waker.wake();
+            }
+        }
+    }
+
+    fn show_status(&self, cx: &mut DemoCx) {
+        let text = format!(
+            "{} of {} pages loaded",
+            self.rows.loaded_pages(),
+            REMOTE_ROWS / REMOTE_PAGE
+        );
+        set_status(cx, self.status, text);
+    }
+}
+
+impl Demo for RemoteDemo {
+    fn woken(&mut self, cx: &mut DemoCx) {
+        let mut changed = false;
+        while let Ok((request, rows)) = self.arrived.try_recv() {
+            changed |= self.rows.fulfill_request(&request, rows);
+        }
+        for request in self.rows.take_requests() {
+            self.fetch(request);
+        }
+        if changed {
+            cx.tree
+                .update::<TableView, _>(self.table, |t, cx| t.data_changed(cx));
+            self.show_status(cx);
+        }
+    }
+
+    fn handle(&mut self, cx: &mut DemoCx, message: &Message) -> bool {
+        if message.source != self.table {
+            return false;
+        }
+        if let Some(&SortChanged { column, ascending }) = message.downcast_ref() {
+            self.sort = Some((column, ascending));
+            self.rows.reset(REMOTE_ROWS);
+            cx.tree.update::<TableView, _>(self.table, |t, cx| {
+                t.data_changed(cx);
+                t.scroll_to_row(cx, 0);
+            });
+            self.show_status(cx);
+        }
+        true
+    }
+}
+
+fn remote(kit: &mut Kit) -> Box<dyn Demo> {
+    let card = kit.wide_card(
+        "RemoteRows::new(1_000_000, 50) · TableView::new(columns, rows.data()).sorts_rows(false)",
+        560.0,
+    );
+    let rows = RemoteRows::new(REMOTE_ROWS, REMOTE_PAGE);
+    if let Some(waker) = kit.waker.clone() {
+        rows.on_request(move || waker.wake());
+    }
+    let columns = vec![
+        TableColumn::new("Order", 160.0).sort(ColumnSort::Text),
+        TableColumn::new("Customer", 180.0),
+        TableColumn::new("Amount", 140.0)
+            .align(ColumnAlign::Trailing)
+            .sort(ColumnSort::Number),
+    ];
+    let table = kit.tree.insert(
+        Some(card),
+        TableView::new(columns, rows.data())
+            .sorts_rows(false)
+            .height(320.0),
+    );
+    kit.tree.set_accessible_label(table, "Orders on the server");
+    let status = status_label(kit, card, "0 pages loaded");
+    let (sender, arrived) = std::sync::mpsc::channel();
+    Box::new(RemoteDemo {
+        table,
+        status,
+        rows,
+        sort: None,
+        waker: kit.waker.clone(),
+        sender,
+        arrived,
+    })
+}
+
+#[cfg(test)]
+mod remote_tests {
+    use super::*;
+
+    #[test]
+    fn the_simulated_server_returns_every_order_once_in_either_order() {
+        let by_amount = remote_rows(0..REMOTE_ROWS, Some((2, true)));
+        let mut ids: Vec<&str> = by_amount.iter().map(|r| r[0].as_str()).collect();
+        let amounts: Vec<f64> = by_amount.iter().map(|r| r[2].parse().unwrap()).collect();
+        assert!(amounts.windows(2).all(|w| w[0] < w[1]));
+        ids.sort_unstable();
+        ids.dedup();
+        assert_eq!(ids.len(), REMOTE_ROWS);
+        // An order has the same amount whichever way the rows are sorted.
+        let by_id = remote_rows(0..REMOTE_ROWS, None);
+        let row = &by_amount[12_345];
+        let id: usize = row[0][1..].parse().unwrap();
+        assert_eq!(by_id[id], *row);
+        assert_eq!(remote_rows(0..1, Some((0, false)))[0][0], "#0999999");
+    }
 }

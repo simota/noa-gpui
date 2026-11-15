@@ -79,14 +79,19 @@ fn screen(config: Config, setup: &mut Setup<'_>) -> Box<dyn Screen> {
     screen_with(
         config,
         Assets::load(setup.renderer, setup.device, setup.queue),
+        Some(setup.waker.clone()),
     )
 }
 
-fn screen_with(config: Config, assets: Assets) -> Box<dyn Screen> {
+fn screen_with(
+    config: Config,
+    assets: Assets,
+    waker: Option<noa_gpui_platform::Waker>,
+) -> Box<dyn Screen> {
     let meter = Meter::new(config);
     match config.scene {
         SceneKind::Ui { count } => Box::new(UiDemo::new(count, &assets).metered(meter)),
-        SceneKind::Catalog => Box::new(Catalog::new(&assets).metered(meter)),
+        SceneKind::Catalog => Box::new(Catalog::with_waker(&assets, waker).metered(meter)),
         SceneKind::MiniOs => Box::new(MiniOs::new().metered(meter)),
         kind => Box::new(Scene::new(kind, assets, meter)),
     }
@@ -125,6 +130,7 @@ pub fn snapshot(
         screen_with(
             config,
             Assets::generate(|w, h, rgba| headless.create_image(w, h, rgba)),
+            None,
         )
     } else {
         screen(config, &mut headless.setup())

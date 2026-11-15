@@ -5,10 +5,10 @@ use noa_gpui_core::widgets::{
     Aggregate, BrowserPathChanged, BrowserView, CellActionClicked, CellButton, CellButtonClicked,
     CellLook, CollectionItem, CollectionView, ColumnResized, ColumnSort, ColumnVisibilityChanged,
     Container, GroupActionClicked, GroupRowClicked, Grouping, ItemExpanded, ItemsMoved, Menu,
-    OutlineItem, OutlineView, RowActivated, RowSelectionChanged, RowSeparator, RowsMoved, Rule,
-    RuleEditor, RuleField, RuleMatch, RuleOperator, RulesChanged, SelectionMode, SortChanged,
-    TABLE_CHECK_COLUMN, TABLE_HEADER, TABLE_ROW, TableColumn, TableData, TableText, TableView,
-    TextView, Tone, Truncation,
+    OutlineItem, OutlineView, RemoteRows, RowActivated, RowSelectionChanged, RowSeparator,
+    RowsMoved, Rule, RuleEditor, RuleField, RuleMatch, RuleOperator, RulesChanged, SelectionMode,
+    SortChanged, TABLE_CHECK_COLUMN, TABLE_HEADER, TABLE_ROW, TableColumn, TableData, TableText,
+    TableView, TextView, Tone, Truncation,
 };
 use noa_gpui_core::{
     Event, Key, Message, Modifiers, PointerButton, Style, Theme, UiTree, Widget, WidgetId,
@@ -4367,4 +4367,153 @@ fn folded_groups_stay_visible_under_a_filter_so_they_can_be_unfolded() {
     // do not match, and so are hidden as before.
     assert_eq!(get(&h, t).displayed_rows(), [0]);
     assert!(get(&h, t).is_group_row(0));
+}
+
+fn remote_page(rows: std::ops::Range<usize>) -> Vec<Vec<String>> {
+    rows.map(|r| vec![format!("Item {r}"), format!("{}", 1000 - r)])
+        .collect()
+}
+
+fn remote_columns() -> Vec<TableColumn> {
+    vec![
+        TableColumn::new("Name", 200.0).sort(ColumnSort::Text),
+        TableColumn::new("Score", 100.0).sort(ColumnSort::Number),
+    ]
+}
+
+#[test]
+fn remote_rows_ask_only_for_the_pages_on_screen_and_show_them_when_they_arrive() {
+    let mut h = Harness::new();
+    let rows = RemoteRows::new(100_000, 8);
+    let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+    let counter = calls.clone();
+    rows.on_request(move || counter.set(counter.get() + 1));
+    let t = h.add(
+        TableView::new(remote_columns(), rows.data())
+            .sorts_rows(false)
+            .height(TEN_ROWS),
+    );
+    h.prepare();
+    let requests = rows.take_requests();
+    let pages: Vec<usize> = requests.iter().map(|r| r.page).collect();
+    // Ten rows on screen: the first two pages of eight, nothing more.
+    assert_eq!(pages, [0, 1]);
+    assert_eq!(requests[1].rows, 8..16);
+    assert_eq!(calls.get(), 1, "woken once for the batch");
+    assert!(!rows.has_requests());
+    let data = rows.data();
+    assert_eq!(data.cell_look(0, 0), CellLook::Loading);
+    assert_eq!(get(&h, t).row_count(), 100_000);
+
+    // Drawing again asks for nothing new while the pages are on their way.
+    h.tree
+        .update::<TableView, _>(t, |table, cx| table.data_changed(cx));
+    h.prepare();
+    assert!(rows.take_requests().is_empty());
+
+    for request in &requests {
+        assert!(rows.fulfill_request(request, remote_page(request.rows.clone())));
+    }
+    h.tree
+        .update::<TableView, _>(t, |table, cx| table.data_changed(cx));
+    h.prepare();
+    assert_eq!(data.cell(9, 0), "Item 9");
+    assert_eq!(data.cell_look(9, 0), CellLook::Text);
+    assert_eq!(rows.loaded_pages(), 2);
+
+    // Scrolling far down asks for the pages there.
+    h.tree
+        .update::<TableView, _>(t, |table, cx| table.scroll_to_row(cx, 50_000));
+    h.prepare();
+    let pages: Vec<usize> = rows.take_requests().iter().map(|r| r.page).collect();
+    assert!(pages.contains(&(50_000 / 8)), "{pages:?}");
+    assert!(pages.len() <= 3, "{pages:?}");
+}
+
+#[test]
+fn a_reset_drops_the_pages_and_refuses_pages_fetched_before_it() {
+    let mut h = Harness::new();
+    let rows = RemoteRows::new(30, 10);
+    let t = h.add(TableView::new(remote_columns(), rows.data()).height(TEN_ROWS));
+    h.prepare();
+    let old = rows.take_requests();
+    assert_eq!(old.len(), 1);
+
+    // The source's order changed (another sort): fewer rows, every page again.
+    rows.reset(12);
+    h.tree
+        .update::<TableView, _>(t, |table, cx| table.data_changed(cx));
+    h.prepare();
+    assert_eq!(get(&h, t).row_count(), 12);
+    assert!(!rows.fulfill_request(&old[0], remote_page(0..10)), "stale");
+    assert_eq!(rows.loaded_pages(), 0);
+    let first = rows.take_requests();
+    assert_eq!(first.len(), 1, "the ten rows on screen are page 0");
+    h.tree
+        .update::<TableView, _>(t, |table, cx| table.scroll_to_row(cx, 11));
+    h.prepare();
+    let last = rows.take_requests();
+    assert_eq!(last.len(), 1);
+    assert_eq!(last[0].rows, 10..12, "clipped to the row count");
+    assert!(rows.fulfill_request(&last[0], remote_page(10..15)));
+    assert_eq!(rows.data().cell(11, 0), "Item 11");
+    let new = first;
+
+    // A failed page is asked for again the next time it is drawn.
+    rows.fail(new[0].page);
+    h.tree
+        .update::<TableView, _>(t, |table, cx| table.data_changed(cx));
+    h.prepare();
+    let again: Vec<usize> = rows.take_requests().iter().map(|r| r.page).collect();
+    assert_eq!(again, [0]);
+}
+
+#[test]
+fn without_sorting_rows_a_header_click_only_reports_the_sort() {
+    let mut h = Harness::new();
+    let rows = RemoteRows::new(1_000, 10);
+    let t = h.add(
+        TableView::new(remote_columns(), rows.data())
+            .sorts_rows(false)
+            .height(TEN_ROWS),
+    );
+    h.prepare();
+    for request in rows.take_requests() {
+        rows.fulfill(request.page, remote_page(request.rows));
+    }
+    h.tree
+        .update::<TableView, _>(t, |table, cx| table.data_changed(cx));
+    h.prepare();
+    h.messages();
+    // Scores fall as rows go down, so sorting here would put row 9 first.
+    h.click(h.at(t, 250.0, TABLE_HEADER / 2.0));
+    assert_eq!(
+        values::<SortChanged>(&h.messages()),
+        [SortChanged {
+            column: 1,
+            ascending: true
+        }]
+    );
+    let table = get(&h, t);
+    assert_eq!(table.sort_column(), Some((1, true)));
+    assert_eq!(
+        &table.displayed_rows()[..3],
+        [0, 1, 2],
+        "rows stay in order"
+    );
+    h.prepare();
+    // Sorting would have read every row; nothing beyond the screen is asked for.
+    assert!(rows.take_requests().len() <= 1);
+}
+
+#[test]
+fn remote_rows_keep_a_bounded_number_of_pages() {
+    let rows = RemoteRows::new(1_000, 10).cached_pages(3);
+    for page in 0..5 {
+        let range = page * 10..page * 10 + 10;
+        rows.fulfill(page, remote_page(range));
+    }
+    assert_eq!(rows.loaded_pages(), 3);
+    assert!(!rows.is_loaded(0) && !rows.is_loaded(15));
+    assert!(rows.is_loaded(20) && rows.is_loaded(49));
 }
