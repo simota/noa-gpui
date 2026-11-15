@@ -291,6 +291,9 @@ mod native {
                 Modifiers::CONTROL
             };
         }
+        if shortcut.ctrl {
+            mods |= Modifiers::CONTROL;
+        }
         if shortcut.shift {
             mods |= Modifiers::SHIFT;
         }

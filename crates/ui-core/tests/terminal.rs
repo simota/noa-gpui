@@ -452,6 +452,7 @@ const CMD: Modifiers = Modifiers {
     alt: false,
     meta: true,
     command: true,
+    command_is_meta: true,
 };
 /// The clipboard shortcuts where Ctrl is the shortcut modifier.
 const CTRL_SHIFT: Modifiers = Modifiers {
@@ -460,6 +461,7 @@ const CTRL_SHIFT: Modifiers = Modifiers {
     alt: false,
     meta: false,
     command: true,
+    command_is_meta: false,
 };
 
 #[test]

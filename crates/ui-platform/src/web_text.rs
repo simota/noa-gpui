@@ -138,6 +138,7 @@ impl WebTextInput {
             } else {
                 dom.ctrl
             },
+            command_is_meta: self.command_is_meta,
         };
         if modifiers == self.modifiers {
             return vec![];
