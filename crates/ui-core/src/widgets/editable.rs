@@ -59,9 +59,6 @@ impl Reading {
 
 const BULLET: &str = "\u{2022}";
 
-/// Seconds within which a second press counts as a double click.
-const MULTI_CLICK: f64 = 0.4;
-
 #[derive(Debug)]
 pub(crate) struct Editable {
     pub editor: TextEditor,
@@ -80,8 +77,6 @@ pub(crate) struct Editable {
     preedit_spans: Vec<Rect>,
     clause_spans: Vec<Rect>,
     goal_x: Option<f32>,
-    /// Time, byte index and count of the last press, for double / triple clicks.
-    last_press: Option<(f64, usize, u8)>,
     dragging: bool,
     /// Ranges found by a search (see [`super::FindBar`]) and the index of the current
     /// one, highlighted in the text.
@@ -116,7 +111,6 @@ impl Editable {
             preedit_spans: Vec::new(),
             clause_spans: Vec::new(),
             goal_x: None,
-            last_press: None,
             dragging: false,
             found: Vec::new(),
             found_current: None,
@@ -274,7 +268,6 @@ impl Editable {
                 }
                 self.preedit_cursor = None;
                 self.goal_x = None;
-                self.last_press = None;
                 if self.dragging {
                     self.dragging = false;
                     cx.release_pointer();
@@ -286,14 +279,8 @@ impl Editable {
                 button: PointerButton::Primary,
             } if self.preedit.is_empty() => {
                 let index = self.hit(cx, *pos, origin);
-                let count = match self.last_press {
-                    Some((time, at, count)) if cx.now() - time < MULTI_CLICK && at == index => {
-                        count % 3 + 1
-                    }
-                    _ => 1,
-                };
-                self.last_press = Some((cx.now(), index, count));
-                match count {
+                // A fourth click starts over with a single one.
+                match (cx.click_count().max(1) - 1) % 3 + 1 {
                     // A secure field has no visible words: select everything.
                     2 if self.secure => self.editor.select_all(),
                     2 => self.editor.select_word_at(index),

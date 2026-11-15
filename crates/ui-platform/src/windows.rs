@@ -142,6 +142,7 @@ impl SecondaryWindow {
             }
             event => {
                 self.screen.tree_mut().set_now(now);
+                crate::input::sync_multi_click(self.screen.tree_mut());
                 let events = self.input.translate(&event, self.window.scale_factor());
                 #[cfg(target_os = "macos")]
                 let events = crate::app::with_ime_replacement(&self.window, &event, events);

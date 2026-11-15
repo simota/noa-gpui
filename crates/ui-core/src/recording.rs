@@ -7,6 +7,7 @@
 //! checked in next to a test:
 //!
 //! ```text
+//! multi-click 0.5 4
 //! 0.000 move 120 34
 //! 0.016 down primary 120 34
 //! 0.081 up primary 120 34
@@ -63,6 +64,15 @@ impl Step {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Recording {
     pub steps: Vec<Step>,
+    /// The tree's double-click interval and distance while it was recorded (see
+    /// [`UiTree::set_multi_click`]), which may be the OS's; replay uses them so clicks
+    /// count the same. Saved as a first line `multi-click <seconds> <pixels>`.
+    pub multi_click: Option<(f64, f32)>,
+}
+
+/// The saved form of [`Recording::multi_click`], without the line break.
+pub fn multi_click_line((interval, distance): (f64, f32)) -> String {
+    format!("multi-click {interval} {distance}")
 }
 
 /// A line of a saved recording that could not be read.
@@ -86,6 +96,10 @@ impl Recording {
     /// are not input (built by hand) are left out.
     pub fn to_text(&self) -> String {
         let mut out = String::new();
+        if let Some(multi_click) = self.multi_click {
+            out.push_str(&multi_click_line(multi_click));
+            out.push('\n');
+        }
         for line in self.steps.iter().filter_map(step_line) {
             out.push_str(&line);
             out.push('\n');
@@ -96,9 +110,20 @@ impl Recording {
     /// Read the saved form. Empty lines and lines starting with `#` are skipped.
     pub fn parse(text: &str) -> Result<Self, ParseError> {
         let mut steps = Vec::new();
+        let mut multi_click = None;
         for (index, line) in text.lines().enumerate() {
             let line = line.trim();
             if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            if let Some(args) = line.strip_prefix("multi-click ") {
+                let parsed = args
+                    .split_once(' ')
+                    .and_then(|(i, d)| Some((i.parse().ok()?, d.parse().ok()?)));
+                multi_click = Some(parsed.ok_or_else(|| ParseError {
+                    line: index + 1,
+                    message: format!("not an interval and a distance: {args}"),
+                })?);
                 continue;
             }
             let step = parse_step(line).map_err(|message| ParseError {
@@ -107,12 +132,15 @@ impl Recording {
             })?;
             steps.push(step);
         }
-        Ok(Self { steps })
+        Ok(Self { steps, multi_click })
     }
 
     /// Dispatch every step to `tree` at its time. Messages the widgets emit stay in
     /// the tree for the caller to take (see [`UiTree::take_messages`]).
     pub fn replay(&self, tree: &mut UiTree, text: &mut TextStore) {
+        if let Some((interval, distance)) = self.multi_click {
+            tree.set_multi_click(interval, distance);
+        }
         for step in &self.steps {
             tree.set_now(step.at);
             tree.dispatch(step.event.clone(), text);

@@ -326,6 +326,9 @@ pub fn replay(
     text: &mut TextStore,
     size: Size,
 ) {
+    if let Some((interval, distance)) = recording.multi_click {
+        screen.tree_mut().set_multi_click(interval, distance);
+    }
     screen.prepare(size, text);
     let Some(first) = recording.steps.first() else {
         return;
@@ -496,6 +499,19 @@ mod tests {
         result.expect("the replayed screen draws as the recorded one");
     }
 
+    /// Clicks count as they did when the session was recorded.
+    #[test]
+    fn a_replay_uses_the_recorded_double_click_interval() {
+        let mut text = TextStore::new(Default::default());
+        let mut screen = Counter::new();
+        let recording = noa_gpui_core::recording::Recording {
+            steps: Vec::new(),
+            multi_click: Some((0.8, 6.0)),
+        };
+        replay(&mut screen, &recording, &mut text, SIZE);
+        assert_eq!(screen.tree.multi_click(), (0.8, 6.0));
+    }
+
     #[test]
     fn timers_fire_between_steps_without_running_animations() {
         let mut text = TextStore::new(Default::default());
@@ -516,6 +532,7 @@ mod tests {
                     event: Event::ModifiersChanged(Default::default()),
                 },
             ],
+            multi_click: None,
         };
         let mut tipped = Counter::with_tooltip();
         replay(&mut tipped, &recording, &mut text, SIZE);
@@ -573,6 +590,7 @@ mod tests {
                     event: Event::ModifiersChanged(Default::default()),
                 },
             ],
+            multi_click: None,
         };
 
         // What a window shows: frames every 1/60 s from the flick until the pause ends.
