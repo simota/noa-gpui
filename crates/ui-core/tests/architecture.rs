@@ -150,6 +150,6 @@ workspace = true
 cc = "1"
 "#,
     );
-    let expected = ["cc", "ksni", "quoted", "rfd", "taffy", "noa-gpui-scene"];
+    let expected = ["cc", "ksni", "noa-gpui-scene", "quoted", "rfd", "taffy"];
     assert_eq!(deps.into_iter().collect::<Vec<_>>(), expected);
 }
