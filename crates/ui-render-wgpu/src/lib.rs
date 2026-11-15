@@ -13,6 +13,8 @@ mod icons;
 mod images;
 #[cfg(not(target_arch = "wasm32"))]
 mod offscreen;
+#[cfg(not(target_arch = "wasm32"))]
+mod pdf;
 mod pipelines;
 #[cfg(not(target_arch = "wasm32"))]
 mod png;
@@ -28,6 +30,8 @@ pub use gpu::{
 };
 #[cfg(not(target_arch = "wasm32"))]
 pub use offscreen::{OFFSCREEN_FORMAT, OffscreenRenderer, RgbaImage};
+#[cfg(not(target_arch = "wasm32"))]
+pub use pdf::PdfDocument;
 pub use renderer::{FrameStats, RenderError, Renderer, Viewport};
 #[cfg(not(target_arch = "wasm32"))]
 pub use software::SoftwareRenderer;

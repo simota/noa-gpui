@@ -13,4 +13,4 @@ pub use display_list::{
     Border, CornerRadii, Direction, DisplayList, DrawCommand, ImageId, Shape, TextLayoutId,
 };
 pub use geometry::{Color, Point, Rect, Size};
-pub use vector::{FillRule, IconBuilder, IconError, IconPaint, VectorIcon};
+pub use vector::{FillRule, IconBuilder, IconError, IconLayer, IconPaint, PathCommand, VectorIcon};

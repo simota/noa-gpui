@@ -22,6 +22,29 @@ pub enum IconPaint {
     Stroke(f32),
 }
 
+/// One step of an icon's outline (see [`VectorIcon::layers`]), in the icon's own
+/// coordinates (its [`VectorIcon::view_box`]).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum PathCommand {
+    MoveTo(Point),
+    LineTo(Point),
+    /// A quadratic curve through a control point to the end point.
+    QuadTo(Point, Point),
+    /// A cubic curve through two control points to the end point.
+    CubicTo(Point, Point, Point),
+    Close,
+}
+
+/// One painted path of an icon: what [`VectorIcon::layers`] returns, for drawing it
+/// as vectors (in a PDF, say) rather than as a mask.
+#[derive(Debug, Clone, PartialEq)]
+pub struct IconLayer {
+    pub commands: Vec<PathCommand>,
+    pub paint: IconPaint,
+    /// The path's own color from an SVG file, or `None` for the drawing color.
+    pub color: Option<Color>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Segment {
     Line(Point),
@@ -190,6 +213,35 @@ impl VectorIcon {
 
     pub fn view_box(&self) -> Rect {
         self.0.view_box
+    }
+
+    /// The icon's paths, in drawing order, in the coordinates of its
+    /// [`VectorIcon::view_box`]. Place them as [`VectorIcon::rasterize`] does: scaled to
+    /// fit the target and centered, keeping the proportions.
+    pub fn layers(&self) -> Vec<IconLayer> {
+        self.0
+            .layers
+            .iter()
+            .map(|layer| {
+                let mut commands = Vec::new();
+                for path in &layer.paths {
+                    commands.push(PathCommand::MoveTo(path.start));
+                    commands.extend(path.segments.iter().map(|s| match *s {
+                        Segment::Line(p) => PathCommand::LineTo(p),
+                        Segment::Quad(c, p) => PathCommand::QuadTo(c, p),
+                        Segment::Cubic(a, b, p) => PathCommand::CubicTo(a, b, p),
+                    }));
+                    if path.closed {
+                        commands.push(PathCommand::Close);
+                    }
+                }
+                IconLayer {
+                    commands,
+                    paint: layer.paint,
+                    color: layer.color,
+                }
+            })
+            .collect()
     }
 
     /// Shared by clones; used as a cache key.
@@ -1236,5 +1288,42 @@ mod tests {
         let svg = VectorIcon::from_svg(r#"<svg viewBox="0 0 4 4"><path d="M0 0H4V4H0Z"/></svg>"#)
             .unwrap();
         assert_eq!(svg.color_parts(), [(svg.clone(), Some(Color::BLACK))]);
+    }
+}
+
+#[cfg(test)]
+mod layer_tests {
+    use super::*;
+
+    #[test]
+    fn layers_give_the_paths_as_built() {
+        let icon = VectorIcon::builder(10.0, 10.0)
+            .fill("M1 1 L9 1 Q9 9 1 9 Z")
+            .unwrap()
+            .stroke("M0 5 C2 0 8 0 10 5", 1.5)
+            .unwrap()
+            .build();
+        let layers = icon.layers();
+        assert_eq!(layers.len(), 2);
+        assert_eq!(
+            layers[0].commands,
+            [
+                PathCommand::MoveTo(Point::new(1.0, 1.0)),
+                PathCommand::LineTo(Point::new(9.0, 1.0)),
+                PathCommand::QuadTo(Point::new(9.0, 9.0), Point::new(1.0, 9.0)),
+                PathCommand::Close,
+            ]
+        );
+        assert_eq!(layers[0].paint, IconPaint::Fill(FillRule::NonZero));
+        assert_eq!(layers[1].paint, IconPaint::Stroke(1.5));
+        assert!(matches!(layers[1].commands[1], PathCommand::CubicTo(..)));
+        assert_eq!(
+            layers[1].commands.last(),
+            Some(&PathCommand::CubicTo(
+                Point::new(2.0, 0.0),
+                Point::new(8.0, 0.0),
+                Point::new(10.0, 5.0)
+            ))
+        );
     }
 }

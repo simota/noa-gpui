@@ -35,6 +35,7 @@ A cross-platform UI framework written in Rust, with its own 2D renderer on top o
 > - Accessibility through AccessKit
 > - The OS menu bar (macOS), menu bar extras / the system tray (macOS, Windows, Linux; on Linux, desktops that can show StatusNotifierItem), open / save file dialogs
 > - Windowless rendering (`Headless`): writes the Widget Tree or the screen to PNG. In environments without a GPU adapter, it renders on the CPU
+> - PDF output: `PdfDocument` writes display lists as vector PDF pages (rounded rectangles, shapes, gradients, icons and images; text as glyph outlines, so no fonts are embedded and the text cannot be selected), with nothing beyond the standard library. The demo's `--snapshot=FILE.pdf` writes the first frame as a PDF
 > - Recording and replaying input: `App::record_input` writes the main window's input to a text file as it happens (one step per line, `noa_gpui_core::recording`), `noa_gpui_platform::replay` plays it back into a screen, and `check_golden` compares the rendered image with a saved one, writing the rendered image and a picture of the differences on a mismatch (`NOA_GPUI_UPDATE_GOLDEN=1` rewrites them). The demo takes `--record=FILE` and `--replay=FILE` (with `--snapshot`)
 > - Inspector: with `App::inspector(true)` (on in the desktop demo), ⇧⌘I / Ctrl+Shift+I outlines the widget under the pointer and shows it as a selector (`Button#save.primary:hover`) with its frame, ancestors and the Noa Style rules that apply, strongest last; a click pins it. `UiTree::inspect`, `UiTree::outline` and `StyleSheet::matching_rules` give the same information to code
 >
@@ -132,6 +133,7 @@ cargo run -p desktop --release -- --scene=minios                  # Mini OS: a d
 cargo run -p desktop --release -- --scene=showcase                # Phase 1: showcase of rendering primitives
 cargo run -p desktop --release -- --scene=stress --count=1500     # Phase 1: 1,500 Widgets built directly as a Display List
 cargo run -p desktop --release -- --scene=catalog --snapshot=catalog.png   # Write the first frame to PNG and exit (no window or GPU needed)
+cargo run -p desktop --release -- --scene=catalog --snapshot=catalog.pdf   # The same frame as a vector PDF
 cargo run -p desktop --release -- --scene=catalog --record=session.rec              # Write the window's input to session.rec while it runs
 cargo run -p desktop --release -- --scene=catalog --replay=session.rec --snapshot=after.png   # Play it back without a window and write the result
 cargo run -p desktop --release -- --scene=catalog --stylesheet=apps/demo/styles/example.noa.css   # Apply a Noa Style sheet and reapply it on every save

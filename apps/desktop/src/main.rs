@@ -5,7 +5,8 @@
 //! ```
 //!
 //! `--snapshot` writes the first frame as a PNG without a window and exits. Without a
-//! GPU adapter it draws on the CPU.
+//! GPU adapter it draws on the CPU. A file name ending in `.pdf` writes a vector PDF of
+//! the frame instead.
 //!
 //! `--record` writes the window's input to a file as it happens. `--replay` plays such
 //! a file back before `--snapshot` takes its picture (a second after the last step,
