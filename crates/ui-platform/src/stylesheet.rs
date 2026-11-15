@@ -225,10 +225,15 @@ mod tests {
         }
     }
 
-    /// Write so that the modification time or the length differs from the last write
-    /// even on file systems with coarse timestamps.
+    /// Replace the file in one step: write a sibling file, then rename it over the sheet.
+    /// `std::fs::write` empties the file before writing, and on a loaded CI runner the
+    /// empty file stayed the same for two 10 ms checks and was read as a valid, empty
+    /// sheet. The emptied-then-written case itself is covered by
+    /// `a_change_is_read_once_the_file_stays_the_same_for_an_interval`.
     fn write(path: &Path, text: &str) {
-        std::fs::write(path, text).unwrap();
+        let staged = path.with_extension("css.tmp");
+        std::fs::write(&staged, text).unwrap();
+        std::fs::rename(&staged, path).unwrap();
     }
 
     #[test]
