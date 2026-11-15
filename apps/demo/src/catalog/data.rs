@@ -1970,10 +1970,12 @@ fn remote_rows(rows: std::ops::Range<usize>, sort: Option<(usize, bool)>) -> Vec
     rows.map(|i| {
         let (column, ascending) = sort.unwrap_or((0, true));
         let at = if ascending { i } else { REMOTE_ROWS - 1 - i };
+        // In u64: the products pass u32::MAX, the size of usize on the Web.
+        let modulo = |a: usize, b: usize| (a as u64 * b as u64 % REMOTE_ROWS as u64) as usize;
         let (id, rank) = if column == 2 {
-            (at * AMOUNT_STEP % REMOTE_ROWS, at)
+            (modulo(at, AMOUNT_STEP), at)
         } else {
-            (at, at * INVERSE % REMOTE_ROWS)
+            (at, modulo(at, INVERSE))
         };
         vec![
             format!("#{id:07}"),
