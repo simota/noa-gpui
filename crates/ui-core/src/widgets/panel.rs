@@ -1,7 +1,7 @@
-use ui_layout::Style;
-use ui_layout::style::{FlexDirection, Rect as LayoutRect, Size as LayoutSize, auto, length};
-use ui_scene::{Border, Color, Point, Rect};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{FlexDirection, Rect as LayoutRect, Size as LayoutSize, auto, length};
+use noa_gpui_scene::{Border, Color, Point, Rect};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::CachedText;
 use super::appear::{Appear, shadow};

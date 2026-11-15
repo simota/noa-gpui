@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 
-use ui_layout::Style;
-use ui_layout::style::{Size as LayoutSize, length};
-use ui_scene::{Border, Direction, Point, Rect, Size};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{Size as LayoutSize, length};
+use noa_gpui_scene::{Border, Direction, Point, Rect, Size};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::editable::SingleLine;
 use super::table::leading_number;
@@ -185,7 +185,7 @@ pub struct RuleEditor {
     fields: Vec<RuleField>,
     rows: Vec<RuleRow>,
     /// Updates have no TextStore; release old layouts on the next paint/removal.
-    retired: Vec<ui_scene::TextLayoutId>,
+    retired: Vec<noa_gpui_scene::TextLayoutId>,
     matching: RuleMatch,
     width: f32,
     active: usize,
@@ -819,7 +819,7 @@ mod tests {
             );
         }
 
-        let mut text = TextStore::new(ui_text::FontOptions {
+        let mut text = TextStore::new(noa_gpui_text::FontOptions {
             load_system_fonts: false,
             ..Default::default()
         });

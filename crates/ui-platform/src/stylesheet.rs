@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
-use ui_core::{StyleError, StyleSheet};
+use noa_gpui_core::{StyleError, StyleSheet};
 
 use crate::wake::Waker;
 

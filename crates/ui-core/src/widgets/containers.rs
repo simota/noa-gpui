@@ -1,11 +1,11 @@
-use ui_layout::Style;
-use ui_layout::style::{
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{
     AlignItems, Dimension, Display, FlexDirection, GridAutoFlow, GridPlacement,
     GridTemplateComponent, JustifyContent, Line, Rect as LayoutRect, Size as LayoutSize,
     TrackSizingFunction, auto, fr, length, minmax, percent, span,
 };
-use ui_scene::{Border, Rect};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_scene::{Border, Rect};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::CachedText;
 use crate::theme::Role;
@@ -566,7 +566,7 @@ pub enum Material {
 
 impl Material {
     /// Blur radius (logical px) and tint in `theme`.
-    pub fn look(self, theme: &crate::Theme) -> (f32, ui_scene::Color) {
+    pub fn look(self, theme: &crate::Theme) -> (f32, noa_gpui_scene::Color) {
         use crate::theme::Design;
         let (blur, tint) = self.big_sur_look(theme.appearance);
         match theme.design {
@@ -579,8 +579,8 @@ impl Material {
         }
     }
 
-    fn big_sur_look(self, appearance: crate::theme::Appearance) -> (f32, ui_scene::Color) {
-        use ui_scene::Color;
+    fn big_sur_look(self, appearance: crate::theme::Appearance) -> (f32, noa_gpui_scene::Color) {
+        use noa_gpui_scene::Color;
         let dark = appearance == crate::theme::Appearance::Dark;
         let base = if dark {
             Color::hex(0x1e1e22)
@@ -642,7 +642,7 @@ impl Widget for VisualEffectView {
             cx.rounded_rect(
                 cx.bounds(),
                 self.radius,
-                ui_scene::Color::TRANSPARENT,
+                noa_gpui_scene::Color::TRANSPARENT,
                 Border {
                     width: 0.5,
                     color: edge,

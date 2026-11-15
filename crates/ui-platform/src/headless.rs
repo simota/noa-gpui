@@ -1,9 +1,9 @@
-use ui_core::UiTree;
-use ui_render_wgpu::{
+use noa_gpui_core::UiTree;
+use noa_gpui_render_wgpu::{
     InitError, OffscreenRenderer, RenderError, RgbaImage, SoftwareRenderer, Viewport,
 };
-use ui_scene::{Color, DisplayList, ImageId};
-use ui_text::TextStore;
+use noa_gpui_scene::{Color, DisplayList, ImageId};
+use noa_gpui_text::TextStore;
 
 use crate::app::Setup;
 use crate::screen::Screen;
@@ -17,9 +17,9 @@ use crate::wake::Waker;
 /// GPU's drawing closely but not to the pixel (see [`SoftwareRenderer`]).
 ///
 /// ```no_run
-/// # use ui_platform::Headless;
-/// # use ui_platform::ui_core::UiTree;
-/// # use ui_platform::ui_text::{FontOptions, TextStore};
+/// # use noa_gpui_platform::Headless;
+/// # use noa_gpui_platform::noa_gpui_core::UiTree;
+/// # use noa_gpui_platform::noa_gpui_text::{FontOptions, TextStore};
 /// # fn build() -> UiTree { UiTree::new() }
 /// let mut headless = Headless::new().expect("a GPU adapter");
 /// let mut text = TextStore::new(FontOptions::default());
@@ -101,7 +101,7 @@ impl Headless {
     }
 
     /// Make an image (RGBA8 in sRGB, straight alpha, rows top to bottom) to show
-    /// with [`ui_core::widgets::Image`], on the GPU or the CPU.
+    /// with [`noa_gpui_core::widgets::Image`], on the GPU or the CPU.
     pub fn create_image(&mut self, width: u32, height: u32, rgba: &[u8]) -> ImageId {
         match &mut self.backend {
             Backend::Gpu(o) => o

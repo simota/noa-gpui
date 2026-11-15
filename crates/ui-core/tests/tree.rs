@@ -1,13 +1,13 @@
-use ui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
-use ui_core::widgets::{
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
+use noa_gpui_core::widgets::{
     Button, ButtonClicked, Container, Label, ScrollView, TextArea, TextChanged, TextField,
 };
-use ui_core::{
+use noa_gpui_core::{
     Design, DragData, Event, Key, Modifiers, OverlayDismissed, OverlayOptions, Placement,
     PointerButton, Role, Shortcut, ShortcutPressed, Style, Theme, UiTree, WidgetId,
 };
-use ui_scene::{Color, DrawCommand, Point, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_scene::{Color, DrawCommand, Point, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(400.0, 300.0);
 
@@ -606,8 +606,8 @@ fn composition_in_an_empty_field_is_drawn_as_composition() {
     assert_eq!(underlines, 1, "composition is underlined");
 }
 
-fn all_layouts(tree: &UiTree) -> Vec<(WidgetId, ui_layout::NodeLayout)> {
-    fn walk(tree: &UiTree, id: WidgetId, out: &mut Vec<(WidgetId, ui_layout::NodeLayout)>) {
+fn all_layouts(tree: &UiTree) -> Vec<(WidgetId, noa_gpui_layout::NodeLayout)> {
+    fn walk(tree: &UiTree, id: WidgetId, out: &mut Vec<(WidgetId, noa_gpui_layout::NodeLayout)>) {
         out.push((id, tree.layout(id).unwrap()));
         for &child in tree.children(id) {
             walk(tree, child, out);
@@ -619,7 +619,10 @@ fn all_layouts(tree: &UiTree) -> Vec<(WidgetId, ui_layout::NodeLayout)> {
 }
 
 /// Lay out the whole tree from scratch (a resize forces a full pass) and return it.
-fn full_layout(tree: &mut UiTree, text: &mut TextStore) -> Vec<(WidgetId, ui_layout::NodeLayout)> {
+fn full_layout(
+    tree: &mut UiTree,
+    text: &mut TextStore,
+) -> Vec<(WidgetId, noa_gpui_layout::NodeLayout)> {
     tree.prepare(Size::new(VIEWPORT.width, VIEWPORT.height + 1.0), text);
     tree.prepare(VIEWPORT, text).unwrap();
     assert_eq!(tree.stats().partial_layouts, 0);
@@ -933,7 +936,7 @@ fn tree_with_overlay(options: OverlayOptions) -> (UiTree, TextStore, WidgetId, W
     tree.prepare(VIEWPORT, &mut text);
     let origin = tree.window_origin(anchor).unwrap();
     let size = tree.layout(anchor).unwrap().rect;
-    let anchor_rect = ui_scene::Rect::new(origin.x, origin.y, size.width, size.height);
+    let anchor_rect = noa_gpui_scene::Rect::new(origin.x, origin.y, size.width, size.height);
     let overlay = tree.open_overlay(
         Container::new(Style {
             flex_direction: FlexDirection::Column,
@@ -956,7 +959,10 @@ fn overlays_size_to_content_sit_below_the_anchor_and_draw_on_top() {
     let menu = tree.layout(overlay).unwrap().rect;
     assert!(menu.width < VIEWPORT.width / 2.0, "{menu:?}");
     assert_eq!(menu.width, tree.layout(item).unwrap().rect.width);
-    assert_eq!(menu.y, anchor_box.bottom() + ui_core::overlay::ANCHOR_GAP);
+    assert_eq!(
+        menu.y,
+        anchor_box.bottom() + noa_gpui_core::overlay::ANCHOR_GAP
+    );
     assert_eq!(tree.window_origin(item).unwrap().y, menu.y);
 
     // Drawn after (above) the main tree, and hit first where they overlap it.
@@ -1159,9 +1165,9 @@ fn hidden_widgets_cannot_take_programmatic_focus() {
     let styled = tree.insert(Some(root), Button::new("Display none"));
     tree.set_inline_style(
         styled,
-        ui_core::StylePatch::parse("display: none;").unwrap(),
+        noa_gpui_core::StylePatch::parse("display: none;").unwrap(),
     );
-    let tabs = tree.insert(Some(root), ui_core::widgets::TabView::new(["A", "B"]));
+    let tabs = tree.insert(Some(root), noa_gpui_core::widgets::TabView::new(["A", "B"]));
     tree.insert(Some(tabs), Label::new("Shown page"));
     let page = tree.insert(Some(tabs), Button::new("Hidden page"));
     tree.prepare(VIEWPORT, &mut text);
@@ -1195,7 +1201,7 @@ fn focus_groups_skip_hidden_items_and_hidden_subtrees() {
     tree.set_hidden(nested, true);
     tree.set_inline_style(
         styled,
-        ui_core::StylePatch::parse("display: none;").unwrap(),
+        noa_gpui_core::StylePatch::parse("display: none;").unwrap(),
     );
     tree.prepare(VIEWPORT, &mut text);
 
@@ -1252,7 +1258,7 @@ fn moving_a_subtree_preserves_explicit_hidden_and_disabled_state() {
     assert!(!source.contains(visible));
 
     // Being on an inactive page is the old parent's state, not the widget's own.
-    let tabs = source.insert(Some(root), ui_core::widgets::TabView::new(["A", "B"]));
+    let tabs = source.insert(Some(root), noa_gpui_core::widgets::TabView::new(["A", "B"]));
     source.insert(Some(tabs), Label::new("Shown page"));
     let inactive = source.insert(Some(tabs), Button::new("Inactive page"));
     assert!(source.is_hidden(inactive));
@@ -1324,7 +1330,7 @@ fn press(tree: &mut UiTree, text: &mut TextStore, key: Key, modifiers: Modifiers
 #[derive(Clone, Default)]
 struct SharedClipboard(std::rc::Rc<std::cell::RefCell<Option<String>>>);
 
-impl ui_core::clipboard::Clipboard for SharedClipboard {
+impl noa_gpui_core::clipboard::Clipboard for SharedClipboard {
     fn read_text(&mut self) -> Option<String> {
         self.0.borrow().clone()
     }
@@ -1419,7 +1425,11 @@ fn dragging_and_double_clicking_select_text() {
     assert_eq!(tree.get::<TextField>(field).unwrap().selection(), 0..16);
 
     tree.set_now(5.0);
-    let probe = text.create("alpha beta gamma", ui_text::TextStyle::new(14.0), None);
+    let probe = text.create(
+        "alpha beta gamma",
+        noa_gpui_text::TextStyle::new(14.0),
+        None,
+    );
     let beta = text.caret(probe, 8);
     let pos = Point::new(origin.x + 10.0 + beta.x, y);
     for t in [5.0, 5.1] {
@@ -1520,7 +1530,8 @@ fn leaves_draw_their_own_commands_and_clipping_leaves_their_clip() {
             other => format!("{other:?}"),
         })
         .collect();
-    let rect = |x: f32, y: f32, w: f32, h: f32| format!("{:?}", ui_scene::Rect::new(x, y, w, h));
+    let rect =
+        |x: f32, y: f32, w: f32, h: f32| format!("{:?}", noa_gpui_scene::Rect::new(x, y, w, h));
     assert_eq!(
         shown,
         [
@@ -1596,7 +1607,7 @@ fn text_area_height_fits_wrapped_text() {
         Some(root),
         Container::new(Style {
             flex_direction: FlexDirection::Column,
-            align_items: ui_core::style::AlignItems::START,
+            align_items: noa_gpui_core::style::AlignItems::START,
             ..Default::default()
         }),
     );
@@ -1606,7 +1617,7 @@ fn text_area_height_fits_wrapped_text() {
     tree.prepare(VIEWPORT, &mut text);
     let rect = tree.layout(area).unwrap().rect;
     // What the text needs at the content width (264 - 2 * 8 padding).
-    let probe = text.create(body, ui_text::TextStyle::new(14.0), Some(248.0));
+    let probe = text.create(body, noa_gpui_text::TextStyle::new(14.0), Some(248.0));
     let needed = text.size(probe).height + 16.0;
     assert!(rect.height >= needed, "{} < {needed}", rect.height);
 }
@@ -1617,12 +1628,12 @@ struct DragSource {
     ended: Option<bool>,
 }
 
-impl ui_core::Widget for DragSource {
+impl noa_gpui_core::Widget for DragSource {
     fn style(&self) -> Style {
         fixed(100.0, 40.0)
     }
-    fn paint(&mut self, _cx: &mut ui_core::PaintCx) {}
-    fn event(&mut self, cx: &mut ui_core::EventCx, event: &Event) {
+    fn paint(&mut self, _cx: &mut noa_gpui_core::PaintCx) {}
+    fn event(&mut self, cx: &mut noa_gpui_core::EventCx, event: &Event) {
         match event {
             Event::PointerDown { .. } => {
                 self.pressed = true;
@@ -1645,12 +1656,12 @@ struct DropTarget {
     dropped: Vec<DragData>,
 }
 
-impl ui_core::Widget for DropTarget {
+impl noa_gpui_core::Widget for DropTarget {
     fn style(&self) -> Style {
         fixed(100.0, 40.0)
     }
-    fn paint(&mut self, _cx: &mut ui_core::PaintCx) {}
-    fn event(&mut self, cx: &mut ui_core::EventCx, event: &Event) {
+    fn paint(&mut self, _cx: &mut noa_gpui_core::PaintCx) {}
+    fn event(&mut self, cx: &mut noa_gpui_core::EventCx, event: &Event) {
         match event {
             Event::DragOver { .. } => {
                 self.over = true;
@@ -1812,8 +1823,8 @@ fn move_child_reorders_siblings_and_their_layout() {
 
 #[test]
 fn the_accessibility_tree_exposes_roles_labels_values_and_focus() {
-    use ui_core::accesskit::{Action, ActionRequest, Role as AxRole, TreeId};
-    use ui_core::{ACCESS_ROOT, access_id};
+    use noa_gpui_core::accesskit::{Action, ActionRequest, Role as AxRole, TreeId};
+    use noa_gpui_core::{ACCESS_ROOT, access_id};
 
     let mut text = text_store();
     let mut tree = UiTree::new();
@@ -1894,9 +1905,9 @@ fn the_accessibility_tree_exposes_roles_labels_values_and_focus() {
 
 #[test]
 fn accessibility_actions_ignore_widgets_hidden_since_the_previous_update() {
-    use ui_core::accesskit::{Action, ActionRequest, TreeId};
-    use ui_core::widgets::RadioGroup;
-    use ui_core::{access_id, access_item_id};
+    use noa_gpui_core::accesskit::{Action, ActionRequest, TreeId};
+    use noa_gpui_core::widgets::RadioGroup;
+    use noa_gpui_core::{access_id, access_item_id};
 
     let mut text = text_store();
     let mut tree = UiTree::new();
@@ -1930,9 +1941,9 @@ fn accessibility_actions_ignore_widgets_hidden_since_the_previous_update() {
 
 #[test]
 fn accessibility_item_actions_reject_a_reused_widget_slot() {
-    use ui_core::accesskit::{Action, ActionRequest, TreeId};
-    use ui_core::widgets::RadioGroup;
-    use ui_core::{access_id, access_item_id};
+    use noa_gpui_core::accesskit::{Action, ActionRequest, TreeId};
+    use noa_gpui_core::widgets::RadioGroup;
+    use noa_gpui_core::{access_id, access_item_id};
 
     for detach in [false, true] {
         let mut text = text_store();
@@ -1977,10 +1988,10 @@ fn accessibility_item_actions_reject_a_reused_widget_slot() {
 
 #[test]
 fn accessibility_ids_stay_unique_after_exhausting_a_slots_generations() {
+    use noa_gpui_core::accesskit::{Action, ActionRequest, TreeId};
+    use noa_gpui_core::widgets::RadioGroup;
+    use noa_gpui_core::{ACCESS_ROOT, access_id, access_item_id};
     use std::collections::HashSet;
-    use ui_core::accesskit::{Action, ActionRequest, TreeId};
-    use ui_core::widgets::RadioGroup;
-    use ui_core::{ACCESS_ROOT, access_id, access_item_id};
 
     for detach in [false, true] {
         let mut text = text_store();
@@ -2028,14 +2039,14 @@ fn accessibility_ids_stay_unique_after_exhausting_a_slots_generations() {
 fn accessibility_item_ids_reject_indices_that_overlap_the_widget_slot() {
     let mut tree = UiTree::new();
     let id = tree.insert(None, Label::new("item"));
-    ui_core::access_item_id(id, 1 << 20);
+    noa_gpui_core::access_item_id(id, 1 << 20);
 }
 
 #[test]
 fn controls_take_an_accessible_name_from_the_app_or_their_form_field() {
-    use ui_core::access_id;
-    use ui_core::accesskit::Node;
-    use ui_core::widgets::{FormField, Switch};
+    use noa_gpui_core::access_id;
+    use noa_gpui_core::accesskit::Node;
+    use noa_gpui_core::widgets::{FormField, Switch};
 
     let mut text = text_store();
     let mut tree = UiTree::new();
@@ -2127,7 +2138,7 @@ fn designs_reshape_widgets_without_resizing_them() {
 
 #[test]
 fn noa_draws_switch_knobs_as_cursor_blocks() {
-    use ui_core::widgets::Switch;
+    use noa_gpui_core::widgets::Switch;
     // The knob's (width, height, corner radius): the last quad a switch paints.
     let knob = |design: Design| {
         let mut text = text_store();
@@ -2157,7 +2168,7 @@ fn noa_draws_switch_knobs_as_cursor_blocks() {
 
 #[test]
 fn materials_blur_their_backdrop_except_in_metro() {
-    use ui_core::widgets::{Material, VisualEffectView};
+    use noa_gpui_core::widgets::{Material, VisualEffectView};
     let backdrops = |design: Design| {
         let mut text = text_store();
         let mut tree = UiTree::new();
@@ -2189,7 +2200,7 @@ struct NeedsMeasure {
     paints: u32,
 }
 
-impl ui_core::Widget for NeedsMeasure {
+impl noa_gpui_core::Widget for NeedsMeasure {
     fn style(&self) -> Style {
         Style::default()
     }
@@ -2198,12 +2209,16 @@ impl ui_core::Widget for NeedsMeasure {
         true
     }
 
-    fn measure(&mut self, _cx: &mut ui_core::MeasureCx, _input: ui_core::MeasureInput) -> Size {
+    fn measure(
+        &mut self,
+        _cx: &mut noa_gpui_core::MeasureCx,
+        _input: noa_gpui_core::MeasureInput,
+    ) -> Size {
         self.measured = true;
         Size::new(20.0, 10.0)
     }
 
-    fn paint(&mut self, _cx: &mut ui_core::PaintCx) {
+    fn paint(&mut self, _cx: &mut noa_gpui_core::PaintCx) {
         assert!(self.measured, "painted before it was measured");
         self.paints += 1;
     }
@@ -2219,7 +2234,7 @@ fn widgets_created_hidden_are_measured_before_they_paint() {
     let parent = tree.insert(Some(root), Container::new(Style::default()));
     let nested = tree.insert(Some(parent), NeedsMeasure::default());
     tree.set_hidden(parent, true);
-    let tabs = tree.insert(Some(root), ui_core::widgets::TabView::new(["A", "B"]));
+    let tabs = tree.insert(Some(root), noa_gpui_core::widgets::TabView::new(["A", "B"]));
     let _first = tree.insert(Some(tabs), Label::new("first"));
     let page = tree.insert(Some(tabs), NeedsMeasure::default());
     tree.prepare(VIEWPORT, &mut text);
@@ -2230,7 +2245,7 @@ fn widgets_created_hidden_are_measured_before_they_paint() {
 
     tree.set_hidden(alone, false);
     tree.set_hidden(parent, false);
-    tree.update::<ui_core::widgets::TabView, _>(tabs, |t, cx| t.set_selected(cx, 1));
+    tree.update::<noa_gpui_core::widgets::TabView, _>(tabs, |t, cx| t.set_selected(cx, 1));
     tree.prepare(VIEWPORT, &mut text);
     for id in [alone, nested, page] {
         assert_eq!(paints(&tree, id), 1);

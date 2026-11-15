@@ -1,17 +1,17 @@
-use ui_core::style::{FlexDirection, Size as LayoutSize, percent};
-use ui_core::widgets::{
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, percent};
+use noa_gpui_core::widgets::{
     CollectionItem, CollectionView, ComboBox, Container, DatePicker, DatePickerStyle,
     DateRangeChanged, FindAction, FindBar, FindOptions, FormField, InlineEditableLabel,
     ItemRenamed, LabelEdited, NumberInput, OutlineItem, OutlineView, RangeChanged,
     SelectionChanged, ShortcutChanged, ShortcutRecorder, Slider, TextArea, TextChanged, TextField,
     TextView, TokenField, TokensChanged, ValueChanged, drive_find,
 };
-use ui_core::{
+use noa_gpui_core::{
     DateTime, Event, Key, Message, Modifiers, PointerButton, Shortcut, ShortcutPressed, Style,
     UiTree, WidgetId,
 };
-use ui_scene::{Point, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_scene::{Point, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(800.0, 600.0);
 
@@ -29,7 +29,7 @@ impl Harness {
             None,
             Container::new(Style {
                 flex_direction: FlexDirection::Column,
-                align_items: ui_core::style::AlignItems::START,
+                align_items: noa_gpui_core::style::AlignItems::START,
                 size: LayoutSize {
                     width: percent(1.0),
                     height: percent(1.0),
@@ -50,7 +50,7 @@ impl Harness {
         h
     }
 
-    fn add(&mut self, widget: impl ui_core::Widget) -> WidgetId {
+    fn add(&mut self, widget: impl noa_gpui_core::Widget) -> WidgetId {
         let id = self.tree.insert(Some(self.root), widget);
         self.prepare();
         id
@@ -116,7 +116,7 @@ impl Harness {
         self.prepare();
     }
 
-    fn get<W: ui_core::Widget>(&self, id: WidgetId) -> &W {
+    fn get<W: noa_gpui_core::Widget>(&self, id: WidgetId) -> &W {
         self.tree.get::<W>(id).unwrap()
     }
 
@@ -367,7 +367,8 @@ fn a_form_field_puts_its_label_above_and_the_error_in_place_of_the_help() {
 fn a_leading_label_puts_the_control_beside_it() {
     let mut h = Harness::new();
     let form = h.add(
-        FormField::new("Name").label_position(ui_core::widgets::LabelPosition::Leading(100.0)),
+        FormField::new("Name")
+            .label_position(noa_gpui_core::widgets::LabelPosition::Leading(100.0)),
     );
     let field = h.tree.insert(Some(form), TextField::new("", 200.0));
     h.prepare();

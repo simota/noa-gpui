@@ -3,8 +3,8 @@
 
 use std::sync::Arc;
 
-use ui_render_wgpu::{AcquireError, GpuContext, Renderer, Viewport, WindowSurface, wgpu};
-use ui_text::TextStore;
+use noa_gpui_render_wgpu::{AcquireError, GpuContext, Renderer, Viewport, WindowSurface, wgpu};
+use noa_gpui_text::TextStore;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
@@ -21,9 +21,9 @@ pub struct SecondaryWindow {
     screen: Box<dyn Screen>,
     input: InputState,
     needs_present: bool,
-    ime_area: Option<ui_scene::Rect>,
+    ime_area: Option<noa_gpui_scene::Rect>,
     /// The pointer shape last given to the window.
-    cursor: ui_core::Cursor,
+    cursor: noa_gpui_core::Cursor,
 }
 
 impl SecondaryWindow {
@@ -78,12 +78,12 @@ impl SecondaryWindow {
             input: InputState::default(),
             needs_present: true,
             ime_area: None,
-            cursor: ui_core::Cursor::Default,
+            cursor: noa_gpui_core::Cursor::Default,
         })
     }
 
     /// When this window's tree next needs a frame for a timer (see
-    /// [`ui_core::UiTree::next_timer`]).
+    /// [`noa_gpui_core::UiTree::next_timer`]).
     pub fn next_timer(&self) -> Option<f64> {
         self.screen.tree().next_timer()
     }
@@ -251,9 +251,9 @@ impl SecondaryWindow {
     }
 }
 
-pub fn appearance(theme: winit::window::Theme) -> ui_core::Appearance {
+pub fn appearance(theme: winit::window::Theme) -> noa_gpui_core::Appearance {
     match theme {
-        winit::window::Theme::Dark => ui_core::Appearance::Dark,
-        winit::window::Theme::Light => ui_core::Appearance::Light,
+        winit::window::Theme::Dark => noa_gpui_core::Appearance::Dark,
+        winit::window::Theme::Light => noa_gpui_core::Appearance::Light,
     }
 }

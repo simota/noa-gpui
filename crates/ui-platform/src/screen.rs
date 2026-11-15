@@ -1,13 +1,13 @@
 #[cfg(all(feature = "native", target_os = "macos"))]
-use ui_core::widgets::MenuBarMenu;
+use noa_gpui_core::widgets::MenuBarMenu;
 #[cfg(all(
     feature = "native",
     any(target_os = "macos", target_os = "windows", target_os = "linux")
 ))]
-use ui_core::widgets::MenuItem;
-use ui_core::{Appearance, Event, Message, UiTree};
-use ui_scene::{Color, DisplayList, Rect, Size};
-use ui_text::TextStore;
+use noa_gpui_core::widgets::MenuItem;
+use noa_gpui_core::{Appearance, Event, Message, UiTree};
+use noa_gpui_scene::{Color, DisplayList, Rect, Size};
+use noa_gpui_text::TextStore;
 
 use crate::app::FrameReport;
 
@@ -25,7 +25,7 @@ pub struct WindowRequest {
 #[cfg(feature = "native")]
 pub struct Detached {
     pub title: String,
-    pub content: Vec<ui_core::Subtree>,
+    pub content: Vec<noa_gpui_core::Subtree>,
 }
 
 /// An open or save panel a screen wants shown; the desktop app shows the OS's own

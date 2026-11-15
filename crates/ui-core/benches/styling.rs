@@ -4,17 +4,17 @@
 //! resolve their whole subtrees.
 //!
 //! ```sh
-//! cargo bench -p ui-core --bench styling            # 2,000 rows (8,101 widgets)
-//! BENCH_ROWS=10000 cargo bench -p ui-core --bench styling
+//! cargo bench -p noa-gpui-core --bench styling            # 2,000 rows (8,101 widgets)
+//! BENCH_ROWS=10000 cargo bench -p noa-gpui-core --bench styling
 //! ```
 
 use std::time::{Duration, Instant};
 
-use ui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
-use ui_core::widgets::{Button, Container, Label};
-use ui_core::{Event, Style, StyleMeta, StyleSheet, UiTree};
-use ui_scene::{Point, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
+use noa_gpui_core::widgets::{Button, Container, Label};
+use noa_gpui_core::{Event, Style, StyleMeta, StyleSheet, UiTree};
+use noa_gpui_scene::{Point, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(1280.0, 800.0);
 const FRAMES: usize = 300;

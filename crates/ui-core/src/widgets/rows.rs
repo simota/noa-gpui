@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::hash::{BuildHasherDefault, Hash, Hasher};
 use std::ops::Range;
 
-use ui_scene::{Point, Rect, Size, TextLayoutId};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_scene::{Point, Rect, Size, TextLayoutId};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::CachedText;
 use super::label::{CandidateSizes, Truncation, fit_measured_line_kept};

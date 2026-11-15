@@ -1,16 +1,16 @@
-use ui_core::style::{
+use noa_gpui_core::style::{
     AlignItems, FlexDirection, Rect as LayoutRect, Size as LayoutSize, auto, length, percent,
 };
-use ui_core::widgets::{
+use noa_gpui_core::widgets::{
     Button, ButtonClicked, ButtonStyle, Container, Label, ScrollView, Toast, ToastAction,
     ToastClosed, Truncation,
 };
-use ui_core::{
+use noa_gpui_core::{
     Message, OverlayDismissed, OverlayOptions, Placement, Role, Style, UiTree, WidgetId,
     WindowCorner,
 };
-use ui_scene::Rect;
-use ui_text::TextStore;
+use noa_gpui_scene::Rect;
+use noa_gpui_text::TextStore;
 
 pub const PANEL_WIDTH: f32 = 320.0;
 /// Space between the panel and the desktop's edges.
@@ -402,7 +402,7 @@ fn panel_style(desktop: Rect) -> Style {
 }
 
 fn placement(desktop: Rect) -> Placement {
-    Placement::At(ui_scene::Point::new(
+    Placement::At(noa_gpui_scene::Point::new(
         desktop.right() - PANEL_WIDTH - INSET,
         desktop.y + INSET,
     ))

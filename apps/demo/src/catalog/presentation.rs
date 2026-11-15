@@ -1,12 +1,12 @@
-use ui_core::style::{AlignItems, FlexDirection, JustifyContent, Size as LayoutSize, length};
-use ui_core::widgets::{
+use noa_gpui_core::style::{AlignItems, FlexDirection, JustifyContent, Size as LayoutSize, length};
+use noa_gpui_core::widgets::{
     Alert, AlertResponse, AlertStyle, Button, ButtonClicked, ColorPanel, Container, FontChoice,
     FontPanel, Label, Panel, PanelClosed, PanelStyle, PopUpButton, Popover, Sheet, SheetClosed,
     Slider, Switch, TextField, Toolbar, ToolbarDisplay, ToolbarItem, ToolbarSymbol, WindowEvent,
     WindowManager,
 };
-use ui_core::{Edge, Message, OverlayDismissed, Role, Style, WidgetId};
-use ui_scene::{Color, Point};
+use noa_gpui_core::{Edge, Message, OverlayDismissed, Role, Style, WidgetId};
+use noa_gpui_scene::{Color, Point};
 
 use super::kit::{Kit, gap, row_style, window_rect};
 use super::{Demo, DemoCx, SectionSpec};
@@ -265,9 +265,9 @@ fn open_sheet(cx: &mut DemoCx) -> OpenSheet {
             flex_direction: FlexDirection::Row,
             justify_content: JustifyContent::END,
             gap: gap(8.0, 0.0),
-            margin: ui_core::style::Rect {
+            margin: noa_gpui_core::style::Rect {
                 top: length(6.0),
-                ..ui_core::style::Rect::zero()
+                ..noa_gpui_core::style::Rect::zero()
             },
             ..Default::default()
         }),
@@ -495,7 +495,7 @@ impl Demo for PanelDemo {
         #[cfg(feature = "native")]
         if clicked(message, self.window_button) {
             self.windows_opened += 1;
-            cx.windows.push(ui_platform::WindowRequest {
+            cx.windows.push(noa_gpui_platform::WindowRequest {
                 title: format!("Inspector {}", self.windows_opened),
                 size: (260.0, 220.0),
                 screen: Box::new(super::note_window::PanelWindow::new(
@@ -650,7 +650,7 @@ impl Demo for StandardDemo {
         }
         #[cfg(feature = "native")]
         {
-            use ui_platform::FileDialogRequest;
+            use noa_gpui_platform::FileDialogRequest;
             let text = vec![("Text".to_owned(), vec!["txt".to_owned(), "md".to_owned()])];
             if clicked(message, self.open_button) {
                 cx.file_dialogs.push(FileDialogRequest {
@@ -677,8 +677,12 @@ impl Demo for StandardDemo {
     }
 
     #[cfg(feature = "native")]
-    fn file_dialog_finished(&mut self, cx: &mut DemoCx, result: &ui_platform::FileDialogResult) {
-        use ui_platform::FileDialogResult;
+    fn file_dialog_finished(
+        &mut self,
+        cx: &mut DemoCx,
+        result: &noa_gpui_platform::FileDialogResult,
+    ) {
+        use noa_gpui_platform::FileDialogResult;
         if !std::mem::take(&mut self.choosing) {
             return;
         }
@@ -775,13 +779,13 @@ struct InnerWindowsDemo {
     sheet: Option<(WidgetId, WidgetId, WidgetId)>,
 }
 
-fn window_content(tree: &mut ui_core::UiTree, window: WidgetId, note: &str) {
+fn window_content(tree: &mut noa_gpui_core::UiTree, window: WidgetId, note: &str) {
     let body = tree.insert(
         Some(window),
         Container::new(Style {
             flex_direction: FlexDirection::Column,
             gap: gap(0.0, 8.0),
-            padding: ui_core::style::Rect::length(12.0),
+            padding: noa_gpui_core::style::Rect::length(12.0),
             ..Default::default()
         }),
     );
@@ -799,7 +803,7 @@ fn window_content(tree: &mut ui_core::UiTree, window: WidgetId, note: &str) {
 }
 
 impl InnerWindowsDemo {
-    fn open_window(&mut self, tree: &mut ui_core::UiTree) {
+    fn open_window(&mut self, tree: &mut noa_gpui_core::UiTree) {
         self.opened += 1;
         let window = self
             .manager
@@ -832,11 +836,11 @@ impl Demo for InnerWindowsDemo {
                     if let Some((title, content)) =
                         self.manager.take_window(cx.tree, cx.text, window)
                     {
-                        cx.windows.push(ui_platform::WindowRequest {
+                        cx.windows.push(noa_gpui_platform::WindowRequest {
                             title: title.clone(),
                             size: (380.0, 280.0),
                             screen: Box::new(super::note_window::TornWindow::new(
-                                ui_platform::Detached { title, content },
+                                noa_gpui_platform::Detached { title, content },
                                 cx.tree.theme().clone(),
                             )),
                             floating: false,
@@ -920,7 +924,7 @@ impl Demo for InnerWindowsDemo {
     }
 
     #[cfg(feature = "native")]
-    fn adopt(&mut self, cx: &mut DemoCx, detached: &mut Option<ui_platform::Detached>) {
+    fn adopt(&mut self, cx: &mut DemoCx, detached: &mut Option<noa_gpui_platform::Detached>) {
         if let Some(detached) = detached.take() {
             self.manager
                 .adopt(cx.tree, &detached.title, detached.content);
@@ -954,13 +958,13 @@ fn inner_windows(kit: &mut Kit) -> Box<dyn Demo> {
     let first = manager.open(
         kit.tree,
         "Window 1",
-        Some(ui_scene::Rect::new(24.0, 20.0, 300.0, 230.0)),
+        Some(noa_gpui_scene::Rect::new(24.0, 20.0, 300.0, 230.0)),
     );
     window_content(kit.tree, first, "Drag my title bar; resize from my edges.");
     let second = manager.open(
         kit.tree,
         "Window 2",
-        Some(ui_scene::Rect::new(250.0, 110.0, 320.0, 240.0)),
+        Some(noa_gpui_scene::Rect::new(250.0, 110.0, 320.0, 240.0)),
     );
     window_content(kit.tree, second, "Return presses this window's OK.");
     let status = note(kit, card, "—");

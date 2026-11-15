@@ -1,17 +1,17 @@
-use ui_core::style::{AlignItems, FlexDirection, Size as LayoutSize, length, percent};
-use ui_core::widgets::{
+use noa_gpui_core::style::{AlignItems, FlexDirection, Size as LayoutSize, length, percent};
+use noa_gpui_core::widgets::{
     AnchorNav, AnchorSelected, COMMAND_PALETTE_SHORTCUTS, CommandChosen, CommandPalette, Container,
     DIVIDER, Menu, MenuBarChosen, MenuBarMenu, MenuItem, OUTLINE_RAIL_WIDTH, OutlineItem,
     OutlineView, PaletteCommand, PanesChanged, PathControl, PathItem, PathItemClicked,
     PathSeparator, RAIL_DURATION, RecentCommands, ScrollView, SplitPane, SplitView, menu_commands,
     menu_item,
 };
-use ui_core::{
+use noa_gpui_core::{
     Event, Key, Message, Modifiers, PointerButton, Shortcut, ShortcutPressed, Style, UiTree,
     Widget, WidgetId,
 };
-use ui_scene::{DrawCommand, Point, Rect, Size, VectorIcon};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_scene::{DrawCommand, Point, Rect, Size, VectorIcon};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(800.0, 500.0);
 
@@ -225,8 +225,8 @@ fn choosing_a_menu_command_in_the_palette_gives_its_menu_item() {
 
 #[test]
 fn a_checked_command_shows_a_checkmark_and_reads_as_checked() {
-    use ui_core::access_item_id;
-    use ui_core::accesskit::Toggled;
+    use noa_gpui_core::access_item_id;
+    use noa_gpui_core::accesskit::Toggled;
     let open = |checked: bool| {
         let mut h = Harness::new();
         let id = CommandPalette::new(vec![
@@ -240,7 +240,7 @@ fn a_checked_command_shows_a_checkmark_and_reads_as_checked() {
             matches!(
                 c,
                 DrawCommand::Shape {
-                    shape: ui_scene::Shape::Line { .. },
+                    shape: noa_gpui_scene::Shape::Line { .. },
                     ..
                 }
             )
@@ -364,7 +364,7 @@ fn typing_filters_by_fuzzy_match_and_return_chooses() {
 #[test]
 fn clicking_a_row_chooses_it_and_escape_or_an_outside_click_closes() {
     let mut h = Harness::new();
-    let field = h.add(ui_core::widgets::TextField::new("", 100.0));
+    let field = h.add(noa_gpui_core::widgets::TextField::new("", 100.0));
     h.tree.set_focus(Some(field));
     let id = CommandPalette::new(commands()).open(&mut h.tree);
     h.prepare();
@@ -394,7 +394,7 @@ fn clicking_a_row_chooses_it_and_escape_or_an_outside_click_closes() {
     assert!(!h.tree.contains(id));
     let messages = h.messages();
     assert!(values::<CommandChosen>(&messages).is_empty());
-    assert!(values::<ui_core::OverlayDismissed>(&messages).len() == 1);
+    assert!(values::<noa_gpui_core::OverlayDismissed>(&messages).len() == 1);
     assert_eq!(h.tree.focused(), Some(field), "the press went no further");
 
     h.tree.add_shortcut(Shortcut::command('k'), field);
@@ -440,7 +440,7 @@ const DEEP: [&str; 7] = [
     "Projects",
     "noa-gpui",
     "crates",
-    "ui-core",
+    "noa-gpui-core",
     "widgets",
     "path_control.rs",
 ];
@@ -497,7 +497,7 @@ fn a_long_path_collapses_its_middle_into_a_menu() {
         .accessibility_update(1.0)
         .nodes
         .iter()
-        .filter(|(_, n)| n.role() == ui_core::accesskit::Role::Button)
+        .filter(|(_, n)| n.role() == noa_gpui_core::accesskit::Role::Button)
         .find_map(|(_, n)| n.bounds())
         .expect("the … is a button");
     let more = Point::new(first.x0 as f32 + 4.0, (first.y0 + first.y1) as f32 / 2.0);
@@ -645,7 +645,7 @@ fn choosing_an_anchor_scrolls_its_section_to_the_top() {
     let rows: Vec<_> = accessibility
         .nodes
         .iter()
-        .filter(|(_, n)| n.role() == ui_core::accesskit::Role::Link)
+        .filter(|(_, n)| n.role() == noa_gpui_core::accesskit::Role::Link)
         .filter_map(|(_, n)| n.bounds())
         .collect();
     assert_eq!(rows.len(), 5);
@@ -675,7 +675,7 @@ fn a_scroll_margin_keeps_space_above_the_section() {
     let mut h = Harness::new();
     let scroll = h.add(ScrollView::new(Style {
         flex_direction: FlexDirection::Column,
-        padding: ui_core::style::Rect::length(20.0),
+        padding: noa_gpui_core::style::Rect::length(20.0),
         size: LayoutSize {
             width: length(400.0),
             height: length(300.0),

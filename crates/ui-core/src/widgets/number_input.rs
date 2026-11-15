@@ -1,6 +1,6 @@
-use ui_layout::{MeasureInput, Style};
-use ui_scene::{Border, Direction, Point, Rect, Size};
-use ui_text::TextStore;
+use noa_gpui_layout::{MeasureInput, Style};
+use noa_gpui_scene::{Border, Direction, Point, Rect, Size};
+use noa_gpui_text::TextStore;
 
 use super::editable::SingleLine;
 use super::stepper::{REPEAT_DELAY, REPEAT_INTERVAL};

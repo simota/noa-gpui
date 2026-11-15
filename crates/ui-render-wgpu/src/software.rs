@@ -8,12 +8,12 @@
 
 use std::collections::HashMap;
 
-use ui_scene::{
+use noa_gpui_scene::{
     Border, Color, CornerRadii, Direction, DisplayList, DrawCommand, ImageId, Point, Rect, Shape,
     VectorIcon,
 };
-use ui_text::TextStore;
-use ui_text::cosmic_text::{SwashCache, SwashContent};
+use noa_gpui_text::TextStore;
+use noa_gpui_text::cosmic_text::{SwashCache, SwashContent};
 
 use crate::offscreen::RgbaImage;
 use crate::renderer::Viewport;
@@ -181,7 +181,7 @@ impl SoftwareRenderer {
         canvas: &mut Canvas,
         store: &mut TextStore,
         rect: Rect,
-        layout: ui_scene::TextLayoutId,
+        layout: noa_gpui_scene::TextLayoutId,
         color: Color,
     ) {
         let s = canvas.scale;
@@ -715,7 +715,7 @@ fn arc(p: Point, r: f32, sweep: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ui_text::{FontOptions, TextStyle};
+    use noa_gpui_text::{FontOptions, TextStyle};
 
     fn viewport(width: u32, height: u32, scale: f32) -> Viewport {
         Viewport {

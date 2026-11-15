@@ -1,13 +1,14 @@
 [package]
-name = "ui-text"
+name = "noa-gpui-text"
 description = "Text shaping and layout storage for noa-gpui"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [dependencies]
-ui-scene.workspace = true
+noa-gpui-scene.workspace = true
 cosmic-text.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

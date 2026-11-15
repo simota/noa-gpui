@@ -4,10 +4,10 @@ use std::collections::HashSet;
 use std::hash::Hash;
 use std::ops::Range;
 
-use ui_layout::Style;
-use ui_layout::style::{Dimension, Size as LayoutSize, length, percent};
-use ui_scene::{Border, Color, Direction, Point, Rect, Size};
-use ui_text::{FontFamily, TextStore, TextStyle};
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{Dimension, Size as LayoutSize, length, percent};
+use noa_gpui_scene::{Border, Color, Direction, Point, Rect, Size};
+use noa_gpui_text::{FontFamily, TextStore, TextStyle};
 
 use super::inline_label::{RenameStep, Renamer};
 use super::rows::{
@@ -472,7 +472,7 @@ impl TableColumn {
         self.flex
     }
 
-    /// By name (see [`ui_text::TextStore::font_family`]); the default sans-serif when
+    /// By name (see [`noa_gpui_text::TextStore::font_family`]); the default sans-serif when
     /// not set.
     pub fn font_family(mut self, family: impl Into<String>) -> Self {
         self.family = Some(family.into());
@@ -3040,7 +3040,7 @@ impl TableView {
                     cell.height - 2.0,
                 ),
                 2.0,
-                ui_scene::Color::TRANSPARENT,
+                noa_gpui_scene::Color::TRANSPARENT,
                 Border {
                     width: 2.0,
                     color: colors.focus,
@@ -3537,7 +3537,7 @@ fn directed(order: Ordering, ascending: bool) -> Ordering {
 }
 
 /// Background of a selected row: the accent while the view has focus, gray otherwise.
-pub(crate) fn selection_fill(cx: &PaintCx, focused: bool) -> (ui_scene::Color, Role) {
+pub(crate) fn selection_fill(cx: &PaintCx, focused: bool) -> (noa_gpui_scene::Color, Role) {
     if focused {
         (cx.color(Role::Accent), Role::OnAccent)
     } else {
@@ -3546,7 +3546,7 @@ pub(crate) fn selection_fill(cx: &PaintCx, focused: bool) -> (ui_scene::Color, R
     }
 }
 
-pub(crate) fn stripe(cx: &PaintCx) -> ui_scene::Color {
+pub(crate) fn stripe(cx: &PaintCx) -> noa_gpui_scene::Color {
     mix(cx.color(Role::Surface), cx.color(Role::Text), 0.035)
 }
 
@@ -3572,13 +3572,13 @@ struct ButtonPlace {
 }
 
 struct CellColors {
-    rule: ui_scene::Color,
-    ink: ui_scene::Color,
-    selected_ink: ui_scene::Color,
+    rule: noa_gpui_scene::Color,
+    ink: noa_gpui_scene::Color,
+    selected_ink: noa_gpui_scene::Color,
     /// The second line of a cell ([`TableData::cell_detail`]).
-    muted: ui_scene::Color,
-    range: ui_scene::Color,
-    focus: ui_scene::Color,
+    muted: noa_gpui_scene::Color,
+    range: noa_gpui_scene::Color,
+    focus: noa_gpui_scene::Color,
 }
 
 impl Widget for TableView {

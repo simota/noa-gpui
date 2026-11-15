@@ -1,18 +1,18 @@
 use std::borrow::Cow;
 
-use ui_core::style::{
+use noa_gpui_core::style::{
     AlignItems, FlexDirection, Position, Size as LayoutSize, auto, length, percent,
 };
-use ui_core::widgets::{
+use noa_gpui_core::widgets::{
     Accordion, BoxResized, Container, DisclosureGroup, GroupBox, GroupBoxStyle, OutlineItem,
     OutlineView, ResizableBox, ResizeEdges, Separator, Sheet, SheetClosed, TABLE_HEADER, TABLE_ROW,
     TableColumn, TableData, TableView, Toggled,
 };
-use ui_core::{
+use noa_gpui_core::{
     Edge, Event, Key, Message, Modifiers, PointerButton, Style, UiTree, Widget, WidgetId,
 };
-use ui_scene::{Point, Rect, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_scene::{Point, Rect, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(800.0, 500.0);
 
@@ -296,7 +296,7 @@ fn containers_take_their_layout_from_builder_methods() {
         Container::row()
             .width(300.0)
             .height(40.0)
-            .justify_content(ui_core::style::JustifyContent::SPACE_BETWEEN),
+            .justify_content(noa_gpui_core::style::JustifyContent::SPACE_BETWEEN),
     );
     let left = h.add_to(row, Harness::sized(50.0, 20.0));
     let right = h.add_to(row, Harness::sized(50.0, 20.0));
@@ -336,7 +336,7 @@ fn a_wrapping_row_with_a_vertical_separator_keeps_its_lines_inside() {
     let mut h = Harness::new();
     let row = h.add(Container::new(Style {
         flex_direction: FlexDirection::Row,
-        flex_wrap: ui_core::style::FlexWrap::Wrap,
+        flex_wrap: noa_gpui_core::style::FlexWrap::Wrap,
         align_items: AlignItems::CENTER,
         gap: LayoutSize {
             width: length(16.0),
@@ -504,7 +504,7 @@ impl TableData for Grouped {
 fn grouped_table(h: &mut Harness) -> WidgetId {
     let columns = vec![
         TableColumn::new("Name", 200.0),
-        TableColumn::new("Size", 100.0).sort(ui_core::widgets::ColumnSort::Number),
+        TableColumn::new("Size", 100.0).sort(noa_gpui_core::widgets::ColumnSort::Number),
     ];
     // Ten rows tall below the header.
     let height = TABLE_HEADER + 10.0 * TABLE_ROW + 1.0;

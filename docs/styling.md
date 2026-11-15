@@ -7,9 +7,9 @@ Noa Style overrides layout and painting with CSS-like declarations while keeping
 ## Usage
 
 ```rust
-use ui_core::styling::{StyleMeta, StylePatch, StyleSheet};
-use ui_core::widgets::{Button, Container, Label};
-use ui_core::UiTree;
+use noa_gpui_core::styling::{StyleMeta, StylePatch, StyleSheet};
+use noa_gpui_core::widgets::{Button, Container, Label};
+use noa_gpui_core::UiTree;
 
 let mut tree = UiTree::new();
 let root = tree.insert(None, Container::column());
@@ -107,7 +107,7 @@ When a custom Widget builds the box into its own shape, it returns `true` from `
 
 The layout width of `border` is applied when specified in CSS. The existing `Container::border` stays as it was for compatibility. Text placement inside buttons and decoration from the native theme also follow the existing implementation.
 
-A `position: absolute` node is placed relative to its parent regardless of the parent's `position` (a rule of `ui-layout`).
+A `position: absolute` node is placed relative to its parent regardless of the parent's `position` (a rule of `noa-gpui-layout`).
 
 A `display: none` node is treated the same as `UiTree::set_hidden`. It takes no space, is not drawn, and receives neither focus nor hover.
 
@@ -232,8 +232,8 @@ Noa Style is not a compatible implementation of browser CSS; it is a DSL that ha
 ## Verification
 
 ```sh
-cargo test -p ui-core --test styling
-cargo test -p ui-platform --features native --lib stylesheet
+cargo test -p noa-gpui-core --test styling
+cargo test -p noa-gpui-platform --features native --lib stylesheet
 ./scripts/verify.sh
 ```
 

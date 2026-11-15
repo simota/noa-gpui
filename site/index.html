@@ -93,7 +93,7 @@
             <div class="budget-row" style="--share: 11.56%"><span class="budget-label">デモ全体の CPU 時間（1 万行・Metal）</span><span class="budget-track"><span class="budget-bar"></span></span><span class="budget-value"><span class="num">1.93</span> ms</span><span class="budget-cond">120Hz の 1 フレーム予算 8.3 ms に余裕を残します。</span></div>
           </div>
           <dl class="budget-legend"><div><dt>目盛り 16 ms</dt><dd>10 万行テーブル、1 フレームの上限。1 フレームでも超えるとベンチマークが失敗し、CI と同じ検査（<code>verify.sh --full</code>）を通りません。</dd></div></dl>
-          <p class="budget-note">いずれも p95、計測環境は Apple M1 Pro。止まっている画面では、物差しは空のままです。数値と条件は <a href="https://github.com/simota/noa-gpui/blob/main/docs/architecture.md#phase-4-measurements" rel="noopener">docs/architecture.md</a> に記録されています。手元では <code>cargo bench -p ui-core --bench table</code> で再現できます。</p>
+          <p class="budget-note">いずれも p95、計測環境は Apple M1 Pro。止まっている画面では、物差しは空のままです。数値と条件は <a href="https://github.com/simota/noa-gpui/blob/main/docs/architecture.md#phase-4-measurements" rel="noopener">docs/architecture.md</a> に記録されています。手元では <code>cargo bench -p noa-gpui-core --bench table</code> で再現できます。</p>
         </figure>
       </div>
     </section>
@@ -218,18 +218,18 @@
           <h2 id="arch-title" class="section-title"><span class="nb">自前で持つのは</span><span class="nb">描画だけ</span></h2>
           <p class="section-lead">残りは実績あるライブラリに任せました。wgpu の上の小さな 2D レンダラーに、Taffy のレイアウトと cosmic-text の文字組みを組み合わせ、OS ごとの違いは薄い層に閉じ込めています。</p>
           <p class="arch-detail">描画コマンドを境に、GPU と UI を分けています。UI は GPU に依存しない Display List を出力するだけ。描くのは wgpu の 3 本のパイプラインです。WebGL2 を最低ラインに設計しているので、Compute Shader なしで全環境が同じ描画経路を通ります。</p>
-          <p class="fine">依存の向きは一方通行で、<code>ui-core</code> 以下が GPU やウィンドウに依存しないことはテストで検査しています。</p>
+          <p class="fine">依存の向きは一方通行で、<code>noa-gpui-core</code> 以下が GPU やウィンドウに依存しないことはテストで検査しています。</p>
         </div>
         <ol class="stack" aria-label="クレートの層構成（上ほどアプリに近い）">
           <li class="layer layer-app"><span class="l-name">あなたのアプリ</span><span class="l-desc"><code>Screen</code> トレイトを実装</span></li>
-          <li class="layer"><span class="l-name">ui-platform</span><span class="l-desc">winit · IME · AccessKit · メニュー · ファイルダイアログ</span></li>
-          <li class="layer"><span class="l-name">ui-core</span><span class="l-desc">Widget Tree · イベント · フォーカス · テーマ · 部品</span></li>
+          <li class="layer"><span class="l-name">noa-gpui-platform</span><span class="l-desc">winit · IME · AccessKit · メニュー · ファイルダイアログ</span></li>
+          <li class="layer"><span class="l-name">noa-gpui-core</span><span class="l-desc">Widget Tree · イベント · フォーカス · テーマ · 部品</span></li>
           <li class="layer layer-split">
-            <span class="sub"><span class="l-name">ui-layout</span><span class="l-desc">Taffy</span></span>
-            <span class="sub"><span class="l-name">ui-text</span><span class="l-desc">cosmic-text</span></span>
-            <span class="sub"><span class="l-name">ui-scene</span><span class="l-desc">Display List</span></span>
+            <span class="sub"><span class="l-name">noa-gpui-layout</span><span class="l-desc">Taffy</span></span>
+            <span class="sub"><span class="l-name">noa-gpui-text</span><span class="l-desc">cosmic-text</span></span>
+            <span class="sub"><span class="l-name">noa-gpui-scene</span><span class="l-desc">Display List</span></span>
           </li>
-          <li class="layer layer-gpu"><span class="l-name">ui-render-wgpu</span><span class="l-desc">Quad · Image · Text — SDF 角丸とインスタンス描画</span></li>
+          <li class="layer layer-gpu"><span class="l-name">noa-gpui-render-wgpu</span><span class="l-desc">Quad · Image · Text — SDF 角丸とインスタンス描画</span></li>
           <li class="layer layer-backends"><span>D3D12</span><span>Metal</span><span>Vulkan</span><span>WebGPU</span><span>WebGL2</span></li>
         </ol>
       </div>
@@ -238,7 +238,7 @@
       <div class="wrap">
         <div class="section-head">
           <h2 id="start-title" class="section-title"><span class="nb">3 ステップで</span><span class="nb">最初のウィンドウを開く</span></h2>
-          <p class="section-lead">Rust 1.89 以上が必要です。依存に加えるのは <code>ui-platform</code> ひとつです。</p>
+          <p class="section-lead">Rust 1.89 以上が必要です。依存に加えるのは <code>noa-gpui-platform</code> ひとつです。</p>
         </div>
         <ol class="steps">
           <li class="step">
@@ -247,7 +247,7 @@
               <div class="code-bar"><span class="code-name">Terminal</span><button class="copy" type="button" data-copy>コピー</button></div>
               <pre class="code" tabindex="0" aria-label="サンプルを動かすコマンド"><code>git clone https://github.com/simota/noa-gpui
 cd noa-gpui
-cargo run -p ui-platform --example hello --features native</code></pre>
+cargo run -p noa-gpui-platform --example hello --features native</code></pre>
             </div>
             <p class="step-note">部品をひととおり触るなら <code>cargo run -p desktop --release -- --scene=catalog</code>。</p>
           </li>
@@ -273,7 +273,7 @@ cargo run -p ui-platform --example hello --features native</code></pre>
             <div class="code-block code-wrap">
               <div class="code-bar"><span class="code-name">Cargo.toml</span><button class="copy" type="button" data-copy>コピー</button></div>
               <pre class="code" tabindex="0" aria-label="Cargo.toml"><code>[dependencies]
-ui-platform = { git = <span class="str">"https://github.com/simota/noa-gpui"</span>, features = [<span class="str">"native"</span>] }</code></pre>
+noa-gpui-platform = { git = <span class="str">"https://github.com/simota/noa-gpui"</span>, features = [<span class="str">"native"</span>] }</code></pre>
             </div>
             <p class="step-note">まだリリースタグがないので、<code>rev = "&lt;commit&gt;"</code> を足して版を固定するのがおすすめです。Web 向けには <code>native</code> の代わりに <code>webgpu</code> か <code>webgl2</code> のどちらかひとつを有効にします。</p>
           </li>

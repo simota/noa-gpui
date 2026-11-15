@@ -1,4 +1,4 @@
-use ui_platform::{App, AppOptions, Screen, Setup};
+use noa_gpui_platform::{App, AppOptions, Screen, Setup};
 
 use crate::assets::Assets;
 use crate::bench::Meter;
@@ -110,7 +110,7 @@ pub fn snapshot(
     stylesheet: Option<&std::path::Path>,
 ) -> Result<(), String> {
     let sheet = stylesheet.map(load_stylesheet).transpose()?;
-    let mut headless = ui_platform::Headless::new_or_software();
+    let mut headless = noa_gpui_platform::Headless::new_or_software();
     let mut screen = if headless.is_software() {
         screen_with(
             config,
@@ -122,7 +122,7 @@ pub fn snapshot(
     if let Some(sheet) = sheet {
         screen.tree_mut().set_stylesheet(sheet);
     }
-    let mut text = ui_platform::ui_text::TextStore::new(Default::default());
+    let mut text = noa_gpui_platform::noa_gpui_text::TextStore::new(Default::default());
     let (width, height) = options().size;
     let image = headless
         .render_screen(
@@ -138,17 +138,20 @@ pub fn snapshot(
 }
 
 #[cfg(feature = "native")]
-pub fn load_stylesheet(path: &std::path::Path) -> Result<ui_platform::ui_core::StyleSheet, String> {
+pub fn load_stylesheet(
+    path: &std::path::Path,
+) -> Result<noa_gpui_platform::noa_gpui_core::StyleSheet, String> {
     let source =
         std::fs::read_to_string(path).map_err(|e| format!("read {}: {e}", path.display()))?;
-    ui_platform::ui_core::StyleSheet::parse(&source).map_err(|e| format!("{}: {e}", path.display()))
+    noa_gpui_platform::noa_gpui_core::StyleSheet::parse(&source)
+        .map_err(|e| format!("{}: {e}", path.display()))
 }
 
 #[cfg(target_arch = "wasm32")]
 pub fn app_with_gpu(
     config: Config,
-    instance: ui_platform::wgpu::Instance,
-    ctx: ui_platform::GpuContext,
+    instance: noa_gpui_platform::wgpu::Instance,
+    ctx: noa_gpui_platform::GpuContext,
     canvas: web_sys::HtmlCanvasElement,
 ) -> App {
     App::with_gpu(options(), instance, ctx, canvas, move |setup| {

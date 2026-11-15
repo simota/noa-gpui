@@ -1,11 +1,11 @@
-use ui_core::style::{FlexDirection, Rect as LayoutRect, Size as LayoutSize, length};
-use ui_core::widgets::{
+use noa_gpui_core::style::{FlexDirection, Rect as LayoutRect, Size as LayoutSize, length};
+use noa_gpui_core::widgets::{
     Button, ButtonClicked, ButtonStyle, CheckState, Checkbox, CheckboxChanged, ComboButton,
     Container, ControlSize, Disclosure, Label, MenuChosen, MenuItem, PopUpButton, Pressable,
     PullDownButton, RadioGroup, SegmentClicked, SegmentMode, SegmentStyle, SegmentedControl,
     SegmentsChanged, SelectionChanged, Switch, Toggled,
 };
-use ui_core::{Message, Role, Shortcut, Style, WidgetId};
+use noa_gpui_core::{Message, Role, Shortcut, Style, WidgetId};
 
 use super::kit::{Kit, gap, row_style};
 use super::{Demo, DemoCx, SectionSpec};
@@ -134,7 +134,7 @@ fn column(kit: &mut Kit, parent: WidgetId, gap_y: f32) -> WidgetId {
         Some(parent),
         Container::new(Style {
             flex_direction: FlexDirection::Column,
-            align_items: ui_core::style::AlignItems::START,
+            align_items: noa_gpui_core::style::AlignItems::START,
             gap: gap(0.0, gap_y),
             ..Default::default()
         }),
@@ -199,7 +199,7 @@ fn buttons(kit: &mut Kit) -> Box<dyn Demo> {
                 top: length(4.0),
                 bottom: length(4.0),
             },
-            align_items: ui_core::style::AlignItems::CENTER,
+            align_items: noa_gpui_core::style::AlignItems::CENTER,
             ..Default::default()
         })
         .label("Engine: Docker Desktop, running")
@@ -322,15 +322,20 @@ fn radios(kit: &mut Kit) -> Box<dyn Demo> {
     Box::new(log)
 }
 
-fn labeled(kit: &mut Kit, parent: WidgetId, text: &str, widget: impl ui_core::Widget) -> WidgetId {
+fn labeled(
+    kit: &mut Kit,
+    parent: WidgetId,
+    text: &str,
+    widget: impl noa_gpui_core::Widget,
+) -> WidgetId {
     let r = kit.tree.insert(
         Some(parent),
         Container::new(Style {
-            align_items: ui_core::style::AlignItems::CENTER,
-            justify_content: ui_core::style::JustifyContent::SPACE_BETWEEN,
+            align_items: noa_gpui_core::style::AlignItems::CENTER,
+            justify_content: noa_gpui_core::style::JustifyContent::SPACE_BETWEEN,
             size: LayoutSize {
                 width: length(220.0),
-                height: ui_core::style::auto(),
+                height: noa_gpui_core::style::auto(),
             },
             ..Default::default()
         }),
@@ -368,9 +373,9 @@ impl Demo for DisclosureDemo {
         {
             let style = Style {
                 display: if *expanded {
-                    ui_core::style::Display::Flex
+                    noa_gpui_core::style::Display::Flex
                 } else {
-                    ui_core::style::Display::None
+                    noa_gpui_core::style::Display::None
                 },
                 flex_direction: FlexDirection::Column,
                 gap: gap(0.0, 4.0),
@@ -397,7 +402,7 @@ fn disclosures(kit: &mut Kit) -> Box<dyn Demo> {
     let details = kit.tree.insert(
         Some(card),
         Container::new(Style {
-            display: ui_core::style::Display::None,
+            display: noa_gpui_core::style::Display::None,
             ..Default::default()
         }),
     );

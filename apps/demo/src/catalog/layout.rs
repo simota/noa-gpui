@@ -1,8 +1,8 @@
-use ui_core::style::{
+use noa_gpui_core::style::{
     AlignItems, Display, FlexDirection, GridPlacement, JustifyContent, Line, Rect as LayoutRect,
     Size as LayoutSize, auto, length, percent,
 };
-use ui_core::widgets::{
+use noa_gpui_core::widgets::{
     Accordion, Alert, AlertResponse, AlertStyle, BoxResized, Button, ButtonClicked, CheckState,
     Checkbox, CheckboxChanged, Container, DisclosureGroup, GridCell, GridPlacementMode, GridTrack,
     GridView, GroupBox, Image, Label, Material, NewTabRequested, PanesChanged, PopUpButton,
@@ -10,8 +10,8 @@ use ui_core::widgets::{
     StackDistribution, StackView, Switch, TabCloseRequested, TabMoved, TabView, TextArea,
     TextChanged, TextField, VisualEffectView, from_hsv,
 };
-use ui_core::{Message, Paint, Role, Style, WidgetId};
-use ui_scene::{Color, Size};
+use noa_gpui_core::{Message, Paint, Role, Style, WidgetId};
+use noa_gpui_scene::{Color, Size};
 
 use super::kit::{Kit, gap, row_style, swatch};
 use super::{Demo, DemoCx, SectionSpec};
@@ -350,7 +350,7 @@ fn stacks(kit: &mut Kit) -> Box<dyn Demo> {
             let child = if distribution == StackDistribution::FillEqually {
                 Container::new(Style {
                     size: LayoutSize {
-                        width: ui_core::style::auto(),
+                        width: noa_gpui_core::style::auto(),
                         height: length(20.0),
                     },
                     ..Default::default()
@@ -679,7 +679,7 @@ struct DocumentsDemo {
 }
 
 impl DocumentsDemo {
-    fn open(&mut self, tree: &mut ui_core::UiTree) {
+    fn open(&mut self, tree: &mut noa_gpui_core::UiTree) {
         self.opened += 1;
         let title = format!("Untitled {}", self.opened);
         let page = TabView::add_tab(
@@ -694,7 +694,7 @@ impl DocumentsDemo {
     }
 
     /// The tab currently showing `page`; tabs can move.
-    fn tab_of(&self, tree: &ui_core::UiTree, page: WidgetId) -> Option<usize> {
+    fn tab_of(&self, tree: &noa_gpui_core::UiTree, page: WidgetId) -> Option<usize> {
         let count = tree.get::<TabView>(self.tabs)?.tab_count();
         (0..count).find(|&i| TabView::page(tree, self.tabs, i) == Some(page))
     }
@@ -987,7 +987,7 @@ fn visual_effects(kit: &mut Kit) -> Box<dyn Demo> {
 /// `style` placed in the first cell of a grid, where layers stack.
 fn layer(style: Style) -> Style {
     let first = Line {
-        start: ui_core::style::line(1),
+        start: noa_gpui_core::style::line(1),
         end: GridPlacement::Auto,
     };
     Style {

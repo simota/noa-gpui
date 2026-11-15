@@ -1,4 +1,4 @@
-//! Produces a [`ui_scene::DisplayList`] and knows nothing about the GPU or the window
+//! Produces a [`noa_gpui_scene::DisplayList`] and knows nothing about the GPU or the window
 //! system.
 
 pub mod animation;
@@ -20,6 +20,7 @@ pub use accesskit;
 pub use date::DateTime;
 pub use event::{Cursor, DragData, Event, Key, Message, Modifiers, PointerButton, PopoverMessage};
 pub use invalidation::Dirty;
+pub use noa_gpui_layout::{MeasureInput, Style, style};
 pub use overlay::{Edge, OverlayDismissed, OverlayOptions, Placement, WindowCorner};
 pub use shortcut::{Shortcut, ShortcutPressed};
 pub use styling::{
@@ -28,6 +29,5 @@ pub use styling::{
 };
 pub use theme::{Appearance, Corner, Design, Paint, Role, Theme};
 pub use tree::{ACCESS_ROOT, Subtree, UiTree, UpdateStats, WidgetId, access_id, access_item_id};
-pub use ui_layout::{MeasureInput, Style, style};
 pub use view_state::ViewState;
 pub use widget::{EventCx, MeasureCx, PaintCx, UpdateCx, Widget};

@@ -1,14 +1,14 @@
-use ui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
-use ui_core::widgets::{
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
+use noa_gpui_core::widgets::{
     ComboBox, Container, FindAction, FindOptions, Label, LogLine, LogView, Menu, SearchField,
     SearchSubmitted, SecureTextField, SelectionChanged, TextArea, TextChanged, TextField,
     TextSubmitted, TextView, TokenField, TokensChanged, Truncation,
 };
-use ui_core::{
+use noa_gpui_core::{
     Event, Key, Message, Modifiers, PointerButton, Style, UiTree, WidgetId, access_id, accesskit,
 };
-use ui_scene::{Color, DrawCommand, Point, Size};
-use ui_text::{FontOptions, TextAlign, TextStore};
+use noa_gpui_scene::{Color, DrawCommand, Point, Size};
+use noa_gpui_text::{FontOptions, TextAlign, TextStore};
 
 const VIEWPORT: Size = Size::new(800.0, 600.0);
 const ELLIPSIS: char = '\u{2026}';
@@ -26,7 +26,7 @@ impl Harness {
             None,
             Container::new(Style {
                 flex_direction: FlexDirection::Column,
-                align_items: ui_core::style::AlignItems::START,
+                align_items: noa_gpui_core::style::AlignItems::START,
                 size: LayoutSize {
                     width: percent(1.0),
                     height: percent(1.0),
@@ -44,11 +44,11 @@ impl Harness {
         }
     }
 
-    fn add(&mut self, widget: impl ui_core::Widget) -> WidgetId {
+    fn add(&mut self, widget: impl noa_gpui_core::Widget) -> WidgetId {
         self.add_to(self.root, widget)
     }
 
-    fn add_to(&mut self, parent: WidgetId, widget: impl ui_core::Widget) -> WidgetId {
+    fn add_to(&mut self, parent: WidgetId, widget: impl noa_gpui_core::Widget) -> WidgetId {
         let id = self.tree.insert(Some(parent), widget);
         self.prepare();
         id
@@ -58,7 +58,7 @@ impl Harness {
         self.add(Container::new(Style {
             size: LayoutSize {
                 width: length(width),
-                height: ui_core::style::auto(),
+                height: noa_gpui_core::style::auto(),
             },
             ..Default::default()
         }))
@@ -190,7 +190,7 @@ fn aligned_labels_center_or_end_their_lines_and_their_text_in_a_wider_label() {
             flex_direction: FlexDirection::Column,
             size: LayoutSize {
                 width: length(300.0),
-                height: ui_core::style::auto(),
+                height: noa_gpui_core::style::auto(),
             },
             ..Default::default()
         }));
@@ -242,7 +242,7 @@ fn a_line_limit_ends_the_last_line_with_an_ellipsis() {
     let shown = h.tree.get::<Label>(label).unwrap().shown_text().to_owned();
     assert!(shown.ends_with(ELLIPSIS), "{shown}");
     let height = h.tree.window_rect(label).unwrap().height;
-    let line = ui_text::TextStyle::new(14.0).line_height;
+    let line = noa_gpui_text::TextStyle::new(14.0).line_height;
     assert!(height <= 2.0 * line + 0.5, "{height}");
     assert!(height > line);
 }
@@ -254,7 +254,7 @@ fn selectable_aligned_labels_draw_and_select_where_the_text_is() {
         flex_direction: FlexDirection::Column,
         size: LayoutSize {
             width: length(300.0),
-            height: ui_core::style::auto(),
+            height: noa_gpui_core::style::auto(),
         },
         ..Default::default()
     }));
@@ -290,7 +290,7 @@ fn quarter_labels(h: &mut Harness) -> Vec<WidgetId> {
     let quarter = Style {
         size: LayoutSize {
             width: percent(0.25),
-            height: ui_core::style::auto(),
+            height: noa_gpui_core::style::auto(),
         },
         ..Default::default()
     };
@@ -341,7 +341,7 @@ fn truncated_labels_are_not_reshaped_when_laid_out_again_at_a_known_width() {
     let quarter = Style {
         size: LayoutSize {
             width: percent(0.25),
-            height: ui_core::style::auto(),
+            height: noa_gpui_core::style::auto(),
         },
         ..Default::default()
     };
@@ -839,7 +839,7 @@ fn losing_focus_cancels_composition_in_every_text_input() {
 
 #[test]
 fn losing_focus_cancels_composition_before_a_number_input_commits() {
-    use ui_core::widgets::NumberInput;
+    use noa_gpui_core::widgets::NumberInput;
 
     let mut h = Harness::new();
     let number = h.add(NumberInput::new(0.0, 100.0, 12.0));
@@ -860,7 +860,7 @@ fn losing_focus_cancels_composition_before_a_number_input_commits() {
 
 #[test]
 fn inserting_joiners_keeps_the_caret_on_a_grapheme_boundary() {
-    use ui_core::text_edit::TextEditor;
+    use noa_gpui_core::text_edit::TextEditor;
 
     for (original, inserted, combined) in [
         ("\u{301}", "a", "a\u{301}"),
@@ -883,7 +883,7 @@ fn inserting_joiners_keeps_the_caret_on_a_grapheme_boundary() {
 
 #[test]
 fn removing_a_separator_cannot_leave_the_caret_inside_a_grapheme() {
-    use ui_core::text_edit::TextEditor;
+    use noa_gpui_core::text_edit::TextEditor;
 
     for action in [0, 1, 2] {
         let mut editor = TextEditor::multi_line();
@@ -1254,7 +1254,7 @@ fn wrapping_labels_in_a_resized_window_draw_as_in_a_new_one() {
                     flex_direction: FlexDirection::Column,
                     size: LayoutSize {
                         width: percent(0.5),
-                        height: ui_core::style::auto(),
+                        height: noa_gpui_core::style::auto(),
                     },
                     ..Default::default()
                 }),

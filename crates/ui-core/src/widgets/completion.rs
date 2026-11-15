@@ -2,9 +2,9 @@ use std::collections::HashSet;
 use std::ops::Range;
 use std::rc::Rc;
 
-use ui_layout::{MeasureInput, Style};
-use ui_scene::{Border, Rect, Size};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_layout::{MeasureInput, Style};
+use noa_gpui_scene::{Border, Rect, Size};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::appear::shadow;
 use super::{CachedText, fuzzy_match};
@@ -139,8 +139,8 @@ impl Widget for CompletionList {
                 let (fill, edge) = match (item.checked, highlighted) {
                     (true, false) => (accent, accent),
                     (true, true) => (on_accent, on_accent),
-                    (false, true) => (ui_scene::Color::TRANSPARENT, on_accent),
-                    (false, false) => (ui_scene::Color::TRANSPARENT, outline),
+                    (false, true) => (noa_gpui_scene::Color::TRANSPARENT, on_accent),
+                    (false, false) => (noa_gpui_scene::Color::TRANSPARENT, outline),
                 };
                 cx.rounded_rect(
                     check,

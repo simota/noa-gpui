@@ -1,10 +1,10 @@
-use ui_core::style::{AlignItems, FlexDirection};
-use ui_core::widgets::{
+use noa_gpui_core::style::{AlignItems, FlexDirection};
+use noa_gpui_core::widgets::{
     Button, ButtonClicked, Container, Image, ImageFrame, ImageScaling, Label, LevelIndicator,
     LevelStyle, ProgressBar, Slider, Spinner, ValueChanged,
 };
-use ui_core::{Message, Role, Style, WidgetId};
-use ui_scene::Size;
+use noa_gpui_core::{Message, Role, Style, WidgetId};
+use noa_gpui_scene::Size;
 
 use super::kit::{Kit, gap, row_style};
 use super::{Demo, DemoCx, SectionSpec};
@@ -151,7 +151,7 @@ fn progress_bars(kit: &mut Kit) -> Box<dyn Demo> {
         Some(card),
         ProgressBar::new(240.0)
             .value(40.0, 100.0)
-            .control_size(ui_core::widgets::ControlSize::Small),
+            .control_size(noa_gpui_core::widgets::ControlSize::Small),
     );
     kit.tree.insert(
         Some(card),
@@ -175,7 +175,7 @@ fn spinners(kit: &mut Kit) -> Box<dyn Demo> {
     let regular = kit.tree.insert(Some(row), Spinner::new());
     let small = kit.tree.insert(
         Some(row),
-        Spinner::new().control_size(ui_core::widgets::ControlSize::Small),
+        Spinner::new().control_size(noa_gpui_core::widgets::ControlSize::Small),
     );
     let ring = kit
         .tree
@@ -336,7 +336,7 @@ const EMBLEM: &str = r##"<svg viewBox="0 0 24 24">
 
 fn vector_icons(kit: &mut Kit) -> Box<dyn Demo> {
     use super::icons::Icons;
-    use ui_core::widgets::{SvgIcon, Toolbar, ToolbarDisplay, ToolbarItem};
+    use noa_gpui_core::widgets::{SvgIcon, Toolbar, ToolbarDisplay, ToolbarItem};
 
     let icons = Icons::load();
     let card = kit.card("SvgIcon::new(VectorIcon::from_svg(..)?, 24)");
@@ -367,7 +367,7 @@ fn vector_icons(kit: &mut Kit) -> Box<dyn Demo> {
 
     let card = kit.card(".multicolor(true): the SVG's own colors, currentColor in .color(..)");
     let row = kit.tree.insert(Some(card), Container::new(row_style(14.0)));
-    let emblem = ui_scene::VectorIcon::from_svg(EMBLEM).expect("the emblem is valid SVG");
+    let emblem = noa_gpui_scene::VectorIcon::from_svg(EMBLEM).expect("the emblem is valid SVG");
     for size in [24.0, 32.0, 48.0] {
         kit.tree.insert(
             Some(row),
@@ -382,7 +382,7 @@ fn vector_icons(kit: &mut Kit) -> Box<dyn Demo> {
     let row = kit.tree.insert(Some(card), Container::new(row_style(14.0)));
     kit.tree.insert(
         Some(row),
-        SvgIcon::new(icons.heart.clone(), 28.0).color(ui_scene::Color::hex(0xff3b30)),
+        SvgIcon::new(icons.heart.clone(), 28.0).color(noa_gpui_scene::Color::hex(0xff3b30)),
     );
     kit.tree.insert(
         Some(row),

@@ -1,14 +1,14 @@
-use ui_core::style::{Display, FlexDirection, Size as LayoutSize, length, percent};
-use ui_core::widgets::{
+use noa_gpui_core::style::{Display, FlexDirection, Size as LayoutSize, length, percent};
+use noa_gpui_core::widgets::{
     BAR_PERIOD, Container, Image, ImageFrame, ImageScaling, LEVEL_CRITICAL, LEVEL_NORMAL,
     LEVEL_WARNING, LevelIndicator, LevelStyle, ProgressBar, SPINNER_PERIOD, ScrollView, Spinner,
     ValueChanged, image_rect,
 };
-use ui_core::{
+use noa_gpui_core::{
     Event, Key, Message, Modifiers, PointerButton, Style, UiTree, WidgetId, access_id, accesskit,
 };
-use ui_scene::{ImageId, Point, Rect, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_scene::{ImageId, Point, Rect, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(400.0, 300.0);
 
@@ -25,7 +25,7 @@ impl Harness {
             None,
             Container::new(Style {
                 flex_direction: FlexDirection::Column,
-                align_items: ui_core::style::AlignItems::START,
+                align_items: noa_gpui_core::style::AlignItems::START,
                 size: LayoutSize {
                     width: percent(1.0),
                     height: percent(1.0),
@@ -43,13 +43,13 @@ impl Harness {
         }
     }
 
-    fn add_to(&mut self, parent: WidgetId, widget: impl ui_core::Widget) -> WidgetId {
+    fn add_to(&mut self, parent: WidgetId, widget: impl noa_gpui_core::Widget) -> WidgetId {
         let id = self.tree.insert(Some(parent), widget);
         self.prepare();
         id
     }
 
-    fn add(&mut self, widget: impl ui_core::Widget) -> WidgetId {
+    fn add(&mut self, widget: impl noa_gpui_core::Widget) -> WidgetId {
         self.add_to(self.root, widget)
     }
 

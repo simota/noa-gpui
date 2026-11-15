@@ -1,14 +1,15 @@
 [package]
-name = "ui-platform"
+name = "noa-gpui-platform"
 description = "winit application shell for noa-gpui: windows, input, the frame loop and OS integration"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [features]
 native = [
-    "ui-render-wgpu/native",
+    "noa-gpui-render-wgpu/native",
     "dep:arboard",
     "dep:accesskit_winit",
     "dep:tray-icon",
@@ -17,14 +18,14 @@ native = [
     "dep:objc2-app-kit",
     "dep:ksni",
 ]
-webgpu = ["ui-render-wgpu/webgpu"]
-webgl2 = ["ui-render-wgpu/webgl2"]
+webgpu = ["noa-gpui-render-wgpu/webgpu"]
+webgl2 = ["noa-gpui-render-wgpu/webgl2"]
 
 [dependencies]
-ui-scene.workspace = true
-ui-core.workspace = true
-ui-text.workspace = true
-ui-render-wgpu.workspace = true
+noa-gpui-scene.workspace = true
+noa-gpui-core.workspace = true
+noa-gpui-text.workspace = true
+noa-gpui-render-wgpu.workspace = true
 winit.workspace = true
 log.workspace = true
 web-time.workspace = true

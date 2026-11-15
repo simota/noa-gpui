@@ -26,7 +26,7 @@ cargo build -p desktop --release
 ./target/release/noa-demo --scene=minios  --snapshot=$TMPDIR/snaps/minios.png
 ./target/release/noa-demo --scene=catalog --snapshot=$TMPDIR/snaps/catalog.png
 
-# 2. テーマ画像 14 枚: tools/themeshot.rs を、ui-platform（features = ["native"]）に
+# 2. テーマ画像 14 枚: tools/themeshot.rs を、noa-gpui-platform（features = ["native"]）に
 #    パスで依存する使い捨てクレートの main.rs として実行する
 themeshot $TMPDIR/themes
 

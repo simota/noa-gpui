@@ -5,10 +5,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use accesskit_winit::Adapter;
-use ui_core::accesskit::{
+use noa_gpui_core::accesskit::{
     ActionHandler, ActionRequest, ActivationHandler, DeactivationHandler, TreeUpdate,
 };
-use ui_text::TextStore;
+use noa_gpui_text::TextStore;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
@@ -109,9 +109,9 @@ impl Accessibility {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ui_core::accesskit::{Action, TreeId};
-    use ui_core::widgets::{Button, ButtonClicked, Container, Label};
-    use ui_core::{Message, UiTree, WidgetId, access_id};
+    use noa_gpui_core::accesskit::{Action, TreeId};
+    use noa_gpui_core::widgets::{Button, ButtonClicked, Container, Label};
+    use noa_gpui_core::{Message, UiTree, WidgetId, access_id};
 
     struct CounterScreen {
         tree: UiTree,

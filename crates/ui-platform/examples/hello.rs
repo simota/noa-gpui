@@ -1,16 +1,16 @@
 //! The smallest application: a window with a button that counts its clicks.
 //!
 //! ```text
-//! cargo run -p ui-platform --example hello --features native
+//! cargo run -p noa-gpui-platform --example hello --features native
 //! ```
 
-use ui_platform::ui_core::style::{
+use noa_gpui_platform::noa_gpui_core::style::{
     AlignItems, FlexDirection, JustifyContent, Size, length, percent,
 };
-use ui_platform::ui_core::widgets::{Button, ButtonClicked, Container, Label};
-use ui_platform::ui_core::{Message, Role, Style, UiTree, WidgetId};
-use ui_platform::ui_text::TextStore;
-use ui_platform::{App, AppOptions, Screen};
+use noa_gpui_platform::noa_gpui_core::widgets::{Button, ButtonClicked, Container, Label};
+use noa_gpui_platform::noa_gpui_core::{Message, Role, Style, UiTree, WidgetId};
+use noa_gpui_platform::noa_gpui_text::TextStore;
+use noa_gpui_platform::{App, AppOptions, Screen};
 
 struct Hello {
     tree: UiTree,

@@ -7,8 +7,8 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 
 use ksni::blocking::{Handle, TrayMethods};
 use ksni::menu::{CheckmarkItem, MenuItem as Native, StandardItem, SubMenu};
-use ui_core::widgets::MenuItem as Item;
-use ui_text::TextStore;
+use noa_gpui_core::widgets::MenuItem as Item;
+use noa_gpui_text::TextStore;
 
 use crate::app::AppOptions;
 use crate::screen::Screen;

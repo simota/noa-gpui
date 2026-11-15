@@ -1,9 +1,9 @@
 use std::path::{Path, PathBuf};
 
-use ui_layout::Style;
-use ui_layout::style::{Dimension, Size as LayoutSize, length, percent};
-use ui_scene::{Border, Direction, Point, Rect};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{Dimension, Size as LayoutSize, length, percent};
+use noa_gpui_scene::{Border, Direction, Point, Rect};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::{CachedText, focus_ring};
 use crate::event::{DragData, Event, Key, PointerButton};

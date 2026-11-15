@@ -7,7 +7,7 @@
 use std::mem::size_of;
 
 use bytemuck::{Pod, Zeroable};
-use ui_scene::{Color, Rect};
+use noa_gpui_scene::{Color, Rect};
 
 const SHADER: &str = concat!(
     include_str!("shaders/common.wgsl"),

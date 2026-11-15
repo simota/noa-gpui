@@ -1,11 +1,11 @@
-use ui_core::style::{AlignItems, FlexDirection};
-use ui_core::widgets::{
+use noa_gpui_core::style::{AlignItems, FlexDirection};
+use noa_gpui_core::widgets::{
     Button, ButtonClicked, ColorChanged, ColorPicker, ColorWell, Container, DateChanged,
     DateElements, DateFormat, DatePicker, DatePickerStyle, Label, PathControl, PathItemClicked,
     PathStyle, Slider, Stepper, TextChanged, TextField, ValueChanged, hex_string,
 };
-use ui_core::{DateTime, Message, Role, Style, WidgetId};
-use ui_scene::Color;
+use noa_gpui_core::{DateTime, Message, Role, Style, WidgetId};
+use noa_gpui_scene::Color;
 
 use super::kit::{Kit, gap, row_style};
 use super::{Demo, DemoCx, SectionSpec};
@@ -326,7 +326,7 @@ fn dates(kit: &mut Kit) -> Box<dyn Demo> {
     readouts.watch(kit, card, ranged, "Value", initial);
 
     let card = kit.card(".format(DateFormat::for_locale(…)) — your locale, ja-JP, de-DE, en-US");
-    let own = ui_text::FontOptions::default().locale;
+    let own = noa_gpui_text::FontOptions::default().locale;
     for locale in [own.as_str(), "ja-JP", "de-DE", "en-US"] {
         let row = kit.tree.insert(Some(card), Container::new(row_style(12.0)));
         kit.tree

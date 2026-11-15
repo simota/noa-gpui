@@ -1,15 +1,16 @@
 [package]
-name = "ui-core"
+name = "noa-gpui-core"
 description = "Retained widget tree, events, focus and invalidation for noa-gpui"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [dependencies]
-ui-scene.workspace = true
-ui-text.workspace = true
-ui-layout.workspace = true
+noa-gpui-scene.workspace = true
+noa-gpui-text.workspace = true
+noa-gpui-layout.workspace = true
 unicode-segmentation.workspace = true
 regex.workspace = true
 accesskit.workspace = true

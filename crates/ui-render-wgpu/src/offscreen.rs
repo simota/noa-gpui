@@ -1,5 +1,5 @@
-use ui_scene::{Color, DisplayList};
-use ui_text::TextStore;
+use noa_gpui_scene::{Color, DisplayList};
+use noa_gpui_text::TextStore;
 
 use crate::gpu::{InitError, required_limits};
 use crate::renderer::{RenderError, Renderer, Viewport};

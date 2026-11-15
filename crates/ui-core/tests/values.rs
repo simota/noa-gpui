@@ -1,15 +1,15 @@
-use ui_core::style::{FlexDirection, Size as LayoutSize, percent};
-use ui_core::widgets::{
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, percent};
+use noa_gpui_core::widgets::{
     ColorChanged, ColorPicker, ColorWell, Container, DateChanged, DateElements, DateFormat,
     DateOrder, DatePicker, DatePickerStyle, Menu, PathControl, PathItemClicked, PathStyle,
     REPEAT_DELAY, REPEAT_INTERVAL, Slider, Stepper, ValueChanged, from_hsv, hex_string, to_hsv,
 };
-use ui_core::{
+use noa_gpui_core::{
     DateTime, Event, Key, Message, Modifiers, PointerButton, Style, UiTree, WidgetId, access_id,
     accesskit,
 };
-use ui_scene::{Color, Point, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_scene::{Color, Point, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(800.0, 600.0);
 
@@ -26,7 +26,7 @@ impl Harness {
             None,
             Container::new(Style {
                 flex_direction: FlexDirection::Column,
-                align_items: ui_core::style::AlignItems::START,
+                align_items: noa_gpui_core::style::AlignItems::START,
                 size: LayoutSize {
                     width: percent(1.0),
                     height: percent(1.0),
@@ -44,7 +44,7 @@ impl Harness {
         }
     }
 
-    fn add(&mut self, widget: impl ui_core::Widget) -> WidgetId {
+    fn add(&mut self, widget: impl noa_gpui_core::Widget) -> WidgetId {
         let id = self.tree.insert(Some(self.root), widget);
         self.prepare();
         id

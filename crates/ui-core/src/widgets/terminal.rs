@@ -1,7 +1,7 @@
-use ui_layout::Style;
-use ui_layout::style::{Dimension, Size as LayoutSize, percent};
-use ui_scene::{Border, Color, Point, Rect, Size};
-use ui_text::{FontFamily, TextStore, TextStyle};
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{Dimension, Size as LayoutSize, percent};
+use noa_gpui_scene::{Border, Color, Point, Rect, Size};
+use noa_gpui_text::{FontFamily, TextStore, TextStyle};
 
 use super::rows::TextCache;
 use super::view_height;
@@ -22,7 +22,7 @@ pub struct TerminalInput(pub Vec<u8>);
 ///
 /// The widget does not run the program: the app passes its output to
 /// [`Terminal::feed`], writes [`TerminalInput`] to it, and sends it the grid size from
-/// [`Terminal::take_resized`] (on desktop through `ui_platform::Pty`). The grid fills
+/// [`Terminal::take_resized`] (on desktop through `noa_gpui_platform::Pty`). The grid fills
 /// the height its parent leaves unless [`Terminal::rows`] fixes it.
 pub struct Terminal {
     screen: VtScreen,
@@ -96,7 +96,7 @@ impl Terminal {
     }
 
     /// The new grid size if it changed since the last call (the widget was resized):
-    /// pass it on to the program (`ui_platform::Pty::resize`).
+    /// pass it on to the program (`noa_gpui_platform::Pty::resize`).
     pub fn take_resized(&mut self) -> Option<(usize, usize)> {
         self.resized.take()
     }

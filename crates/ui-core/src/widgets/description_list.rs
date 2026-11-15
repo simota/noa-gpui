@@ -1,5 +1,5 @@
-use ui_layout::Style;
-use ui_layout::style::{AlignItems, GridPlacement, Line, Size, auto, length, span};
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{AlignItems, GridPlacement, Line, Size, auto, length, span};
 
 use super::{Container, GridPlacementMode, GridTrack, GridView, Label};
 use crate::theme::{Paint, Role};
@@ -92,7 +92,7 @@ impl DescriptionList {
         self
     }
 
-    /// A family name, as for [`ui_text::TextStore::font_family`].
+    /// A family name, as for [`noa_gpui_text::TextStore::font_family`].
     pub fn value_font_family(mut self, family: impl Into<String>) -> Self {
         self.look.family = Some(family.into());
         self

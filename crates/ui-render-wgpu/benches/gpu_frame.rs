@@ -5,15 +5,15 @@
 //!   - gpu:     from submit until the GPU has finished the frame.
 //!
 //! ```sh
-//! cargo bench -p ui-render-wgpu --features native --bench gpu_frame
-//! BENCH_WIDGETS=5000 cargo bench -p ui-render-wgpu --features native --bench gpu_frame
+//! cargo bench -p noa-gpui-render-wgpu --features native --bench gpu_frame
+//! BENCH_WIDGETS=5000 cargo bench -p noa-gpui-render-wgpu --features native --bench gpu_frame
 //! ```
 
 use std::time::{Duration, Instant};
 
-use ui_render_wgpu::{Renderer, Viewport, wgpu};
-use ui_scene::{Border, Color, DisplayList, Rect};
-use ui_text::{FontOptions, TextStore, TextStyle};
+use noa_gpui_render_wgpu::{Renderer, Viewport, wgpu};
+use noa_gpui_scene::{Border, Color, DisplayList, Rect};
+use noa_gpui_text::{FontOptions, TextStore, TextStyle};
 
 const WIDTH: u32 = 2560;
 const HEIGHT: u32 = 1600;
@@ -42,7 +42,7 @@ fn main() {
     let adapter =
         pollster::block_on(instance.request_adapter(&Default::default())).expect("adapter");
     let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-        required_limits: ui_render_wgpu::required_limits(&adapter),
+        required_limits: noa_gpui_render_wgpu::required_limits(&adapter),
         ..Default::default()
     }))
     .expect("device");

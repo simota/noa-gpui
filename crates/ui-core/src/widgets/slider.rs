@@ -1,7 +1,7 @@
 use std::f32::consts::TAU;
 
-use ui_layout::{MeasureInput, Style};
-use ui_scene::{Border, Color, Point, Rect, Size};
+use noa_gpui_layout::{MeasureInput, Style};
+use noa_gpui_scene::{Border, Color, Point, Rect, Size};
 
 use super::{ControlSize, ValueChanged, focus_ring, knob_stretch};
 use crate::event::{Event, Key, PointerButton};

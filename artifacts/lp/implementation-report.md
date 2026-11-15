@@ -27,7 +27,7 @@
 - Python Pillow（画像の切り抜きと WebP 変換）、fontTools と brotli（フォントのサブセット。brotli はスクラッチ領域に一時インストール）
 - Playwright（Python、インストール済みの Chromium headless shell）
 - Lighthouse 12.8.2（`npx`）
-- テーマ画像の描画には、スクラッチ領域の使い捨てクレートを使った。`ui-platform` にパスで依存し、リポジトリの `target/` を共有した。ソースは `tools/themeshot.rs` に保存してある
+- テーマ画像の描画には、スクラッチ領域の使い捨てクレートを使った。`noa-gpui-platform` にパスで依存し、リポジトリの `target/` を共有した。ソースは `tools/themeshot.rs` に保存してある
 
 ## 実装した機能
 

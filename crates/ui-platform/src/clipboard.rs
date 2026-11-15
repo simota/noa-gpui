@@ -1,10 +1,10 @@
-use ui_core::clipboard::Clipboard;
+use noa_gpui_core::clipboard::Clipboard;
 
 /// Reads and writes the system clipboard. If the clipboard cannot be opened (for
 /// example, no display server), copied text stays inside the app.
 pub struct SystemClipboard {
     system: Option<arboard::Clipboard>,
-    fallback: ui_core::clipboard::MemoryClipboard,
+    fallback: noa_gpui_core::clipboard::MemoryClipboard,
 }
 
 impl SystemClipboard {

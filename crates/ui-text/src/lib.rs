@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use cosmic_text::{
     Align, Attrs, Buffer, Cursor, Family, FontSystem, Metrics, Shaping, Style, Weight, fontdb,
 };
-use ui_scene::{Rect, Size, TextLayoutId};
+use noa_gpui_scene::{Rect, Size, TextLayoutId};
 
 /// The font bundled with the framework (Inter, SIL Open Font License 1.1).
 ///

@@ -1,7 +1,7 @@
-use ui_layout::style::{Size as LayoutSize, auto, length};
-use ui_layout::{MeasureInput, Style};
-use ui_scene::{Point, Rect, Size, TextLayoutId};
-use ui_text::{TextAlign, TextStore, TextStyle};
+use noa_gpui_layout::style::{Size as LayoutSize, auto, length};
+use noa_gpui_layout::{MeasureInput, Style};
+use noa_gpui_scene::{Point, Rect, Size, TextLayoutId};
+use noa_gpui_text::{TextAlign, TextStore, TextStyle};
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::CachedText;

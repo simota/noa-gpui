@@ -1,7 +1,7 @@
-use ui_layout::style::{Rect as LayoutRect, Size as LayoutSize, length};
-use ui_layout::{MeasureInput, Style};
-use ui_scene::{Border, Color, Point, Rect, Size};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_layout::style::{Rect as LayoutRect, Size as LayoutSize, length};
+use noa_gpui_layout::{MeasureInput, Style};
+use noa_gpui_scene::{Border, Color, Point, Rect, Size};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::{CachedText, ControlSize, Icon};
 use crate::animation::{Easing, Transition, lerp_color};

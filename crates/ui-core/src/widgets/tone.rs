@@ -1,4 +1,4 @@
-use ui_scene::Color;
+use noa_gpui_scene::Color;
 
 use crate::theme::{Appearance, Role, TEXT_CONTRAST, Theme, mix, on_fill, over, readable};
 use crate::widget::PaintCx;

@@ -1,7 +1,7 @@
-use ui_layout::style::{Size as LayoutSize, length};
-use ui_layout::{MeasureInput, Style};
-use ui_scene::{Border, Color, Direction, Point, Rect, Size};
-use ui_text::{TextAlign, TextStore, TextStyle};
+use noa_gpui_layout::style::{Size as LayoutSize, length};
+use noa_gpui_layout::{MeasureInput, Style};
+use noa_gpui_scene::{Border, Color, Direction, Point, Rect, Size};
+use noa_gpui_text::{TextAlign, TextStore, TextStyle};
 
 use super::appear::{Appear, shadow};
 use super::{CachedText, Icon};
@@ -339,7 +339,7 @@ impl Widget for Alert {
             margin,
             size: LayoutSize {
                 width: length(WIDTH),
-                height: ui_layout::style::auto(),
+                height: noa_gpui_layout::style::auto(),
             },
             ..Default::default()
         }

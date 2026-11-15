@@ -1,8 +1,8 @@
 use std::sync::{Mutex, MutexGuard};
 
-use ui_render_wgpu::{Renderer, Viewport, wgpu};
-use ui_scene::{Border, Color, DisplayList, Rect};
-use ui_text::{FontOptions, TextStore, TextStyle};
+use noa_gpui_render_wgpu::{Renderer, Viewport, wgpu};
+use noa_gpui_scene::{Border, Color, DisplayList, Rect};
+use noa_gpui_text::{FontOptions, TextStore, TextStyle};
 
 const SIZE: u32 = 64;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -29,7 +29,7 @@ fn gpu() -> Gpu {
     let adapter = pollster::block_on(instance.request_adapter(&Default::default()))
         .expect("a GPU adapter is required for render tests");
     let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-        required_limits: ui_render_wgpu::required_limits(&adapter),
+        required_limits: noa_gpui_render_wgpu::required_limits(&adapter),
         ..Default::default()
     }))
     .expect("device");
@@ -148,7 +148,7 @@ fn draws_quads_images_text_and_clips() {
     list.pop_clip();
     list.image(Rect::new(40.0, 24.0, 10.0, 10.0), image);
     list.text(
-        Rect::from_origin_size(ui_scene::Point::new(4.0, 40.0), label_size),
+        Rect::from_origin_size(noa_gpui_scene::Point::new(4.0, 40.0), label_size),
         label,
         Color::BLACK,
     );
@@ -185,7 +185,7 @@ fn later_commands_paint_over_earlier_ones() {
     let mut renderer = Renderer::new(&gpu.device, &gpu.queue, FORMAT);
     let mut text = text_store();
     let label = text.create("MM", TextStyle::new(20.0).weight(900), None);
-    let label_rect = Rect::from_origin_size(ui_scene::Point::new(0.0, 0.0), text.size(label));
+    let label_rect = Rect::from_origin_size(noa_gpui_scene::Point::new(0.0, 0.0), text.size(label));
 
     let mut list = DisplayList::new();
     list.text(label_rect, label, Color::BLACK);
@@ -322,7 +322,7 @@ fn text_still_renders_after_trimming_caches() {
     let size = text.size(label);
     let mut list = DisplayList::new();
     list.text(
-        Rect::from_origin_size(ui_scene::Point::new(4.0, 4.0), size),
+        Rect::from_origin_size(noa_gpui_scene::Point::new(4.0, 4.0), size),
         label,
         Color::BLACK,
     );
@@ -349,11 +349,11 @@ fn glyph_atlas_growth_is_bounded_by_the_texture_limit() {
     let turn = turn();
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
     let adapter = pollster::block_on(instance.request_adapter(&Default::default())).unwrap();
-    let options = ui_render_wgpu::GpuOptions {
+    let options = noa_gpui_render_wgpu::GpuOptions {
         max_texture_size: Some(512),
     };
     let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-        required_limits: ui_render_wgpu::limits_with(&adapter, options),
+        required_limits: noa_gpui_render_wgpu::limits_with(&adapter, options),
         ..Default::default()
     }))
     .unwrap();
@@ -380,7 +380,10 @@ fn glyph_atlas_growth_is_bounded_by_the_texture_limit() {
     };
     let result = renderer.prepare(&gpu.device, &gpu.queue, &list, &mut text, viewport);
     assert!(
-        matches!(result, Err(ui_render_wgpu::RenderError::TextPrepare(_))),
+        matches!(
+            result,
+            Err(noa_gpui_render_wgpu::RenderError::TextPrepare(_))
+        ),
         "the frame reports a full atlas instead of exceeding the limit"
     );
 
@@ -398,7 +401,7 @@ fn glyph_atlas_growth_is_bounded_by_the_texture_limit() {
 
 #[test]
 fn draws_round_capped_lines_and_triangles() {
-    use ui_scene::{Direction, DrawCommand, Point, Shape};
+    use noa_gpui_scene::{Direction, DrawCommand, Point, Shape};
     let gpu = gpu();
     let mut renderer = Renderer::new(&gpu.device, &gpu.queue, FORMAT);
     let mut text = text_store();
@@ -435,7 +438,7 @@ fn draws_round_capped_lines_and_triangles() {
 
 #[test]
 fn draws_linear_gradients_interpolated_in_srgb() {
-    use ui_scene::{DrawCommand, Shape};
+    use noa_gpui_scene::{DrawCommand, Shape};
     let gpu = gpu();
     let mut renderer = Renderer::new(&gpu.device, &gpu.queue, FORMAT);
     let mut text = text_store();
@@ -483,7 +486,7 @@ fn draws_linear_gradients_interpolated_in_srgb() {
 
 #[test]
 fn draws_stars_and_arcs() {
-    use ui_scene::{DrawCommand, Point, Shape};
+    use noa_gpui_scene::{DrawCommand, Point, Shape};
     let gpu = gpu();
     let mut renderer = Renderer::new(&gpu.device, &gpu.queue, FORMAT);
     let mut text = text_store();
@@ -542,7 +545,7 @@ fn draws_stars_and_arcs() {
 
 #[test]
 fn backdrops_blur_what_is_below_them_only() {
-    use ui_scene::DrawCommand;
+    use noa_gpui_scene::DrawCommand;
     let gpu = gpu();
     let mut renderer = Renderer::new(&gpu.device, &gpu.queue, FORMAT);
     let mut text = text_store();
@@ -581,7 +584,7 @@ fn backdrops_blur_what_is_below_them_only() {
 
 #[test]
 fn backdrop_tints_and_rounds_its_corners() {
-    use ui_scene::DrawCommand;
+    use noa_gpui_scene::DrawCommand;
     let gpu = gpu();
     let mut renderer = Renderer::new(&gpu.device, &gpu.queue, FORMAT);
     let mut text = text_store();
@@ -609,28 +612,28 @@ fn vector_icons_draw_in_their_color_and_share_one_batch() {
     let gpu = gpu();
     let mut renderer = Renderer::new(&gpu.device, &gpu.queue, FORMAT);
     let mut text = text_store();
-    let frame = ui_scene::VectorIcon::builder(10.0, 10.0)
+    let frame = noa_gpui_scene::VectorIcon::builder(10.0, 10.0)
         .fill_even_odd("M0 0H10V10H0Z M3 3H7V7H3Z")
         .unwrap()
         .build();
-    let line = ui_scene::VectorIcon::builder(10.0, 10.0)
+    let line = noa_gpui_scene::VectorIcon::builder(10.0, 10.0)
         .stroke("M1 5H9", 2.0)
         .unwrap()
         .build();
 
     let mut list = DisplayList::new();
     let red = Color::hex(0xff0000);
-    list.push(ui_scene::DrawCommand::Icon {
+    list.push(noa_gpui_scene::DrawCommand::Icon {
         rect: Rect::new(0.0, 0.0, 20.0, 20.0),
         icon: frame.clone(),
         color: red,
     });
-    list.push(ui_scene::DrawCommand::Icon {
+    list.push(noa_gpui_scene::DrawCommand::Icon {
         rect: Rect::new(30.0, 0.0, 20.0, 20.0),
         icon: line,
         color: Color::hex(0x0000ff),
     });
-    list.push(ui_scene::DrawCommand::Icon {
+    list.push(noa_gpui_scene::DrawCommand::Icon {
         rect: Rect::new(0.0, 30.0, 30.0, 30.0),
         icon: frame,
         color: Color::hex(0x00ff00).with_alpha(0.5),
@@ -659,11 +662,11 @@ fn a_full_icon_atlas_starts_over_with_the_icons_in_use() {
     let frame = |color: Color| {
         let mut list = DisplayList::new();
         for i in 0..40 {
-            let icon = ui_scene::VectorIcon::builder(1.0, 1.0)
+            let icon = noa_gpui_scene::VectorIcon::builder(1.0, 1.0)
                 .fill("M0 0H1V1H0Z")
                 .unwrap()
                 .build();
-            list.push(ui_scene::DrawCommand::Icon {
+            list.push(noa_gpui_scene::DrawCommand::Icon {
                 rect: Rect::new((i % 8) as f32, (i / 8) as f32, 120.0, 120.0),
                 icon,
                 color,
@@ -687,7 +690,7 @@ fn offscreen_frames_read_back_at_any_width_and_encode_as_png() {
     // OffscreenRenderer makes its own device. Locals drop in reverse order, so the turn
     // is released after the renderer.
     let _turn = turn();
-    let mut offscreen = pollster::block_on(ui_render_wgpu::OffscreenRenderer::new())
+    let mut offscreen = pollster::block_on(noa_gpui_render_wgpu::OffscreenRenderer::new())
         .expect("a GPU adapter is required for render tests");
     let mut text = text_store();
     // 70 pixels: rows of 280 bytes, padded to 512 for the copy.

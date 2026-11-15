@@ -1,5 +1,5 @@
-use ui_core::{DragData, Event, Key, Modifiers, PointerButton};
-use ui_scene::Point;
+use noa_gpui_core::{DragData, Event, Key, Modifiers, PointerButton};
+use noa_gpui_scene::Point;
 use winit::event::{ElementState, Ime, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::keyboard::{Key as WinitKey, NamedKey};
 #[cfg(not(target_arch = "wasm32"))]

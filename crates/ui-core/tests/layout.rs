@@ -1,14 +1,16 @@
-use ui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
-use ui_core::widgets::{
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
+use noa_gpui_core::widgets::{
     Container, DIVIDER, DOCUMENT_TAB_BAR, DisclosureGroup, GridCell, GridPlacementMode, GridTrack,
     GridView, GroupBox, LEGACY_TRACK, Label, Material, NewTabRequested, PanesChanged, PathControl,
     ScrollView, ScrollerStyle, SelectionChanged, Separator, SplitPane, SplitView,
     StackDistribution, StackView, TabCloseRequested, TabMoved, TabView, TextField, Toggled,
     VisualEffectView,
 };
-use ui_core::{Event, Key, Message, Modifiers, PointerButton, Style, UiTree, WidgetId, access_id};
-use ui_scene::{DrawCommand, Point, Rect, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_core::{
+    Event, Key, Message, Modifiers, PointerButton, Style, UiTree, WidgetId, access_id,
+};
+use noa_gpui_scene::{DrawCommand, Point, Rect, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 struct Harness {
     tree: UiTree,
@@ -24,7 +26,7 @@ impl Harness {
             None,
             Container::new(Style {
                 flex_direction: FlexDirection::Column,
-                align_items: ui_core::style::AlignItems::START,
+                align_items: noa_gpui_core::style::AlignItems::START,
                 size: LayoutSize {
                     width: percent(1.0),
                     height: percent(1.0),
@@ -43,13 +45,13 @@ impl Harness {
         }
     }
 
-    fn add_to(&mut self, parent: WidgetId, widget: impl ui_core::Widget) -> WidgetId {
+    fn add_to(&mut self, parent: WidgetId, widget: impl noa_gpui_core::Widget) -> WidgetId {
         let id = self.tree.insert(Some(parent), widget);
         self.prepare();
         id
     }
 
-    fn add(&mut self, widget: impl ui_core::Widget) -> WidgetId {
+    fn add(&mut self, widget: impl noa_gpui_core::Widget) -> WidgetId {
         self.add_to(self.root, widget)
     }
 
@@ -557,7 +559,7 @@ fn document_tabs_describe_unsaved_changes_and_clear_the_description_after_saving
             .accessibility_update(1.0)
             .nodes
             .into_iter()
-            .find(|(id, _)| *id == ui_core::access_item_id(tabs, index))
+            .find(|(id, _)| *id == noa_gpui_core::access_item_id(tabs, index))
             .unwrap()
             .1
     };
@@ -657,7 +659,7 @@ fn document_tabs_expose_their_close_and_new_buttons() {
             &accesskit::ActionRequest {
                 action: accesskit::Action::Click,
                 target_tree: accesskit::TreeId::ROOT,
-                target_node: ui_core::access_item_id(tabs, item),
+                target_node: noa_gpui_core::access_item_id(tabs, item),
                 data: None,
             },
             &mut h.text,

@@ -16,5 +16,5 @@ pub use app::app;
 pub use app::app_with_gpu;
 #[cfg(feature = "native")]
 pub use app::snapshot;
+pub use noa_gpui_platform::{GpuContext, InitError, wgpu, winit};
 pub use scene::SceneKind;
-pub use ui_platform::{GpuContext, InitError, wgpu, winit};

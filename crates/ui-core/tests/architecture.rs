@@ -1,31 +1,39 @@
 //! The workspace's layering (AGENTS.md, docs/architecture.md §4), read from each crate's
 //! `Cargo.toml`: internal dependencies point one way only, and the crates below
-//! `ui-render-wgpu` / `ui-platform` stay free of the GPU and the window system.
+//! `noa-gpui-render-wgpu` / `noa-gpui-platform` stay free of the GPU and the window system.
 
 use std::collections::BTreeSet;
 use std::path::Path;
 
 /// Each library crate and the workspace crates it may depend on.
 const ALLOWED: [(&str, &[&str]); 6] = [
-    ("ui-scene", &[]),
-    ("ui-text", &["ui-scene"]),
-    ("ui-layout", &["ui-scene"]),
-    ("ui-core", &["ui-scene", "ui-text", "ui-layout"]),
-    ("ui-render-wgpu", &["ui-scene", "ui-text"]),
+    ("noa-gpui-scene", &[]),
+    ("noa-gpui-text", &["noa-gpui-scene"]),
+    ("noa-gpui-layout", &["noa-gpui-scene"]),
     (
-        "ui-platform",
+        "noa-gpui-core",
+        &["noa-gpui-scene", "noa-gpui-text", "noa-gpui-layout"],
+    ),
+    ("noa-gpui-render-wgpu", &["noa-gpui-scene", "noa-gpui-text"]),
+    (
+        "noa-gpui-platform",
         &[
-            "ui-scene",
-            "ui-text",
-            "ui-layout",
-            "ui-core",
-            "ui-render-wgpu",
+            "noa-gpui-scene",
+            "noa-gpui-text",
+            "noa-gpui-layout",
+            "noa-gpui-core",
+            "noa-gpui-render-wgpu",
         ],
     ),
 ];
 
 /// Crates that must not reach the GPU, the window system or the browser.
-const GPU_FREE: [&str; 4] = ["ui-scene", "ui-text", "ui-layout", "ui-core"];
+const GPU_FREE: [&str; 4] = [
+    "noa-gpui-scene",
+    "noa-gpui-text",
+    "noa-gpui-layout",
+    "noa-gpui-core",
+];
 const GPU_AND_WINDOW: [&str; 6] = [
     "wgpu",
     "glyphon",
@@ -36,12 +44,12 @@ const GPU_AND_WINDOW: [&str; 6] = [
 ];
 
 const WORKSPACE: [&str; 9] = [
-    "ui-scene",
-    "ui-text",
-    "ui-layout",
-    "ui-core",
-    "ui-render-wgpu",
-    "ui-platform",
+    "noa-gpui-scene",
+    "noa-gpui-text",
+    "noa-gpui-layout",
+    "noa-gpui-core",
+    "noa-gpui-render-wgpu",
+    "noa-gpui-platform",
     "demo",
     "desktop",
     "web",
@@ -79,8 +87,9 @@ fn dependencies(manifest: &str) -> BTreeSet<String> {
 
 fn manifest(krate: &str) -> String {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let dir = if krate.starts_with("ui-") {
-        root.join("crates").join(krate)
+    // Library crates live in `crates/ui-*` under their published `noa-gpui-*` names.
+    let dir = if let Some(name) = krate.strip_prefix("noa-gpui-") {
+        root.join("crates").join(format!("ui-{name}"))
     } else {
         root.join("apps").join(krate)
     };
@@ -124,7 +133,7 @@ fn reads_every_dependency_form() {
 name = "x"
 
 [dependencies]
-ui-scene.workspace = true
+noa-gpui-scene.workspace = true
 taffy = "0.15"
 "quoted" = { version = "1" }
 
@@ -141,6 +150,6 @@ workspace = true
 cc = "1"
 "#,
     );
-    let expected = ["cc", "ksni", "quoted", "rfd", "taffy", "ui-scene"];
+    let expected = ["cc", "ksni", "quoted", "rfd", "taffy", "noa-gpui-scene"];
     assert_eq!(deps.into_iter().collect::<Vec<_>>(), expected);
 }

@@ -1,8 +1,8 @@
-use ui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
-use ui_core::widgets::{Button, Checkbox, Container, Label, TextArea, TextField, TextView};
-use ui_core::{Event, Role, Style, StyleMeta, StylePatch, StyleSheet, TextProperty, UiTree};
-use ui_scene::{Color, DrawCommand, Point, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
+use noa_gpui_core::widgets::{Button, Checkbox, Container, Label, TextArea, TextField, TextView};
+use noa_gpui_core::{Event, Role, Style, StyleMeta, StylePatch, StyleSheet, TextProperty, UiTree};
+use noa_gpui_scene::{Color, DrawCommand, Point, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(400.0, 300.0);
 
@@ -13,7 +13,7 @@ fn text_store() -> TextStore {
     })
 }
 
-fn root(tree: &mut UiTree) -> ui_core::WidgetId {
+fn root(tree: &mut UiTree) -> noa_gpui_core::WidgetId {
     tree.insert(
         None,
         Container::new(Style {
@@ -357,7 +357,7 @@ fn active_follows_the_pressed_pointer() {
     tree.dispatch(
         Event::PointerDown {
             pos,
-            button: ui_core::PointerButton::Primary,
+            button: noa_gpui_core::PointerButton::Primary,
         },
         &mut text,
     );
@@ -372,7 +372,7 @@ fn active_follows_the_pressed_pointer() {
     tree.dispatch(
         Event::PointerUp {
             pos,
-            button: ui_core::PointerButton::Primary,
+            button: noa_gpui_core::PointerButton::Primary,
         },
         &mut text,
     );
@@ -552,7 +552,7 @@ fn a_labels_own_settings_outrank_inherited_values_but_not_its_own_rules() {
 
 #[test]
 fn a_page_a_tab_view_hides_loses_focus_within_and_hover() {
-    use ui_core::widgets::TabView;
+    use noa_gpui_core::widgets::TabView;
     let mut tree = UiTree::new();
     let root = root(&mut tree);
     let tabs = tree.insert(Some(root), TabView::new(["A", "B"]).width(300.0));
@@ -662,7 +662,7 @@ fn media_rules_switch_when_the_viewport_resizes() {
     );
     assert_eq!(
         tree.computed_style(side).unwrap().width,
-        Some(ui_core::Length::Px(60.0))
+        Some(noa_gpui_core::Length::Px(60.0))
     );
     tree.prepare(VIEWPORT, &mut text).unwrap();
     assert_eq!(tree.layout(side).unwrap().rect.width, 10.0);
@@ -741,7 +741,7 @@ fn focus_visible_is_for_focus_that_did_not_come_from_a_press() {
 
     let rect = tree.layout(first).unwrap().rect;
     let pos = Point::new(rect.x + 4.0, rect.y + 4.0);
-    let button = ui_core::PointerButton::Primary;
+    let button = noa_gpui_core::PointerButton::Primary;
     tree.dispatch(Event::PointerDown { pos, button }, &mut text);
     tree.set_focus(Some(first));
     assert!(!ring(&tree, first));
@@ -749,7 +749,7 @@ fn focus_visible_is_for_focus_that_did_not_come_from_a_press() {
 
     tree.dispatch(
         Event::KeyDown {
-            key: ui_core::Key::Tab,
+            key: noa_gpui_core::Key::Tab,
             modifiers: Default::default(),
         },
         &mut text,
@@ -771,7 +771,7 @@ fn removing_a_node_clears_the_state_it_gave_its_ancestors() {
         )
         .unwrap()
     };
-    let button = ui_core::PointerButton::Primary;
+    let button = noa_gpui_core::PointerButton::Primary;
     for take in [false, true] {
         let mut tree = UiTree::new();
         let root = root(&mut tree);

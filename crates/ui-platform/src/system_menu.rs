@@ -2,12 +2,12 @@
 //! catalog draws its menu bar in the window there.
 
 mod native {
+    use noa_gpui_core::widgets::MenuItem as Item;
+    use noa_gpui_text::TextStore;
     use tray_icon::menu::{
         CheckMenuItem, IsMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu,
     };
     use tray_icon::{Icon, TrayIcon, TrayIconBuilder};
-    use ui_core::widgets::MenuItem as Item;
-    use ui_text::TextStore;
 
     use crate::app::AppOptions;
     use crate::screen::Screen;
@@ -118,7 +118,7 @@ mod native {
     fn app_menu_bar(
         name: &str,
         version: Option<&str>,
-        menus: &[ui_core::widgets::MenuBarMenu],
+        menus: &[noa_gpui_core::widgets::MenuBarMenu],
     ) -> Menu {
         use tray_icon::menu::AboutMetadata;
         let bar = Menu::new();
@@ -231,10 +231,10 @@ mod native {
     /// The native accelerator for a shortcut; the command key is Cmd on macOS and Ctrl on
     /// Windows.
     fn accelerator(
-        shortcut: ui_core::Shortcut,
+        shortcut: noa_gpui_core::Shortcut,
     ) -> Option<tray_icon::menu::accelerator::Accelerator> {
+        use noa_gpui_core::Key;
         use tray_icon::menu::accelerator::{Accelerator, Code, Modifiers};
-        use ui_core::Key;
         let code = match shortcut.key {
             Key::Char(c) => match c {
                 'a'..='z' => {

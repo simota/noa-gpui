@@ -1,6 +1,6 @@
-use ui_layout::Style;
-use ui_layout::style::{Size as LayoutSize, length};
-use ui_scene::{Border, Color, ImageId, Rect, Size};
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{Size as LayoutSize, length};
+use noa_gpui_scene::{Border, Color, ImageId, Rect, Size};
 
 use crate::theme::Role;
 use crate::widget::{PaintCx, UpdateCx, Widget};

@@ -1,16 +1,16 @@
-use ui_core::style::{FlexDirection, Size as LayoutSize, percent};
-use ui_core::widgets::{
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, percent};
+use noa_gpui_core::widgets::{
     Alert, AlertResponse, AlertStyle, Button, ButtonClicked, ColorPanel, Container,
     ContextMenuArea, FontChoice, FontPanel, Label, MenuItem, PANEL_TITLE_BAR, POPOVER_ARROW, Panel,
     PanelClosed, PanelStyle, PopUpButton, Popover, Pressable, Sheet, SheetClosed, TableView,
     TextField, Tooltip,
 };
-use ui_core::{
+use noa_gpui_core::{
     Edge, Event, Key, Message, Modifiers, OverlayDismissed, PointerButton, Shortcut,
     ShortcutPressed, Style, UiTree, WidgetId, access_id, accesskit,
 };
-use ui_scene::{Color, DrawCommand, Point, Rect, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_scene::{Color, DrawCommand, Point, Rect, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(900.0, 600.0);
 const FRAME: f64 = 1.0 / 60.0;
@@ -29,7 +29,7 @@ impl Harness {
             None,
             Container::new(Style {
                 flex_direction: FlexDirection::Column,
-                align_items: ui_core::style::AlignItems::START,
+                align_items: noa_gpui_core::style::AlignItems::START,
                 size: LayoutSize {
                     width: percent(1.0),
                     height: percent(1.0),
@@ -50,7 +50,7 @@ impl Harness {
         h
     }
 
-    fn add(&mut self, widget: impl ui_core::Widget) -> WidgetId {
+    fn add(&mut self, widget: impl noa_gpui_core::Widget) -> WidgetId {
         let id = self.tree.insert(Some(self.root), widget);
         self.prepare();
         id
@@ -403,8 +403,8 @@ fn background(h: &mut Harness) -> Background {
     let context = h.add(ContextMenuArea::new(
         Style {
             size: LayoutSize {
-                width: ui_core::style::length(100.0),
-                height: ui_core::style::length(40.0),
+                width: noa_gpui_core::style::length(100.0),
+                height: noa_gpui_core::style::length(40.0),
             },
             ..Default::default()
         },
@@ -564,7 +564,7 @@ fn a_popover_points_at_its_anchor_and_flips_when_there_is_no_room() {
     );
     // The arrow is drawn at the top, pointing up at the anchor's middle.
     let arrow = h.tree.display_list().commands().iter().any(|c| {
-        matches!(c, DrawCommand::Shape { shape: ui_scene::Shape::Triangle { rect, direction: ui_scene::Direction::Up }, .. }
+        matches!(c, DrawCommand::Shape { shape: noa_gpui_scene::Shape::Triangle { rect, direction: noa_gpui_scene::Direction::Up }, .. }
             if (rect.y - r.y).abs() < 2.0 && (rect.x + rect.width / 2.0 - 440.0).abs() < 2.0)
     });
     assert!(arrow, "arrow at the top, under the anchor's middle");
@@ -584,7 +584,7 @@ fn a_popover_points_at_its_anchor_and_flips_when_there_is_no_room() {
     h.tree.insert(Some(popover), Label::new("Content"));
     h.prepare();
     let r = h.rect(popover);
-    assert_eq!(r.x, anchor.right() + ui_core::overlay::ANCHOR_GAP);
+    assert_eq!(r.x, anchor.right() + noa_gpui_core::overlay::ANCHOR_GAP);
     assert!(r.width > 2.0 * POPOVER_ARROW);
 }
 
@@ -618,9 +618,9 @@ fn a_click_outside_or_escape_closes_a_popover_and_the_click_still_lands() {
 fn a_popover_opened_from_a_pressable_box_closes_on_the_next_press_of_it() {
     let mut h = Harness::new();
     let disk = h.add(Pressable::new(Style {
-        size: ui_core::style::Size {
-            width: ui_core::style::length(120.0),
-            height: ui_core::style::length(32.0),
+        size: noa_gpui_core::style::Size {
+            width: noa_gpui_core::style::length(120.0),
+            height: noa_gpui_core::style::length(32.0),
         },
         ..Default::default()
     }));
@@ -707,9 +707,9 @@ fn a_tooltip_shows_after_the_pointer_rests_and_hides_when_it_leaves() {
     let over = h.center(save);
     h.hover(over);
     let due = h.tree.next_timer().expect("pending");
-    assert!((due - (h.now + ui_core::tree::TOOLTIP_DELAY)).abs() < 1e-9);
+    assert!((due - (h.now + noa_gpui_core::tree::TOOLTIP_DELAY)).abs() < 1e-9);
     assert!(h.tree.tooltip_overlay().is_none());
-    h.run(ui_core::tree::TOOLTIP_DELAY - 0.1);
+    h.run(noa_gpui_core::tree::TOOLTIP_DELAY - 0.1);
     assert!(h.tree.tooltip_overlay().is_none(), "not yet");
     h.run(0.15);
     let tip = h.tree.tooltip_overlay().expect("shown");
@@ -786,7 +786,7 @@ fn tooltips_fade_in_and_describe_their_widget_to_assistive_technology() {
         .unwrap();
     assert_eq!(node.1.description(), Some("Save the document"));
     h.hover(h.center(save));
-    h.run(ui_core::tree::TOOLTIP_DELAY + FRAME * 0.5);
+    h.run(noa_gpui_core::tree::TOOLTIP_DELAY + FRAME * 0.5);
     let tip = h.tree.tooltip_overlay().unwrap();
     let r = h.rect(tip);
     let alpha_of_tip = |tree: &UiTree| {
@@ -804,7 +804,7 @@ fn tooltips_fade_in_and_describe_their_widget_to_assistive_technology() {
 
 #[test]
 fn icon_only_toolbar_items_name_themselves_in_tooltips() {
-    use ui_core::widgets::{Toolbar, ToolbarDisplay, ToolbarItem, ToolbarSymbol};
+    use noa_gpui_core::widgets::{Toolbar, ToolbarDisplay, ToolbarItem, ToolbarSymbol};
     let mut h = Harness::new();
     let toolbar = h.add(
         Toolbar::new(vec![

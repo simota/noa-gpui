@@ -5,13 +5,13 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use ui_layout::Style;
-use ui_layout::style::{
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{
     self, AlignItems, AlignSelf, Display, FlexDirection, FlexWrap, JustifyContent, Overflow,
     Position,
 };
-use ui_scene::Color;
-use ui_text::TextAlign;
+use noa_gpui_scene::Color;
+use noa_gpui_text::TextAlign;
 
 use crate::theme::{Paint, Role};
 

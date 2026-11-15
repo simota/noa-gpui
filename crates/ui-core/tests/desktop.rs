@@ -1,15 +1,15 @@
-use ui_core::style::{Size as LayoutSize, length};
-use ui_core::widgets::{
+use noa_gpui_core::style::{Size as LayoutSize, length};
+use noa_gpui_core::widgets::{
     Alert, AlertResponse, Button, ButtonClicked, Container, DESKTOP_DOCK, Desktop, InnerWindow,
     Sheet, SheetClosed, TextField, WINDOW_MIN_SIZE, WINDOW_TITLE_BAR, WindowEvent, WindowManager,
     WindowPlacement,
 };
-use ui_core::{
+use noa_gpui_core::{
     Design, Event, Key, Message, Modifiers, PointerButton, Style, Theme, UiTree, WidgetId,
     access_id, accesskit,
 };
-use ui_scene::{Point, Rect, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_scene::{Point, Rect, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(1000.0, 700.0);
 /// The desktop: 800 x 600 at the window's origin, so desktop and window coordinates agree.
@@ -84,7 +84,7 @@ impl Harness {
         id
     }
 
-    fn add(&mut self, parent: WidgetId, widget: impl ui_core::Widget) -> WidgetId {
+    fn add(&mut self, parent: WidgetId, widget: impl noa_gpui_core::Widget) -> WidgetId {
         let id = self.tree.insert(Some(parent), widget);
         self.prepare();
         id
@@ -675,13 +675,13 @@ fn windows_designs_put_the_caption_buttons_at_the_top_right() {
 }
 
 /// The quads of the last frame that are `size` large, as (fill, border color).
-fn quads_of(h: &Harness, size: Size) -> Vec<(ui_scene::Color, ui_scene::Color)> {
+fn quads_of(h: &Harness, size: Size) -> Vec<(noa_gpui_scene::Color, noa_gpui_scene::Color)> {
     h.tree
         .display_list()
         .commands()
         .iter()
         .filter_map(|c| match c {
-            ui_scene::DrawCommand::Quad {
+            noa_gpui_scene::DrawCommand::Quad {
                 rect,
                 color,
                 border,
@@ -696,7 +696,7 @@ fn quads_of(h: &Harness, size: Size) -> Vec<(ui_scene::Color, ui_scene::Color)> 
 
 #[test]
 fn noa_marks_the_front_window_with_her_orange() {
-    use ui_core::{Appearance, Role};
+    use noa_gpui_core::{Appearance, Role};
     let mut h = Harness::new();
     let theme = Theme::new(Design::Noa, Appearance::Dark);
     let (accent, outline) = (theme.color(Role::Accent), theme.color(Role::Outline));
@@ -714,7 +714,7 @@ fn noa_marks_the_front_window_with_her_orange() {
         .commands()
         .iter()
         .filter_map(|c| match c {
-            ui_scene::DrawCommand::Backdrop {
+            noa_gpui_scene::DrawCommand::Backdrop {
                 rect, blur, tint, ..
             } if rect.width == 300.0 => Some((*blur > 0.0, *tint)),
             _ => None,
@@ -723,7 +723,10 @@ fn noa_marks_the_front_window_with_her_orange() {
     let base = h.tree.theme().background;
     assert_eq!(
         glass,
-        [(true, base.with_alpha(ui_core::widget::NOA_BASE_OPACITY)); 2]
+        [(
+            true,
+            base.with_alpha(noa_gpui_core::widget::NOA_BASE_OPACITY)
+        ); 2]
     );
     assert!(h.tree.theme().surface.a < 0.5, "a wash over the glass");
     let cursors: Vec<_> = quads_of(&h, Size::new(7.0, 13.0))
@@ -739,7 +742,7 @@ fn noa_marks_the_front_window_with_her_orange() {
     let glow = quads_of(&h, Size::new(306.0, 206.0));
     assert_eq!(
         glow,
-        [(accent.with_alpha(0.07), ui_scene::Color::TRANSPARENT); 2]
+        [(accent.with_alpha(0.07), noa_gpui_scene::Color::TRANSPARENT); 2]
     );
 
     h.tree.set_theme(Theme::new(Design::Noa, Appearance::Light));

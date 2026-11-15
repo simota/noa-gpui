@@ -15,27 +15,27 @@ mod status;
 mod text;
 mod values;
 
-use ui_core::style::{
+use noa_gpui_core::style::{
     AlignItems, Dimension, FlexDirection, JustifyContent, Rect as LayoutRect, Size as LayoutSize,
     auto, length, percent,
 };
-use ui_core::widgets::{
+use noa_gpui_core::widgets::{
     AnchorNav, AnchorSelected, COMMAND_PALETTE_SHORTCUTS, CommandChosen, CommandPalette, Container,
     Label, MenuBar, MenuBarChosen, MenuBarMenu, MenuItem, PaletteCommand, RecentCommands,
     ScrollView, menu_commands, menu_item,
 };
-use ui_core::{
+use noa_gpui_core::{
     Appearance, Event, Message, Role, Shortcut, ShortcutPressed, Style, UiTree, WidgetId,
 };
-use ui_scene::{Color, Point};
-use ui_text::TextStore;
+use noa_gpui_scene::{Color, Point};
+use noa_gpui_text::TextStore;
 
 use crate::assets::Assets;
 use crate::bench::{Meter, center_of};
 use kit::{DIVIDER, Kit, gap, zero};
 #[cfg(feature = "native")]
-use ui_platform::{FileDialogRequest, FileDialogResult, WindowRequest};
-use ui_platform::{FrameReport, Screen};
+use noa_gpui_platform::{FileDialogRequest, FileDialogResult, WindowRequest};
+use noa_gpui_platform::{FrameReport, Screen};
 
 const HEADER_BG: Color = Color::hex(0x1e2230);
 const SECTION_GAP: f32 = 40.0;
@@ -69,7 +69,7 @@ pub trait Demo {
 
     /// Takes content coming back from a secondary window if it is this section's.
     #[cfg(feature = "native")]
-    fn adopt(&mut self, _cx: &mut DemoCx, _detached: &mut Option<ui_platform::Detached>) {}
+    fn adopt(&mut self, _cx: &mut DemoCx, _detached: &mut Option<noa_gpui_platform::Detached>) {}
 
     #[cfg(feature = "native")]
     fn file_dialog_finished(&mut self, _cx: &mut DemoCx, _result: &FileDialogResult) {}
@@ -149,7 +149,7 @@ impl Catalog {
     pub fn new(assets: &Assets) -> Self {
         let mut tree = UiTree::new();
         // Menus write shortcuts as ⌘S where the command key is Cmd (also on the Web).
-        tree.set_shortcut_glyphs(ui_platform::command_is_meta());
+        tree.set_shortcut_glyphs(noa_gpui_platform::command_is_meta());
         let root = tree.insert(
             None,
             Container::new(Style {
@@ -746,7 +746,7 @@ impl Screen for Catalog {
     }
 
     #[cfg(feature = "native")]
-    fn adopt(&mut self, detached: ui_platform::Detached, text: &mut TextStore) {
+    fn adopt(&mut self, detached: noa_gpui_platform::Detached, text: &mut TextStore) {
         let mut detached = Some(detached);
         self.with_demos(text, |demo, cx| demo.adopt(cx, &mut detached));
     }
@@ -770,8 +770,8 @@ impl Screen for Catalog {
 mod tests {
     use super::*;
     use crate::a11y_audit::{describe, unnamed_controls};
-    use ui_scene::{ImageId, Size};
-    use ui_text::FontOptions;
+    use noa_gpui_scene::{ImageId, Size};
+    use noa_gpui_text::FontOptions;
 
     #[test]
     fn every_control_has_an_accessible_name() {
@@ -827,10 +827,10 @@ mod tests {
         catalog.tree.prepare(Size::new(1280.0, 800.0), &mut text);
         assert_ne!(catalog.tree.theme().appearance, Appearance::Dark);
         catalog.dispatch(Event::Text("Appearance: Dark".into()), &mut text);
-        let modifiers = ui_core::Modifiers::default();
+        let modifiers = noa_gpui_core::Modifiers::default();
         catalog.dispatch(
             Event::KeyDown {
-                key: ui_core::Key::Enter,
+                key: noa_gpui_core::Key::Enter,
                 modifiers,
             },
             &mut text,
@@ -847,8 +847,8 @@ mod tests {
 
     #[test]
     fn the_catalog_reopens_at_the_section_and_sort_it_was_left_with() {
-        use ui_core::ViewState;
-        use ui_core::widgets::{ScrollView, TableView};
+        use noa_gpui_core::ViewState;
+        use noa_gpui_core::widgets::{ScrollView, TableView};
         let build = || {
             let mut next = 0;
             let assets = Assets::generate(|_, _, _| {
@@ -897,7 +897,7 @@ mod tests {
 
     #[test]
     fn the_project_outline_adds_names_and_deletes_folders() {
-        use ui_core::widgets::{Button, OutlineView};
+        use noa_gpui_core::widgets::{Button, OutlineView};
         let mut next = 0;
         let assets = Assets::generate(|_, _, _| {
             next += 1;
@@ -930,8 +930,8 @@ mod tests {
         let button = |name: &str| buttons.iter().find(|(n, _)| n == name).unwrap().1;
         let click = |catalog: &mut Catalog, text: &mut TextStore, id: WidgetId| {
             let r = catalog.tree.window_rect(id).unwrap();
-            let pos = ui_scene::Point::new(r.x + r.width / 2.0, r.y + r.height / 2.0);
-            let button = ui_core::PointerButton::Primary;
+            let pos = noa_gpui_scene::Point::new(r.x + r.width / 2.0, r.y + r.height / 2.0);
+            let button = noa_gpui_core::PointerButton::Primary;
             catalog.dispatch(Event::PointerDown { pos, button }, text);
             catalog.dispatch(Event::PointerUp { pos, button }, text);
             catalog.tree.prepare(viewport, text);
@@ -956,8 +956,8 @@ mod tests {
         assert_eq!(view.parent(new), None);
         assert_eq!(view.selected_items(), [new]);
         catalog.dispatch(Event::Text("assets".into()), &mut text);
-        let modifiers = ui_core::Modifiers::default();
-        let key = ui_core::Key::Enter;
+        let modifiers = noa_gpui_core::Modifiers::default();
+        let key = noa_gpui_core::Key::Enter;
         catalog.dispatch(Event::KeyDown { key, modifiers }, &mut text);
         let view = catalog.tree.get::<OutlineView>(outline).unwrap();
         assert_eq!(view.title(new), "assets");
@@ -971,7 +971,7 @@ mod tests {
 
     #[test]
     fn document_tabs_open_and_ask_before_closing_a_changed_one() {
-        use ui_core::widgets::{Alert, TabView, TextArea};
+        use noa_gpui_core::widgets::{Alert, TabView, TextArea};
         let mut next = 0;
         let assets = Assets::generate(|_, _, _| {
             next += 1;
@@ -1000,11 +1000,11 @@ mod tests {
         }
         let tabs = tabs.expect("the document tabs");
         let act = |catalog: &mut Catalog, text: &mut TextStore, item: usize| {
-            use ui_core::accesskit;
+            use noa_gpui_core::accesskit;
             let request = accesskit::ActionRequest {
                 action: accesskit::Action::Click,
                 target_tree: accesskit::TreeId::ROOT,
-                target_node: ui_core::access_item_id(tabs, item),
+                target_node: noa_gpui_core::access_item_id(tabs, item),
                 data: None,
             };
             catalog.tree.accessibility_action(&request, text);
@@ -1013,8 +1013,8 @@ mod tests {
             }
             catalog.tree.prepare(viewport, text);
         };
-        let key = |catalog: &mut Catalog, text: &mut TextStore, key: ui_core::Key| {
-            let modifiers = ui_core::Modifiers::default();
+        let key = |catalog: &mut Catalog, text: &mut TextStore, key: noa_gpui_core::Key| {
+            let modifiers = noa_gpui_core::Modifiers::default();
             catalog.dispatch(Event::KeyDown { key, modifiers }, text);
             catalog.tree.prepare(viewport, text);
         };
@@ -1042,13 +1042,13 @@ mod tests {
                 .count()
         };
         catalog.tree.set_focus(Some(tabs));
-        key(&mut catalog, &mut text, ui_core::Key::Delete);
+        key(&mut catalog, &mut text, noa_gpui_core::Key::Delete);
         assert_eq!(alerts(&catalog), 1);
         let update = catalog.tree.accessibility_update(1.0);
         let prompt = update
             .nodes
             .iter()
-            .find(|(_, node)| node.role() == ui_core::accesskit::Role::AlertDialog)
+            .find(|(_, node)| node.role() == noa_gpui_core::accesskit::Role::AlertDialog)
             .unwrap();
         assert!(
             prompt
@@ -1061,13 +1061,13 @@ mod tests {
         let buttons: Vec<_> = update
             .nodes
             .iter()
-            .filter(|(_, node)| node.role() == ui_core::accesskit::Role::Button)
+            .filter(|(_, node)| node.role() == noa_gpui_core::accesskit::Role::Button)
             .filter_map(|(_, node)| node.label())
             .collect();
         assert!(buttons.contains(&"Simulate Save"));
         assert!(buttons.contains(&"Don’t Save"));
         assert!(buttons.contains(&"Cancel"));
-        key(&mut catalog, &mut text, ui_core::Key::Escape);
+        key(&mut catalog, &mut text, noa_gpui_core::Key::Escape);
         for now in [10.0, 11.0] {
             catalog.animate(now, &mut text);
         }
@@ -1077,8 +1077,8 @@ mod tests {
         assert_eq!(catalog.tree.get::<TextArea>(page).unwrap().text(), draft);
         assert!(catalog.tree.get::<TabView>(tabs).unwrap().is_modified(2));
         catalog.tree.set_focus(Some(tabs));
-        key(&mut catalog, &mut text, ui_core::Key::Delete);
-        key(&mut catalog, &mut text, ui_core::Key::Enter);
+        key(&mut catalog, &mut text, noa_gpui_core::Key::Delete);
+        key(&mut catalog, &mut text, noa_gpui_core::Key::Enter);
         assert_eq!(titles(&catalog), ["Untitled 1", "Untitled 2"]);
         assert!(!catalog.tree.contains(page));
         for now in [20.0, 21.0] {
@@ -1092,7 +1092,7 @@ mod tests {
 
     #[test]
     fn every_card_can_be_scrolled_into_view() {
-        use ui_core::widgets::GroupBox;
+        use noa_gpui_core::widgets::GroupBox;
         for (width, height) in [
             (1280.0, 800.0),
             (1024.0, 768.0),
@@ -1156,8 +1156,8 @@ mod tests {
 
     #[test]
     fn the_keyboard_reaches_every_control_and_sees_it() {
+        use noa_gpui_core::{Key, Modifiers};
         use std::collections::HashSet;
-        use ui_core::{Key, Modifiers};
         for (width, height) in [(1280.0, 800.0), (640.0, 480.0)] {
             let mut next = 0;
             let assets = Assets::generate(|_, _, _| {

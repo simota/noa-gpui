@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use ui_render_wgpu::{AcquireError, FrameStats, GpuContext, Renderer, Viewport, wgpu};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_render_wgpu::{AcquireError, FrameStats, GpuContext, Renderer, Viewport, wgpu};
+use noa_gpui_text::{FontOptions, TextStore};
 use web_time::Instant;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
@@ -113,8 +113,8 @@ pub struct App {
     /// widget tree reports no change.
     needs_present: bool,
     /// The caret area last reported to the IME; `None` while IME input is disabled.
-    ime_area: Option<ui_scene::Rect>,
-    cursor: ui_core::Cursor,
+    ime_area: Option<noa_gpui_scene::Rect>,
+    cursor: noa_gpui_core::Cursor,
     clock: Instant,
     waker: Waker,
     /// The main window was hidden (closed with [`AppOptions::keep_running`], or by the
@@ -134,7 +134,7 @@ pub struct App {
     #[cfg(feature = "native")]
     stylesheet: Option<crate::stylesheet::StyleSheetWatcher>,
     #[cfg(feature = "native")]
-    view_state: Option<(crate::ViewStateFile, ui_core::ViewState)>,
+    view_state: Option<(crate::ViewStateFile, noa_gpui_core::ViewState)>,
 }
 
 impl App {
@@ -162,7 +162,7 @@ impl App {
             input: InputState::default(),
             needs_present: true,
             ime_area: None,
-            cursor: ui_core::Cursor::Default,
+            cursor: noa_gpui_core::Cursor::Default,
             clock: Instant::now(),
             waker,
             main_hidden: false,
@@ -217,7 +217,7 @@ impl App {
     }
 
     /// Desktop: keep the states of the widgets named with
-    /// [`ui_core::UiTree::set_autosave_name`] and the main window's size, position and
+    /// [`noa_gpui_core::UiTree::set_autosave_name`] and the main window's size, position and
     /// maximized state between runs, in the file at `path`.
     /// The file is read now and written when the application ends. A saved position
     /// that is on no monitor any more is not used. A file that cannot be read or written
@@ -227,7 +227,7 @@ impl App {
         let file = crate::ViewStateFile::new(path);
         let state = file.load().unwrap_or_else(|e| {
             log::warn!("view state not read from {}: {e}", file.path().display());
-            ui_core::ViewState::new()
+            noa_gpui_core::ViewState::new()
         });
         self.view_state = Some((file, state));
         self
@@ -624,8 +624,8 @@ impl App {
             return;
         };
         let appearance = match theme {
-            Some(winit::window::Theme::Dark) => ui_core::Appearance::Dark,
-            _ => ui_core::Appearance::Light,
+            Some(winit::window::Theme::Dark) => noa_gpui_core::Appearance::Dark,
+            _ => noa_gpui_core::Appearance::Light,
         };
         gfx.screen.set_system_appearance(appearance);
         window.request_redraw();
@@ -677,8 +677,8 @@ impl App {
 /// next to the caret.
 pub(crate) fn sync_ime(
     window: &Window,
-    current: &mut Option<ui_scene::Rect>,
-    area: Option<ui_scene::Rect>,
+    current: &mut Option<noa_gpui_scene::Rect>,
+    area: Option<noa_gpui_scene::Rect>,
 ) {
     if area == *current {
         return;
@@ -698,15 +698,19 @@ pub(crate) fn sync_ime(
     *current = area;
 }
 
-pub(crate) fn sync_cursor(window: &Window, current: &mut ui_core::Cursor, cursor: ui_core::Cursor) {
+pub(crate) fn sync_cursor(
+    window: &Window,
+    current: &mut noa_gpui_core::Cursor,
+    cursor: noa_gpui_core::Cursor,
+) {
     if cursor != *current {
         window.set_cursor(cursor_icon(cursor));
         *current = cursor;
     }
 }
 
-fn cursor_icon(cursor: ui_core::Cursor) -> winit::window::CursorIcon {
-    use ui_core::Cursor;
+fn cursor_icon(cursor: noa_gpui_core::Cursor) -> winit::window::CursorIcon {
+    use noa_gpui_core::Cursor;
     use winit::window::CursorIcon;
     match cursor {
         Cursor::Default => CursorIcon::Default,
@@ -732,7 +736,7 @@ fn visibility_change(hidden: bool, request: Option<bool>) -> Option<bool> {
 }
 
 /// Whether a frame must deliver animation frames or a due timer to `tree`.
-pub(crate) fn wants_frame(tree: &ui_core::UiTree, now: f64) -> bool {
+pub(crate) fn wants_frame(tree: &noa_gpui_core::UiTree, now: f64) -> bool {
     tree.wants_animation_frame() || tree.next_timer().is_some_and(|t| t <= now)
 }
 

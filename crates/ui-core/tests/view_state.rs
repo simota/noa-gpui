@@ -1,12 +1,12 @@
-use ui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
-use ui_core::widgets::{
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
+use noa_gpui_core::widgets::{
     ColumnSort, Container, DIVIDER, DisclosureGroup, InnerWindow, OutlineItem, OutlineView,
     SplitPane, SplitView, TABLE_HEADER, TabView, TableColumn, TableView, WindowManager,
     WindowPlacement,
 };
-use ui_core::{Event, PointerButton, Style, UiTree, ViewState, WidgetId};
-use ui_scene::{Point, Rect, Size};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_core::{Event, PointerButton, Style, UiTree, ViewState, WidgetId};
+use noa_gpui_scene::{Point, Rect, Size};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(800.0, 600.0);
 
@@ -40,7 +40,7 @@ impl Harness {
         }
     }
 
-    fn add(&mut self, widget: impl ui_core::Widget) -> WidgetId {
+    fn add(&mut self, widget: impl noa_gpui_core::Widget) -> WidgetId {
         let id = self.tree.insert(Some(self.root), widget);
         self.prepare();
         id
@@ -79,7 +79,7 @@ impl Harness {
 
 struct Rows;
 
-impl ui_core::widgets::TableData for Rows {
+impl noa_gpui_core::widgets::TableData for Rows {
     fn row_count(&self) -> usize {
         5
     }
@@ -558,7 +558,7 @@ fn entries_no_widget_claims_are_kept_and_names_can_be_removed() {
 
 fn long_page(h: &mut Harness) -> WidgetId {
     let scroll = h.add(
-        ui_core::widgets::ScrollView::new(Style {
+        noa_gpui_core::widgets::ScrollView::new(Style {
             flex_direction: FlexDirection::Column,
             size: LayoutSize {
                 width: length(300.0),
@@ -587,7 +587,7 @@ fn long_page(h: &mut Harness) -> WidgetId {
 
 #[test]
 fn a_scroll_view_reopens_at_the_place_it_was_scrolled_to_within_its_content() {
-    use ui_core::widgets::ScrollView;
+    use noa_gpui_core::widgets::ScrollView;
     let mut h = Harness::new();
     let s = long_page(&mut h);
     h.tree.set_autosave_name(s, "page");

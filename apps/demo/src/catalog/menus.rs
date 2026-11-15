@@ -1,10 +1,10 @@
-use ui_core::style::{AlignItems, FlexDirection, Size as LayoutSize, length};
-use ui_core::widgets::{
+use noa_gpui_core::style::{AlignItems, FlexDirection, Size as LayoutSize, length};
+use noa_gpui_core::widgets::{
     Container, ContextMenuArea, Label, MenuBar, MenuBarChosen, MenuBarMenu, MenuChosen, MenuItem,
     SegmentMode, SegmentedControl, SelectionChanged, Switch, TextChanged, TextField, TextSubmitted,
     Toggled, Toolbar, ToolbarDisplay, ToolbarItem, ToolbarItemClicked, ToolbarSymbol, menu_item,
 };
-use ui_core::{Message, Role, Shortcut, Style, WidgetId};
+use noa_gpui_core::{Message, Role, Shortcut, Style, WidgetId};
 
 use super::kit::{Kit, gap};
 use super::{Demo, DemoCx, SectionSpec};
@@ -124,7 +124,7 @@ fn context_menu(kit: &mut Kit) -> Box<dyn Demo> {
         Container::new(Style {
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::CENTER,
-            justify_content: ui_core::style::JustifyContent::CENTER,
+            justify_content: noa_gpui_core::style::JustifyContent::CENTER,
             gap: gap(0.0, 10.0),
             size: LayoutSize {
                 width: length(380.0),
@@ -336,7 +336,7 @@ fn toolbar(kit: &mut Kit) -> Box<dyn Demo> {
                 flex_direction: FlexDirection::Column,
                 size: LayoutSize {
                     width: length(width),
-                    height: ui_core::style::auto(),
+                    height: noa_gpui_core::style::auto(),
                 },
                 ..Default::default()
             })

@@ -1,6 +1,6 @@
-use ui_layout::Style;
-use ui_layout::style::{FlexDirection, Size as LayoutSize, length};
-use ui_scene::{Border, Point, Rect, Size};
+use noa_gpui_layout::Style;
+use noa_gpui_layout::style::{FlexDirection, Size as LayoutSize, length};
+use noa_gpui_scene::{Border, Point, Rect, Size};
 
 use crate::event::{Cursor, Event, PointerButton};
 use crate::theme::Role;
@@ -219,7 +219,7 @@ impl Widget for ResizableBox {
         cx.rounded_rect(
             cx.bounds(),
             RADIUS,
-            ui_scene::Color::TRANSPARENT,
+            noa_gpui_scene::Color::TRANSPARENT,
             Border {
                 width: 1.0,
                 color: outline,

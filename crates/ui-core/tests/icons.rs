@@ -1,8 +1,8 @@
-use ui_core::style::{FlexDirection, Size as LayoutSize, percent};
-use ui_core::widgets::{Button, Container, SvgIcon, Toolbar, ToolbarItem};
-use ui_core::{Role, Style, UiTree, WidgetId};
-use ui_scene::{Color, DrawCommand, Size, VectorIcon};
-use ui_text::{FontOptions, TextStore};
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, percent};
+use noa_gpui_core::widgets::{Button, Container, SvgIcon, Toolbar, ToolbarItem};
+use noa_gpui_core::{Role, Style, UiTree, WidgetId};
+use noa_gpui_scene::{Color, DrawCommand, Size, VectorIcon};
+use noa_gpui_text::{FontOptions, TextStore};
 
 const VIEWPORT: Size = Size::new(400.0, 300.0);
 
@@ -70,10 +70,10 @@ fn an_svg_icon_draws_in_the_theme_color_at_its_size() {
     let node = &update
         .nodes
         .iter()
-        .find(|(n, _)| *n == ui_core::access_id(icon))
+        .find(|(n, _)| *n == noa_gpui_core::access_id(icon))
         .unwrap()
         .1;
-    assert_eq!(node.role(), ui_core::accesskit::Role::Image);
+    assert_eq!(node.role(), noa_gpui_core::accesskit::Role::Image);
     assert_eq!(node.label(), Some("Favorite"));
 
     tree.set_enabled(icon, false);

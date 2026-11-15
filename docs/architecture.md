@@ -37,7 +37,7 @@ The goal is not fully platform-independent code. Most of the UI, layout, and ren
 | Layout | taffy | Flexbox / Grid |
 | UI tree | Custom implementation | Incremental updates and memory optimization |
 | Accessibility | AccessKit + Web-specific implementation | Connects to OS assistive features |
-| Complex path drawing | Custom (`ui-scene::vector` + icon atlas) | Icons from SVG paths. vello_gpu was not adopted (appendix "Added after #16") |
+| Complex path drawing | Custom (`noa-gpui-scene::vector` + icon atlas) | Icons from SVG paths. vello_gpu was not adopted (appendix "Added after #16") |
 
 Versions checked as of November 2026: wgpu 30.0.1, Taffy 0.15.1, glyphon 0.12.0 (docs.rs).
 
@@ -145,12 +145,12 @@ Dependencies always go in the following single direction.
 
 ```mermaid
 flowchart TD
-    core["ui-core<br/>Widget Tree, State, Event"]
-    layout["ui-layout<br/>Taffy"]
-    text["ui-text<br/>cosmic-text"]
-    scene["ui-scene<br/>GPU-independent Display List"]
-    render["ui-render-wgpu<br/>GPU Buffer, Shader, Texture"]
-    platform["ui-platform"]
+    core["noa-gpui-core<br/>Widget Tree, State, Event"]
+    layout["noa-gpui-layout<br/>Taffy"]
+    text["noa-gpui-text<br/>cosmic-text"]
+    scene["noa-gpui-scene<br/>GPU-independent Display List"]
+    render["noa-gpui-render-wgpu<br/>GPU Buffer, Shader, Texture"]
+    platform["noa-gpui-platform"]
 
     core --> layout --> scene
     core --> text --> scene
@@ -165,8 +165,8 @@ flowchart TD
 
 Arrows mean "depends on" (`A --> B` means A uses B). Keep this consistent with each crate's `Cargo.toml`.
 
-- `ui-platform` drives this whole system from the outside.
-- `ui-core` and below (`ui-scene` / `ui-text` / `ui-layout` / `ui-core`) do not bring in `wgpu::Device`, `winit::Window`, or the like.
+- `noa-gpui-platform` drives this whole system from the outside.
+- `noa-gpui-core` and below (`noa-gpui-scene` / `noa-gpui-text` / `noa-gpui-layout` / `noa-gpui-core`) do not bring in `wgpu::Device`, `winit::Window`, or the like.
 - `crates/ui-core/tests/architecture.rs` checks this direction and the independence from the GPU and windowing against `Cargo.toml`.
 
 ## 5. Renderer Internals
@@ -255,7 +255,7 @@ Example configuration for `ui-render-wgpu/Cargo.toml`:
 
 ```toml
 [package]
-name = "ui-render-wgpu"
+name = "noa-gpui-render-wgpu"
 version = "0.1.0"
 edition = "2024"
 
@@ -408,7 +408,7 @@ Complete a small wgpu renderer that can draw 1,000 or more custom Widgets and ru
 While implementing Phase 1 ([#1](https://github.com/simota/noa-gpui/issues/1)), the following points in the main text's design examples were made concrete or changed.
 
 - **`DrawCommand` extensions:** `Quad` gained `border` (width and color), and `Text` gained `rect` (the layout's bounding box) and `color`. `rect` is used for culling and overlap checks.
-- **Order-preserving batching (`ui-scene::batch`):** Besides consecutive commands, a command joins the previous batch of the same kind only if it does not overlap any batch in between. The result looks identical to drawing "strictly in order." Overlap checks use a uniform grid of 32 logical px, so the time is nearly linear in the number of Widgets.
+- **Order-preserving batching (`noa-gpui-scene::batch`):** Besides consecutive commands, a command joins the previous batch of the same kind only if it does not overlap any batch in between. The result looks identical to drawing "strictly in order." Overlap checks use a uniform grid of 32 logical px, so the time is nearly linear in the number of Widgets.
 - **Text uses one glyphon `TextRenderer` per batch:** One Atlas is shared while the ordering between text and shapes is preserved.
 - **No `first_instance`:** WebGL2 lacks it, so instance buffers are specified as byte-offset slices.
 - **Color handling:** Input colors are sRGB. If the surface is an sRGB format (desktop, WebGL2), the shader converts to linear; otherwise (WebGPU's `Bgra8Unorm`) it outputs as is. glyphon picks `ColorMode::Accurate` / `Web` by the same rule.
@@ -431,7 +431,7 @@ One Widget = rounded Quad + image + text. Measured on an Apple M1 Pro. CPU time 
 
 Decisions made in Phase 2 ([#2](https://github.com/simota/noa-gpui/issues/2)).
 
-- **Widget Tree (`ui-core::tree`):** Widgets are placed in an Arena as `Box<dyn Widget>` and referenced by Generational ID (index + generation). A removed ID never becomes valid again.
+- **Widget Tree (`noa-gpui-core::tree`):** Widgets are placed in an Arena as `Box<dyn Widget>` and referenced by Generational ID (index + generation). A removed ID never becomes valid again.
 - **Three stages of incremental update:**
   - Layout: Pass the changed nodes' styles to Taffy and `mark_dirty` them. Taffy reuses its cache for clean subtrees. Reading results back is limited to subtrees that may have changed (touched nodes or nodes whose size changed).
   - Paint: Each Widget keeps its draw commands in its own coordinate system. They are regenerated only when the Widget requests it or its size changes.
@@ -511,7 +511,7 @@ Measured on an Apple M1 Pro.
 | Whole-demo CPU time (Chrome / WebGPU) | 50,000 rows | — | 0.50 ms |
 | Whole-demo CPU time (Chrome / WebGL2) | 50,000 rows | — | 2.10 ms |
 
-Cost of a full redraw (`cargo bench -p ui-render-wgpu --features native --bench gpu_frame`, 2560×1600, with contents changing every frame):
+Cost of a full redraw (`cargo bench -p noa-gpui-render-wgpu --features native --bench gpu_frame`, 2560×1600, with contents changing every frame):
 
 | Widgets | CPU prep p95 | GPU p95 | GPU p99 |
 | --- | --- | --- | --- |
@@ -522,7 +522,7 @@ Thanks to caching, preparing a frame whose contents do not change takes under 0.
 
 ## Appendix: Decisions for the Component Foundation (#6)
 
-Mechanisms added as groundwork for implementing the standard macOS components ([#6](https://github.com/simota/noa-gpui/issues/6)). All of them live in `ui-core`, and their behavior can be checked under FOUNDATION in the UI catalog (`--scene=catalog`).
+Mechanisms added as groundwork for implementing the standard macOS components ([#6](https://github.com/simota/noa-gpui/issues/6)). All of them live in `noa-gpui-core`, and their behavior can be checked under FOUNDATION in the UI catalog (`--scene=catalog`).
 
 - **Theme (`theme.rs`):**
   - Widgets specify colors either as a fixed color or as a role (`Role::Text`, `Role::Accent`, etc.). Roles are resolved against the current `Theme` at paint time.
@@ -539,7 +539,7 @@ Mechanisms added as groundwork for implementing the standard macOS components ([
 - **Pointer shape (`Widget::cursor` and `UiTree::cursor`, `Cursor` in `event.rs`):**
   - A Widget returns the pointer shape at a position via `cursor(local, size)` (I-beam, hand, column or row boundary, edge or corner resize, grabbing hand, etc.). `None` defers to the parent. The tree walks from the innermost Widget under the pointer toward ancestors and uses the first shape answered.
   - If a Widget has captured the pointer, only that Widget is asked (the resize shape stays even when a divider drag leaves the divider). During a drag and drop started by a Widget, the shape is a closed hand. Over a disabled Widget and outside the window, it is the arrow.
-  - `ui-platform` reads `UiTree::cursor` on every input event and every frame, and passes it to winit's `Window::set_cursor` only when it changes (on the Web this becomes the CSS cursor).
+  - `noa-gpui-platform` reads `UiTree::cursor` on every input event and every frame, and passes it to winit's `Window::set_cursor` only when it changes (on the Web this becomes the CSS cursor).
   - Supported widgets: text inputs (TextField, SecureTextField, SearchField, ComboBox, NumberInput, TokenField, TextArea, TextView, the input fields of CommandPalette and FindBar, InlineEditableLabel while editing, selectable Label, Terminal) use the I-beam. Over icons and buttons it stays the arrow. SplitView dividers and TableView header boundaries use column (row) resize, and the edges and corners of ResizableBox and InnerWindow use the resize matching their direction.
 - **Overlays (`overlay.rs`):**
   - `UiTree::open_overlay` creates a root separate from the main tree.
@@ -574,7 +574,7 @@ Mechanisms added as groundwork for implementing the standard macOS components ([
   - TextField and the new TextArea (multi-line, wrapping, grows with content) share the editing part `Editable`.
   - Selection gestures: drag, double-click (word), triple-click (line), Shift+click.
   - TextField scrolls overflowing text horizontally to keep the caret visible and clips its interior.
-  - ui-text gained multi-line caret positions, hit testing, and selection rectangles.
+  - noa-gpui-text gained multi-line caret positions, hit testing, and selection rectangles.
   - The clipboard is swapped via the `Clipboard` trait. Desktop uses the OS clipboard (arboard); the Web uses in-app memory.
   - Bug fixed: `MeasureInput::wrap_width` wrapped at a width that included padding. It now uses the content box width.
 - **Drag and drop:**
@@ -675,7 +675,7 @@ Widgets added in [#8](https://github.com/simota/noa-gpui/issues/8) and the mecha
   - For the color picker's saturation/brightness plane and hue bar, a shape was added that fills a rounded rectangle with a horizontal or vertical gradient.
   - Like line segments and triangles, it is drawn in the Quad pipeline. Interpolation is done on sRGB values (the same as the CSS default), and conversion to the output color space happens after interpolation.
 - **Increment and decrement from assistive technology (`Event::Increment` / `Decrement`):** AccessKit's Increment / Decrement are delivered to widgets. Sliders, steppers, and date pickers support them.
-- **Dates (`ui_core::date::DateTime`):** Year, month, day, hour, and minute. Without an external crate, the weekday and adding days and months are computed by converting to a day count (Howard Hinnant's algorithm). Time zones and seconds are not handled.
+- **Dates (`noa_gpui_core::date::DateTime`):** Year, month, day, hour, and minute. Without an external crate, the weekday and adding days and months are computed by converting to a day count (Howard Hinnant's algorithm). Time zones and seconds are not handled.
 - **Widgets:**
   - Slider: horizontal, vertical, circular; tick marks; snapping to ticks. Jumps to the pressed position and follows drags.
   - Stepper: increment, wrapping at the ends, repeat while held (every 0.08 seconds after 0.4 seconds, timed by animation frames). Combining it with a number field is synchronized by the app (example in the catalog).
@@ -693,7 +693,7 @@ Widgets added in [#8](https://github.com/simota/noa-gpui/issues/8) and the mecha
 
 Widgets added or extended in [#9](https://github.com/simota/noa-gpui/issues/9) and the mechanisms introduced for them. They are listed under TEXT in the UI catalog (the Label and TextField sections were moved from WIDGETS).
 
-- **Text alignment (`ui_text::TextAlign`, `TextStyle::align`, `Label::align`):** Aligns lines to the start (default), center, or end. Applies both to wrapped lines and to lines split by `\n`. cosmic-text aligns each paragraph within that paragraph's width (or the wrap width), so the text is shaped once to measure the longest line's width and then recomputed at that width. The block's size is the same as without alignment. When a Label is wider than its text (stretched by its parent), the text block is also placed by that alignment. Alert messages and informative text are centered line by line.
+- **Text alignment (`noa_gpui_text::TextAlign`, `TextStyle::align`, `Label::align`):** Aligns lines to the start (default), center, or end. Applies both to wrapped lines and to lines split by `\n`. cosmic-text aligns each paragraph within that paragraph's width (or the wrap width), so the text is shaped once to measure the longest line's width and then recomputed at that width. The block's size is the same as without alignment. When a Label is wider than its text (stretched by its parent), the text block is also placed by that alignment. Alert messages and informative text are centered line by line.
 - **When only the wrap width changes (`TextStore::rewrap`):** Layout measures a wrapping Label at the narrowest width, the widest width, and the actual width, in that order. Changing the window width rewraps every paragraph. If the text and style are the same, the shaping result (glyphs) is kept and only the assignment to lines is redone (used by `CachedText::shape`). The resulting arrangement is the same as `TextStore::create` of the same text at that width. For a Layout with a different style it returns `false`, and the caller recreates it. The catalog's (2,344 Widgets) first frame went from 219 → 90ms, and the slowest frame while changing the width from 100 → 17ms (median of 9 runs in an x86-64 Linux sandbox; the measurement code is not in the repository).
 - **Editing-part modes (`Editable`):**
   - Read-only: accepts only selection, movement, Cmd+A, and Cmd+C; does not accept typing, deletion, paste, undo, or IME composition. No caret is drawn.
@@ -757,7 +757,7 @@ Widgets added or extended in [#11](https://github.com/simota/noa-gpui/issues/11)
   - Momentum starts after wheel input stops. In environments where the OS sends momentum events, like the macOS trackpad, a little is added on top at the end. This is because input events carry no momentum phase; if it is bothersome, `momentum(false)` turns it off.
   - When a split view's flexible pane reaches its minimum size, shrinking the window further does not shrink the fixed panes, and they overflow.
   - Disclosure groups do not animate the height of their contents (only the chevron rotates).
-  - (Resolved) In taffy 0.15.1, the `inset` of a `position: absolute` child was resolved relative to the window instead of the parent. Now `ui-layout` makes every node the containing block for its absolutely positioned children, so they are placed relative to the parent (`contain_absolute` in `crates/ui-layout/src/lib.rs`).
+  - (Resolved) In taffy 0.15.1, the `inset` of a `position: absolute` child was resolved relative to the window instead of the parent. Now `noa-gpui-layout` makes every node the containing block for its absolutely positioned children, so they are placed relative to the parent (`contain_absolute` in `crates/ui-layout/src/lib.rs`).
 
 ## Appendix: Decisions for Data Display (#12)
 
@@ -775,14 +775,14 @@ Widgets added in [#12](https://github.com/simota/noa-gpui/issues/12) and the mec
 - **Widgets:**
   - TableView selection checkboxes: with `selection_checkboxes(true)`, the table draws a per-row checkbox before the first column and a select-all checkbox in the header. A row checkbox adds or removes only that row from the selection, like ⌘-click, and does not move the scroll position. The header one selects all rows, and deselects if all are selected. While only some are selected it shows a horizontal line (mixed state) (shown only with `SelectionMode::Multiple`). Not shown on group rows. It is not a data column, so column numbers (`CellActionClicked::column`, sorting, `copy_text` / `export_text`, type-to-select) do not change. For assistive technology it is listed as a CheckBox after the row ("Select all rows", "Select <first cell>"). Not shown for data grids (`cell_selection`) or `SelectionMode::None`.
   - TableView auto-scroll while dragging: during a row-reorder drag and during a data grid's cell-range selection drag, when the pointer is within 24px of (or beyond) the top or bottom edge of the rows, it scrolls at up to 900px/second depending on the depth. The insertion position and the cell range also extend with the scroll. It stops when the pointer leaves the edge or the start or end is reached.
-  - TableView cell truncation: text that does not fit the column width is shortened by replacing the part at the `TableColumn::truncation` position with "…" (default is the end; middle for file names and paths; start is also available). With `Truncation::None` it is cut at the cell width (the previous behavior). Shortened text is remembered until the cell's text, width, or position changes, and is not remeasured on every repaint. Hovering over a shortened cell shows the full text in a tooltip. Whether text fits is judged from the width of the cell's paint layout, so cells that are not shortened need no extra measurement (scrolling in `cargo bench -p ui-core --bench table` went from p50 0.084 → 0.087ms).
+  - TableView cell truncation: text that does not fit the column width is shortened by replacing the part at the `TableColumn::truncation` position with "…" (default is the end; middle for file names and paths; start is also available). With `Truncation::None` it is cut at the cell width (the previous behavior). Shortened text is remembered until the cell's text, width, or position changes, and is not remeasured on every repaint. Hovering over a shortened cell shows the full text in a tooltip. Whether text fits is judged from the width of the cell's paint layout, so cells that are not shortened need no extra measurement (scrolling in `cargo bench -p noa-gpui-core --bench table` went from p50 0.084 → 0.087ms).
   - TableView: multiple columns and headers; sorting by clicking a header (strings compare case-insensitively; numbers compare by the leading number, so "1,024 KB" becomes 1024); changing column width by dragging the right edge of a header (respecting the minimum width); alternating background colors (continuing into the empty area below the rows); horizontal scrolling when the total column width exceeds the width; `RowActivated` on double-click and Return; reordering rows by drag with `reorderable(true)` (selected rows move together, a line is drawn at the insertion position, `RowsMoved` is emitted, and the sort state is cleared). Sorting does not rearrange the data; it only reorders the display order.
   - OutlineView: hierarchical display with expand and collapse (click the triangle; Option + click for the whole branch), keyboard expand and collapse (Right expands or moves to the first child, Left collapses or moves to the parent, Option for the whole branch), `ItemExpanded`. A selection hidden by collapsing moves to the collapsed item.
   - Sidebar (`OutlineView::sidebar()`): top-level items are drawn as headers, and clicking them expands or collapses their contents. Headers cannot be selected, and up and down arrows skip them. Icons, badges, rounded selection background. Single selection.
   - CollectionView: a grid that wraps to fit the width (leftover width is distributed into the spacing), drawing only items in visible rows. Dragging from empty space selects a rectangular range (Cmd to add). Left and right arrows move by item, up and down by row (if the row below has no item there, it moves to the end of the short last row).
   - BrowserView: selecting an item lists its children in the next column (Finder's column view). If the columns do not fit the width, it scrolls horizontally until the last column is visible. `BrowserPathChanged`.
   - RuleEditor: "Match [All / Any] of the following rules:" and rows with a field, a condition, and a value. The conditions depend on the field's type (string or number). − and + remove and add rows (the last row cannot be removed). Pop-ups open as menus (#7), and the value input field embeds the text-input editing core (#9) per row (Tab / Shift+Tab move between rows and exit at the ends). Emits `RulesChanged`, and `matches` can test a record. An empty value matches every record so that rows do not all vanish while typing.
-- **Measurement (`cargo bench -p ui-core --bench table`):** On a 100,000-row (4-column) table, one frame from input handling through `UiTree::prepare` is measured for 300 frames each of scrolling, clicking, range selection, keyboard selection, and select-all. On a local Apple Silicon Mac, the maximum stayed within 1.1ms (keyboard range selection), and even at 1,000,000 rows the maximum was 1.4ms. The bench fails if a frame exceeds 16ms. Sorting by clicking a header rereads every row's cells, so it took 9–14ms at 100,000 rows and 89ms at 1,000,000 rows (not per-frame work).
+- **Measurement (`cargo bench -p noa-gpui-core --bench table`):** On a 100,000-row (4-column) table, one frame from input handling through `UiTree::prepare` is measured for 300 frames each of scrolling, clicking, range selection, keyboard selection, and select-all. On a local Apple Silicon Mac, the maximum stayed within 1.1ms (keyboard range selection), and even at 1,000,000 rows the maximum was 1.4ms. The bench fails if a frame exceeds 16ms. Sorting by clicking a header rereads every row's cells, so it took 9–14ms at 100,000 rows and 89ms at 1,000,000 rows (not per-frame work).
 - **Known constraints:**
   - Row height is fixed (one per table). There is no variable height that fits the content.
   - Dragging can move rows only within the same table; it is not a drag and drop to other Widgets.
@@ -874,7 +874,7 @@ A container of child windows that behave like OS windows, added in [#16](https:/
   - Minimized windows are hidden and an item appears in the dock. Clicking the item restores it.
   - Keys: ⌘` (Ctrl+` in other environments) for the next window, ⌘W to close, ⌘M to minimize.
   - Releasing outside the area returns `WindowEvent::TornOff`. The desktop demo takes the contents out and moves them to an OS window, and that window's "Return to Desktop" brings them back.
-- **Measurement (`cargo bench -p ui-core --bench desktop`, M1 Pro):** With 20 windows × 500 Widgets (10,042 Widgets total), one frame while dragging is p95 0.19ms, resizing from a corner is p95 1.0ms, and bringing to front is p95 0.16ms. The design premise (moving does not re-lay out the contents) held.
+- **Measurement (`cargo bench -p noa-gpui-core --bench desktop`, M1 Pro):** With 20 windows × 500 Widgets (10,042 Widgets total), one frame while dragging is p95 0.19ms, resizing from a corner is p95 1.0ms, and bringing to front is p95 0.16ms. The design premise (moving does not re-lay out the contents) held.
 - **What was verified:** `tests/desktop.rs` checks moving, snapping, halves and maximizing, resizing, stacking order, minimizing and the dock, key operations, the scope of Tab and default buttons, blocking by in-window modals, moving to another tree, and accessibility. In the Web build (WebGPU), bringing to front, sheets and alerts, snapping to the left half with the preview frame, and minimizing to the dock were operated in headless Chrome and checked on screen.
 - **Known constraints:**
   - Tearing off into an OS window and bringing back have not been actually run and checked (the environment lacks input permissions; moving between trees is confirmed by tests). There is no operation to drag an OS window back into the area; a button brings it back.
@@ -886,9 +886,9 @@ A container of child windows that behave like OS windows, added in [#16](https:/
 
 Features after #16 do not have per-issue appendices. The list of widgets is in [README.md](../README.md), and where code and tests live is in [feature-map.md](feature-map.md). Only points that bear on the main text's design are written here.
 
-- **Vector icons ([#18](https://github.com/simota/noa-gpui/issues/18)):** §1 assumed vello_gpu would be added later for complex path drawing, but it was not adopted. `ui-scene::vector` parses and rasterizes SVG paths on the CPU, and the renderer builds each icon's coverage mask once per pixel size and packs them into a single atlas (`ui-render-wgpu/src/icons.rs`). Every icon can be drawn in the same batch, and it fits within the WebGL2 constraints.
-- **Additional widgets (#19–#24):** input (NumberInput, FindBar, etc.), notifications (Toast, etc.), navigation (CommandPalette, etc.), extensions to layout and data display, and the mini OS's notification center and App Switcher. All were added as `ui-core` Widgets without changing the crate layout or dependency direction.
-- **Terminal (#32) and LogView:** VT100 / xterm interpretation (`widgets/vt.rs`) and the screen (`widgets/terminal.rs`) are in `ui-core` and do not depend on the OS. Terminal only emits key input as bytes (`TerminalInput`); the pseudo-terminal is handled by `ui-platform`'s `Pty` (macOS, Linux). Output read on a separate thread is delivered by waking the event loop with a `Waker`. Like TableView, LogView does not make rows into Widgets and draws only the visible rows.
-- **Drawing without a window:** `OffscreenRenderer` draws to a texture and reads the pixels back. For environments without a GPU adapter (sandboxes, CI without a GPU), there is also `SoftwareRenderer`, which draws the same Display List on the CPU. It matches the GPU pipelines' distance fields, blending, and glyph placement, but differences remain in the details of glyph rasterization and in background blur (full resolution rather than half), so CPU images are compared with each other. `ui-platform`'s `Headless` combines both, and the demo's `--snapshot=FILE.png` and CI snapshots use it. PNGs are written uncompressed using only the standard library (`png.rs`).
+- **Vector icons ([#18](https://github.com/simota/noa-gpui/issues/18)):** §1 assumed vello_gpu would be added later for complex path drawing, but it was not adopted. `noa-gpui-scene::vector` parses and rasterizes SVG paths on the CPU, and the renderer builds each icon's coverage mask once per pixel size and packs them into a single atlas (`ui-render-wgpu/src/icons.rs`). Every icon can be drawn in the same batch, and it fits within the WebGL2 constraints.
+- **Additional widgets (#19–#24):** input (NumberInput, FindBar, etc.), notifications (Toast, etc.), navigation (CommandPalette, etc.), extensions to layout and data display, and the mini OS's notification center and App Switcher. All were added as `noa-gpui-core` Widgets without changing the crate layout or dependency direction.
+- **Terminal (#32) and LogView:** VT100 / xterm interpretation (`widgets/vt.rs`) and the screen (`widgets/terminal.rs`) are in `noa-gpui-core` and do not depend on the OS. Terminal only emits key input as bytes (`TerminalInput`); the pseudo-terminal is handled by `noa-gpui-platform`'s `Pty` (macOS, Linux). Output read on a separate thread is delivered by waking the event loop with a `Waker`. Like TableView, LogView does not make rows into Widgets and draws only the visible rows.
+- **Drawing without a window:** `OffscreenRenderer` draws to a texture and reads the pixels back. For environments without a GPU adapter (sandboxes, CI without a GPU), there is also `SoftwareRenderer`, which draws the same Display List on the CPU. It matches the GPU pipelines' distance fields, blending, and glyph placement, but differences remain in the details of glyph rasterization and in background blur (full resolution rather than half), so CPU images are compared with each other. `noa-gpui-platform`'s `Headless` combines both, and the demo's `--snapshot=FILE.png` and CI snapshots use it. PNGs are written uncompressed using only the standard library (`png.rs`).
 - **Filtering:** `set_filter_text` / `set_filter` on TableView and OutlineView. As with virtualization (#12), only the display-order array is rebuilt, and no row Widgets are created.
-- **CSS-like styling (Noa Style, [#44](https://github.com/simota/noa-gpui/pull/44)):** `ui-core::styling` parses a typed stylesheet and resolves it per tree node. Layout properties go to the node's Taffy style, and paint and text properties go to the Widget's painting. Supported properties, precedence, and what is out of scope are in [styling.md](styling.md). When resolving a node, the node's state (found by walking ancestors) is computed only once, and the rules, sorted at parse time by specificity (by source order when equal), are applied in order. In `cargo bench -p ui-core --bench styling` (2,000 rows, 8,101 Widgets, 20 rules), re-resolving every Widget was p50 5.8ms and a frame that moves the pointer to another row was p50 0.08ms (a frame that re-resolves descendant-selector targets across groups was p95 9.5ms) (on a 4-core Linux VM).
+- **CSS-like styling (Noa Style, [#44](https://github.com/simota/noa-gpui/pull/44)):** `noa-gpui-core::styling` parses a typed stylesheet and resolves it per tree node. Layout properties go to the node's Taffy style, and paint and text properties go to the Widget's painting. Supported properties, precedence, and what is out of scope are in [styling.md](styling.md). When resolving a node, the node's state (found by walking ancestors) is computed only once, and the rules, sorted at parse time by specificity (by source order when equal), are applied in order. In `cargo bench -p noa-gpui-core --bench styling` (2,000 rows, 8,101 Widgets, 20 rules), re-resolving every Widget was p50 5.8ms and a frame that moves the pointer to another row was p50 0.08ms (a frame that re-resolves descendant-selector targets across groups was p95 9.5ms) (on a 4-core Linux VM).

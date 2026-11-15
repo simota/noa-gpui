@@ -4,9 +4,9 @@
 
 use std::collections::{HashMap, HashSet};
 
-use ui_core::accesskit::{Action, Node, NodeId, Role};
-use ui_core::widgets::Label;
-use ui_core::{UiTree, WidgetId, access_id, access_item_id};
+use noa_gpui_core::accesskit::{Action, Node, NodeId, Role};
+use noa_gpui_core::widgets::Label;
+use noa_gpui_core::{UiTree, WidgetId, access_id, access_item_id};
 
 fn is_control(node: &Node) -> bool {
     node.supports_action(Action::Focus) || node.supports_action(Action::Click)

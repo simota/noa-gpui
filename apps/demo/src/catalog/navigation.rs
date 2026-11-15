@@ -1,11 +1,13 @@
-use ui_core::style::{FlexDirection, Rect as LayoutRect, Size as LayoutSize, length, percent};
-use ui_core::widgets::{
+use noa_gpui_core::style::{
+    FlexDirection, Rect as LayoutRect, Size as LayoutSize, length, percent,
+};
+use noa_gpui_core::widgets::{
     AnchorNav, AnchorSelected, Button, ButtonClicked, CommandChosen, CommandPalette, Container,
     Kbd, Label, OUTLINE_RAIL_WIDTH, OutlineItem, OutlineView, PaletteCommand, PanesChanged,
     PathControl, PathItem, PathItemClicked, PathSeparator, RecentCommands, ScrollView, SplitPane,
     SplitView,
 };
-use ui_core::{Message, Role, Shortcut, Style, UiTree, WidgetId};
+use noa_gpui_core::{Message, Role, Shortcut, Style, UiTree, WidgetId};
 
 use super::icons::Icons;
 use super::kit::{DIVIDER, Kit, gap, row_style};
@@ -149,7 +151,7 @@ const TRAIL: [&str; 7] = [
     "Projects",
     "noa-gpui",
     "crates",
-    "ui-core",
+    "noa-gpui-core",
     "widgets",
     "path_control.rs",
 ];

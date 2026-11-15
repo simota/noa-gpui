@@ -2,7 +2,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use ui_core::ViewState;
+use noa_gpui_core::ViewState;
 
 /// The entry [`crate::App::autosave_view_state`] keeps the main window's geometry
 /// under (see [`MainWindowState`]).

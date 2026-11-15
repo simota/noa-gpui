@@ -1,9 +1,9 @@
 use std::ops::Range;
 
-use ui_layout::style::{Dimension, Rect as LayoutRect, Size as LayoutSize, length, percent};
-use ui_layout::{MeasureInput, Style};
-use ui_scene::{Point, Rect, Size};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_layout::style::{Dimension, Rect as LayoutRect, Size as LayoutSize, length, percent};
+use noa_gpui_layout::{MeasureInput, Style};
+use noa_gpui_scene::{Point, Rect, Size};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::editable::Editable;
 use super::find::{FindAction, FindStatus, Finder};

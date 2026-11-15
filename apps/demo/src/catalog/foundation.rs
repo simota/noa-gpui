@@ -1,18 +1,18 @@
-use ui_core::animation::{Easing, Transition};
-use ui_core::style::{FlexDirection, Size as LayoutSize, length};
+use noa_gpui_core::animation::{Easing, Transition};
+use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, length};
 #[cfg(feature = "native")]
-use ui_core::widgets::FileDialogRequested;
-use ui_core::widgets::{
+use noa_gpui_core::widgets::FileDialogRequested;
+use noa_gpui_core::widgets::{
     Button, ButtonClicked, CheckState, Checkbox, CheckboxChanged, Container, FileDropZone,
     FilesDropped, Label, TextArea, TextField,
 };
-use ui_core::{
+use noa_gpui_core::{
     Appearance, Cursor, Design, DragData, Event, MeasureCx, MeasureInput, Message,
     OverlayDismissed, OverlayOptions, Placement, Role, Shortcut, ShortcutPressed, Style, WidgetId,
 };
-use ui_core::{EventCx, PaintCx, UpdateCx, Widget};
-use ui_scene::{Border, Color, Point, Rect, Size, TextLayoutId};
-use ui_text::{TextStore, TextStyle};
+use noa_gpui_core::{EventCx, PaintCx, UpdateCx, Widget};
+use noa_gpui_scene::{Border, Color, Point, Rect, Size, TextLayoutId};
+use noa_gpui_text::{TextStore, TextStyle};
 
 use super::kit::{
     DIVIDER, Kit, NavItem, NavSelected, gap, overlay_panel, row_style, swatch, window_rect,
@@ -21,7 +21,7 @@ use super::kit::{
 use super::note_window::NoteWindow;
 use super::{Demo, DemoCx, SectionSpec};
 #[cfg(feature = "native")]
-use ui_platform::WindowRequest;
+use noa_gpui_platform::WindowRequest;
 
 pub const SECTIONS: [SectionSpec; 8] = [
     SectionSpec {
@@ -88,7 +88,7 @@ pub const SECTIONS: [SectionSpec; 8] = [
 ];
 
 const ACCENTS: [(&str, Color); 5] = [
-    ("Blue", ui_core::theme::DEFAULT_ACCENT),
+    ("Blue", noa_gpui_core::theme::DEFAULT_ACCENT),
     ("Purple", Color::hex(0x8e5bd8)),
     ("Pink", Color::hex(0xd6455d)),
     ("Orange", Color::hex(0xe8812d)),
@@ -263,10 +263,10 @@ fn disabled(kit: &mut Kit) -> Box<dyn Demo> {
         Container::new(Style {
             flex_direction: FlexDirection::Column,
             gap: gap(0.0, 8.0),
-            padding: ui_core::style::Rect::length(12.0),
+            padding: noa_gpui_core::style::Rect::length(12.0),
             size: LayoutSize {
                 width: length(264.0),
-                height: ui_core::style::auto(),
+                height: noa_gpui_core::style::auto(),
             },
             ..Default::default()
         })
@@ -667,7 +667,7 @@ impl Widget for DragRow {
 
     fn style(&self) -> Style {
         Style {
-            padding: ui_core::style::Rect {
+            padding: noa_gpui_core::style::Rect {
                 left: length(30.0),
                 right: length(12.0),
                 top: length(8.0),
@@ -675,7 +675,7 @@ impl Widget for DragRow {
             },
             size: LayoutSize {
                 width: length(264.0),
-                height: ui_core::style::auto(),
+                height: noa_gpui_core::style::auto(),
             },
             flex_shrink: 0.0,
             ..Default::default()
@@ -855,7 +855,7 @@ impl Demo for DragDemo {
             } else {
                 vec![("Images".to_owned(), request.extensions.clone())]
             };
-            cx.file_dialogs.push(ui_platform::FileDialogRequest {
+            cx.file_dialogs.push(noa_gpui_platform::FileDialogRequest {
                 save: false,
                 title: "Choose Images".into(),
                 file_name: String::new(),
@@ -867,11 +867,15 @@ impl Demo for DragDemo {
     }
 
     #[cfg(feature = "native")]
-    fn file_dialog_finished(&mut self, cx: &mut DemoCx, result: &ui_platform::FileDialogResult) {
+    fn file_dialog_finished(
+        &mut self,
+        cx: &mut DemoCx,
+        result: &noa_gpui_platform::FileDialogResult,
+    ) {
         if !std::mem::take(&mut self.choosing) {
             return;
         }
-        if let ui_platform::FileDialogResult::Opened(files) = result {
+        if let noa_gpui_platform::FileDialogResult::Opened(files) = result {
             self.show_files(cx, "Chosen", files);
         }
     }
