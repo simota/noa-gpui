@@ -1,11 +1,12 @@
 use noa_gpui_core::style::{FlexDirection, Size as LayoutSize, length, percent};
 use noa_gpui_core::widgets::{
-    ComboBox, Container, FindAction, FindOptions, Label, LogLine, LogView, Menu, SearchField,
-    SearchSubmitted, SecureTextField, SelectionChanged, TextArea, TextChanged, TextField,
-    TextSubmitted, TextView, TokenField, TokensChanged, Truncation,
+    ComboBox, Container, FindAction, FindOptions, Label, LogLine, LogView, Menu, ReadingChanged,
+    SearchField, SearchSubmitted, SecureTextField, SelectionChanged, TextArea, TextChanged,
+    TextField, TextSubmitted, TextView, TokenField, TokensChanged, Truncation,
 };
 use noa_gpui_core::{
     Event, Key, Message, Modifiers, PointerButton, Style, UiTree, WidgetId, access_id, accesskit,
+    kana,
 };
 use noa_gpui_scene::{Color, DrawCommand, Point, Size};
 use noa_gpui_text::{FontOptions, TextAlign, TextStore};
@@ -1276,4 +1277,102 @@ fn wrapping_labels_in_a_resized_window_draw_as_in_a_new_one() {
         assert_eq!(drawn, drawn_text(&new.tree, &new.text), "at {width}");
         assert_eq!(resized.text.layouts().len(), new.text.layouts().len());
     }
+}
+
+#[test]
+fn text_fields_capture_the_reading_of_converted_text() {
+    let mut h = Harness::new();
+    let field = h.add(TextField::new("", 200.0).capture_reading(true));
+    h.focus(field);
+    h.prepare();
+    // Romaji typing shows a trailing letter before the kana appear.
+    for composition in ["y", "や", "やm", "やま", "やまだ", "山田", ""] {
+        h.compose(composition);
+    }
+    h.type_text("山田");
+    // Kana committed as is are their own reading; ASCII typed directly has none.
+    h.compose("たろう");
+    h.type_text("たろう");
+    h.type_text("A");
+    let input = h.tree.get::<TextField>(field).unwrap();
+    assert_eq!(input.text(), "山田たろうA");
+    assert_eq!(input.reading(), "やまだたろう");
+    assert_eq!(
+        values::<ReadingChanged>(&h.messages()),
+        [
+            ReadingChanged("やまだ".into()),
+            ReadingChanged("やまだたろう".into()),
+        ]
+    );
+
+    // A cancelled composition is not the reading of what is typed next.
+    h.compose("かな");
+    h.compose("");
+    h.key(Key::ArrowLeft);
+    h.type_text("x");
+    assert_eq!(
+        h.tree.get::<TextField>(field).unwrap().reading(),
+        "やまだたろう"
+    );
+
+    h.command('a');
+    h.key(Key::Backspace);
+    assert_eq!(h.tree.get::<TextField>(field).unwrap().reading(), "");
+    assert_eq!(
+        values::<ReadingChanged>(&h.messages()),
+        [ReadingChanged(String::new())]
+    );
+
+    // A name composed with a space between family and given name keeps both readings.
+    h.command('a');
+    h.key(Key::Backspace);
+    for composition in ["やまだ", "やまだ　たろう", "山田　太郎", ""] {
+        h.compose(composition);
+    }
+    h.type_text("山田　太郎");
+    assert_eq!(
+        h.tree.get::<TextField>(field).unwrap().reading(),
+        "やまだ　たろう"
+    );
+
+    h.compose("すずき");
+    h.compose("鈴木");
+    h.type_text("鈴木");
+    h.tree
+        .update::<TextField, _>(field, |f, cx| f.set_text(cx, "佐藤"));
+    assert_eq!(h.tree.get::<TextField>(field).unwrap().reading(), "");
+}
+
+#[test]
+fn text_fields_capture_no_reading_unless_asked() {
+    let mut h = Harness::new();
+    let field = h.add(TextField::new("", 200.0));
+    h.focus(field);
+    h.compose("やまだ");
+    h.compose("山田");
+    h.type_text("山田");
+    assert_eq!(h.tree.get::<TextField>(field).unwrap().reading(), "");
+    assert!(values::<ReadingChanged>(&h.messages()).is_empty());
+}
+
+#[test]
+fn kana_helpers_convert_scripts_and_normalize_widths() {
+    assert!(kana::is_kana("やまだ"));
+    assert!(kana::is_kana("ヤマダ・タロー"));
+    assert!(!kana::is_kana(""));
+    assert!(!kana::is_kana("やm"));
+    assert!(!kana::is_kana("山田"));
+    assert_eq!(kana::to_katakana("やまだ ゝ ー"), "ヤマダ ヽ ー");
+    assert_eq!(kana::to_hiragana("ヤマダ・ヴ ヽ"), "やまだ・ゔ ゝ");
+    assert_eq!(
+        kana::normalize_width("ＡＢＣ１２３－ｶﾞｯｺｳ ﾊﾟﾝ ﾞ　山田"),
+        "ABC123-ガッコウ パン ゛　山田"
+    );
+    // Normalizing after each keystroke merges a mark typed after its letter.
+    assert_eq!(kana::normalize_width("カﾞ"), "ガ");
+    assert_eq!(kana::normalize_width("ﾍﾟ"), "ペ");
+    let typed = ["ﾊ", "ﾟ", "ﾝ"].iter().fold(String::new(), |text, key| {
+        kana::normalize_width(&(text + key))
+    });
+    assert_eq!(typed, "パン");
 }

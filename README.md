@@ -23,6 +23,8 @@ A cross-platform UI framework written in Rust, with its own 2D renderer on top o
 > - Filtering: `set_filter_text` on TableView and OutlineView (shows only the rows and items that contain every word in the search field; case-insensitive, highlights the matched part, and keeps the order, the scroll position, and the selection of displayed rows; OutlineView expands the parents of matching items to show them, and when the filter is cleared it shows the selected item in its place), `set_filter` on TableView (column conditions; `RuleEditor::matcher` passes a rule editor's conditions as is)
 > - Saving and restoring view state: what the user arranged by hand (table column widths, order, and hidden columns, SplitView divider positions and collapsed panes, selected tabs, expanded DisclosureGroups and OutlineView items, ScrollView positions, InnerWindow position, size, and maximization) is written to `ViewState` per name attached to a Widget (`UiTree::set_autosave_name`; corresponds to macOS's autosave name) and restored at the next launch. Windows opened later are also restored when they are given a name. On desktop, `App::autosave_view_state` handles reading and writing the file as well as the main window's size and position (the demo's `--view-state`)
 >
+> - Japanese form input: `TextField::capture_reading` collects the reading typed into the IME before each conversion and emits `ReadingChanged`, for filling a furigana field as a name is typed; `kana` converts between hiragana and katakana and normalizes widths (full-width ASCII to half-width, half-width katakana to full-width)
+>
 > On desktop, the following are also supported.
 >
 > - IME (Japanese input)
@@ -136,7 +138,7 @@ The UI catalog (`--scene=catalog`) has the following 12 groups.
 - **TEXT:** Text display and input (Label / TextField / Secure field / Search field / Token field / Combo box / Text view / Log view / Terminal)
 - **CONTROLS:** Buttons (Button / Checkbox / Radio group / Switch / Disclosure / Pop-up button / Pull-down & combo / Segmented control / Control size)
 - **VALUES:** Value input (Slider / Stepper / Color well / Date picker / Path control)
-- **INPUTS:** Additional input components (Number input / Shortcut recorder / Form field / Inline editing / Find bar / Ranges / Field affixes / Completions)
+- **INPUTS:** Additional input components (Number input / Shortcut recorder / Form field / Inline editing / Find bar / Ranges / Field affixes / Completions / Furigana)
 - **STATUS:** Progress and status display (Progress bar / Spinner / Level indicator / Image view / Vector icon)
 - **NOTICES:** Notifications and status display (Toast / Notification banner / Badge and tag / Keycaps / Skeleton / Hover card / Empty state and status bar)
 - **DATA:** Data display (Table view / Data grid / Charts / Inspector / Following the end / Outline view / Sidebar / Collection view / Browser / Rule editor)

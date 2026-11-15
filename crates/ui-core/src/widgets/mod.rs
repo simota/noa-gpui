@@ -96,7 +96,7 @@ pub use desktop::{
     DESKTOP_DOCK, Desktop, DesktopCommand, DockClicked, InnerWindow, SNAP_DISTANCE,
     WINDOW_MIN_SIZE, WINDOW_TITLE_BAR, WindowEvent, WindowGesture, WindowManager, WindowPlacement,
 };
-pub use editable::{TextChanged, TextSubmitted};
+pub use editable::{ReadingChanged, TextChanged, TextSubmitted};
 pub use fields::{ComboBox, SearchField, SearchSubmitted, SecureTextField};
 pub use file_drop::{FileDialogRequested, FileDropZone, FilesDropped};
 pub use find::{
