@@ -189,6 +189,7 @@ const SHIFT: Modifiers = Modifiers {
     alt: false,
     meta: false,
     command: false,
+    command_is_meta: false,
 };
 const CMD: Modifiers = Modifiers {
     shift: false,
@@ -196,6 +197,7 @@ const CMD: Modifiers = Modifiers {
     alt: false,
     meta: true,
     command: true,
+    command_is_meta: true,
 };
 
 fn fixed_row(height: f32) -> Container {
@@ -1411,6 +1413,7 @@ fn ctrl_y_redoes_off_apple_platforms() {
         alt: false,
         meta: false,
         command: true,
+        command_is_meta: false,
     };
     let mut h = Harness::new();
     let id = data_grid(&mut h, 3, 0);

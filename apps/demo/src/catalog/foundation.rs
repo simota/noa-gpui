@@ -11,7 +11,7 @@ use noa_gpui_core::{
     OverlayDismissed, OverlayOptions, Placement, Role, Shortcut, ShortcutPressed, Style, WidgetId,
 };
 use noa_gpui_core::{EventCx, PaintCx, UpdateCx, Widget};
-use noa_gpui_scene::{Border, Color, Point, Rect, Size, TextLayoutId};
+use noa_gpui_scene::{Border, BoxShadow, Color, Point, Rect, Size, TextLayoutId};
 use noa_gpui_text::{TextStore, TextStyle};
 
 use super::kit::{
@@ -23,7 +23,7 @@ use super::{Demo, DemoCx, SectionSpec};
 #[cfg(feature = "native")]
 use noa_gpui_platform::WindowRequest;
 
-pub const SECTIONS: [SectionSpec; 8] = [
+pub const SECTIONS: [SectionSpec; 9] = [
     SectionSpec {
         title: "Theme",
         description: "Widgets take colors by role (Role::Text, Role::Accent, …) or as fixed \
@@ -49,6 +49,13 @@ pub const SECTIONS: [SectionSpec; 8] = [
                       anchor, flipping to stay in the window. Menus and popovers close on an \
                       outside click or Escape; modal overlays block everything below.",
         build: overlay,
+    },
+    SectionSpec {
+        title: "Shadows",
+        description: "PaintCx::box_shadow draws a box's soft shadow as CSS and gpui describe \
+                      one: color, offset, blur radius and spread. The quad shader blurs the \
+                      rounded rectangle with a Gaussian in closed form, so it costs one quad.",
+        build: shadows,
     },
     SectionSpec {
         title: "Animation",
@@ -924,12 +931,33 @@ struct WindowsDemo {
     open: WidgetId,
     #[cfg(feature = "native")]
     opened: u32,
+    #[cfg(feature = "native")]
+    ask: WidgetId,
+    #[cfg(feature = "native")]
+    answer: WidgetId,
+    /// An alert is up: its answer is this section's.
+    #[cfg(feature = "native")]
+    asking: bool,
 }
 
 impl Demo for WindowsDemo {
     #[cfg(feature = "native")]
     fn handle(&mut self, cx: &mut DemoCx, message: &Message) -> bool {
-        if message.source != self.open || message.downcast_ref::<ButtonClicked>().is_none() {
+        if message.downcast_ref::<ButtonClicked>().is_none() {
+            return false;
+        }
+        if message.source == self.ask {
+            cx.alerts.push(noa_gpui_platform::AlertRequest {
+                level: noa_gpui_platform::AlertLevel::Warning,
+                title: "Delete “Note 1”?".into(),
+                message: "The note is removed from every window. This cannot be undone.".into(),
+                confirm: "Delete".into(),
+                cancel: "Cancel".into(),
+            });
+            self.asking = true;
+            return true;
+        }
+        if message.source != self.open {
             return false;
         }
         self.opened += 1;
@@ -941,6 +969,19 @@ impl Demo for WindowsDemo {
         });
         true
     }
+
+    #[cfg(feature = "native")]
+    fn alert_finished(&mut self, cx: &mut DemoCx, result: noa_gpui_platform::AlertResult) {
+        if !std::mem::take(&mut self.asking) {
+            return;
+        }
+        let text = match result {
+            noa_gpui_platform::AlertResult::Confirmed => "Answered: Delete",
+            noa_gpui_platform::AlertResult::Cancelled => "Answered: Cancel",
+        };
+        cx.tree
+            .update::<Label, _>(self.answer, |l, cx| l.set_text(cx, text));
+    }
 }
 
 fn windows(kit: &mut Kit) -> Box<dyn Demo> {
@@ -950,7 +991,20 @@ fn windows(kit: &mut Kit) -> Box<dyn Demo> {
     );
     let open = kit.tree.insert(Some(content), Button::new("Open a window"));
     #[cfg(feature = "native")]
-    return Box::new(WindowsDemo { open, opened: 0 });
+    {
+        let alert = kit.card("AlertRequest: the OS's own alert (NSAlert on macOS)");
+        let ask = kit.tree.insert(Some(alert), Button::new("Delete note…"));
+        let answer = kit
+            .tree
+            .insert(Some(alert), Label::new("Not asked yet").color(Role::Muted));
+        Box::new(WindowsDemo {
+            open,
+            opened: 0,
+            ask,
+            answer,
+            asking: false,
+        })
+    }
     #[cfg(not(feature = "native"))]
     {
         kit.tree.set_enabled(open, false);
@@ -962,4 +1016,56 @@ fn windows(kit: &mut Kit) -> Box<dyn Demo> {
         );
         Box::new(WindowsDemo {})
     }
+}
+
+/// Cards lifted by shadows of growing blur and offset.
+struct ShadowSamples;
+
+impl ShadowSamples {
+    const CARD: f32 = 72.0;
+    /// (offset y, blur, spread, alpha) of each card's shadow.
+    const SHADOWS: [(f32, f32, f32, f32); 4] = [
+        (1.0, 2.0, 0.0, 0.25),
+        (4.0, 12.0, 0.0, 0.25),
+        (12.0, 32.0, -4.0, 0.3),
+        (0.0, 0.0, 3.0, 0.2),
+    ];
+}
+
+impl Widget for ShadowSamples {
+    fn style(&self) -> Style {
+        Style {
+            size: LayoutSize {
+                width: length(4.0 * (Self::CARD + 32.0)),
+                height: length(Self::CARD + 56.0),
+            },
+            ..Default::default()
+        }
+    }
+
+    fn paint(&mut self, cx: &mut PaintCx) {
+        let surface = cx.theme().color(Role::Surface);
+        for (i, (dy, blur, spread, alpha)) in Self::SHADOWS.into_iter().enumerate() {
+            let card = Rect::new(
+                16.0 + i as f32 * (Self::CARD + 32.0),
+                16.0,
+                Self::CARD,
+                Self::CARD,
+            );
+            let shadow = BoxShadow {
+                color: Color::rgba(0.0, 0.0, 0.0, alpha),
+                offset: Point::new(0.0, dy),
+                blur,
+                spread,
+            };
+            cx.box_shadow(card, [10.0; 4], &shadow);
+            cx.rounded_rect(card, 10.0, surface, Border::default());
+        }
+    }
+}
+
+fn shadows(kit: &mut Kit) -> Box<dyn Demo> {
+    let card = kit.wide_card("BoxShadow { color, offset, blur, spread }", 460.0);
+    kit.tree.insert(Some(card), ShadowSamples);
+    Box::new(())
 }

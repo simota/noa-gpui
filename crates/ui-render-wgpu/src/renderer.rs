@@ -679,6 +679,7 @@ fn shape_instance(shape: &Shape, color: noa_gpui_scene::Color) -> QuadInstance {
             end = to.to_array();
             (3.0, [radius; 4], 0.0, if vertical { 1.0 } else { 0.0 })
         }
+        Shape::Shadow { radius, blur, .. } => (6.0, radius, 0.0, blur),
         Shape::Triangle { direction, .. } => {
             let direction = match direction {
                 Direction::Up => 0.0,

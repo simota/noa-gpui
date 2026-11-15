@@ -24,6 +24,31 @@ pub struct Modifiers {
     /// The platform's shortcut modifier: Cmd (`meta`) on Apple platforms, Ctrl
     /// elsewhere. Set by the platform layer.
     pub command: bool,
+    /// [`Self::command`] is Cmd (Apple platforms), not Ctrl. Set by the platform layer
+    /// with the keys, as the keys alone cannot tell Ctrl+Cmd on a Mac from Ctrl+Super
+    /// elsewhere. Off by default.
+    pub command_is_meta: bool,
+}
+
+impl Modifiers {
+    /// No keys held, on an Apple platform (Cmd is the command key).
+    pub fn on_apple() -> Self {
+        Self {
+            command_is_meta: true,
+            ..Self::default()
+        }
+    }
+
+    /// No keys held, elsewhere (Ctrl is the command key).
+    pub fn elsewhere() -> Self {
+        Self::default()
+    }
+
+    /// Whether Ctrl is held as a key of its own, apart from [`Self::command`]: only on
+    /// Apple platforms, where the command key is Cmd. Elsewhere Ctrl is the command key.
+    pub fn control(&self) -> bool {
+        self.ctrl && self.command_is_meta
+    }
 }
 
 /// Printable input arrives as [`Event::Text`].
@@ -43,13 +68,54 @@ pub enum Key {
     End,
     PageUp,
     PageDown,
+    F1,
+    F2,
+    F3,
+    F4,
+    F5,
+    F6,
+    F7,
+    F8,
+    F9,
     /// Shift+F10 opens the focused widget's context menu.
     F10,
+    F11,
+    F12,
     ContextMenu,
     /// Lowercase, for shortcuts such as Cmd+C. The text it types, if any, also arrives
     /// as [`Event::Text`].
     Char(char),
     Other,
+}
+
+impl Key {
+    const FUNCTION: [Key; 12] = [
+        Key::F1,
+        Key::F2,
+        Key::F3,
+        Key::F4,
+        Key::F5,
+        Key::F6,
+        Key::F7,
+        Key::F8,
+        Key::F9,
+        Key::F10,
+        Key::F11,
+        Key::F12,
+    ];
+
+    /// The function key F`n`, for `n` in 1..=12.
+    pub fn function(n: u8) -> Option<Key> {
+        Self::FUNCTION.get(usize::from(n).checked_sub(1)?).copied()
+    }
+
+    /// `n` for the function key F`n`.
+    pub fn function_number(self) -> Option<u8> {
+        Self::FUNCTION
+            .iter()
+            .position(|&k| k == self)
+            .map(|i| i as u8 + 1)
+    }
 }
 
 #[derive(Clone)]
