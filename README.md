@@ -168,6 +168,8 @@ python3 -m http.server 8765 --directory apps/web/dist
 
 Open `http://127.0.0.1:8765/`: if a WebGPU adapter can be obtained, the WebGPU version starts; otherwise, the WebGL2 version starts. If the WebGPU version fails to initialize, it also switches to the WebGL2 version on a new canvas. `?backend=webgl2` selects the version, and `scene` / `count` / `bench` can be given in the URL in the same form as on desktop (measurement results go to the console).
 
+The Web has no system fonts, so the bundled Inter covers Latin text only. The loader fetches `fonts/NotoSansJP-Regular.otf` (Noto Sans JP, SIL Open Font License 1.1, `apps/web/fonts/`) while the build downloads and hands it to `App::with_font`, so Japanese text renders; if the fetch fails, the demo starts without it.
+
 ### Tests
 
 ```sh

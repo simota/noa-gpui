@@ -298,6 +298,14 @@ impl App {
         }
     }
 
+    /// Add a font (TrueType or OpenType data) for characters the other fonts lack, such
+    /// as Japanese on the Web, where no system fonts are loaded. Call it before
+    /// [`App::run`] / [`App::spawn`], so that all text is laid out with it.
+    pub fn with_font(mut self, data: Vec<u8>) -> Self {
+        self.text.load_font(data);
+        self
+    }
+
     /// A [`Waker`] for this application's event loop (the one [`Setup::waker`] gives).
     pub fn waker(&self) -> Waker {
         self.waker.clone()

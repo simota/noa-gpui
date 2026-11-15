@@ -21,4 +21,6 @@ for backend in webgpu webgl2; do
   fi
 done
 cp apps/web/index.html "$out/"
+mkdir -p "$out/fonts"
+cp apps/web/fonts/* "$out/fonts/"
 ls -l "$out"
