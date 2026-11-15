@@ -260,6 +260,36 @@ impl PdfDocument {
         out.op(format_args!("Q"));
     }
 
+    /// PDF has no blur: the shadow is eight rounded rectangles grown and shrunk to the
+    /// Gaussian's octiles, each an eighth as opaque, so their overlap rises across the
+    /// edge as the blurred one does.
+    fn shadow(
+        &mut self,
+        out: &mut Content,
+        rect: Rect,
+        radius: CornerRadii,
+        blur: f32,
+        color: Color,
+    ) {
+        const OCTILES: [f32; 8] = [1.534, 0.887, 0.489, 0.157, -0.157, -0.489, -0.887, -1.534];
+        if blur <= 0.0 {
+            self.quad(out, rect, radius, color, Border::default());
+            return;
+        }
+        let sigma = blur / 2.0;
+        let layer = color.with_alpha(color.a / OCTILES.len() as f32);
+        for k in OCTILES {
+            let grow = k * sigma;
+            let (w, h) = (rect.width + 2.0 * grow, rect.height + 2.0 * grow);
+            if w <= 0.0 || h <= 0.0 {
+                continue;
+            }
+            let grown = Rect::new(rect.x - grow, rect.y - grow, w, h);
+            let radii = radius.map(|r| if r > 0.0 { (r + grow).max(0.0) } else { 0.0 });
+            self.quad(out, grown, radii, layer, Border::default());
+        }
+    }
+
     fn shape(&mut self, out: &mut Content, shape: &Shape, color: Color) {
         let bounds = shape.bounds();
         let center = Point::new(
@@ -340,6 +370,7 @@ impl PdfDocument {
                 out.op(format_args!("W n /S{index} sh"));
                 out.op(format_args!("Q"));
             }
+            Shape::Shadow { rect, radius, blur } => self.shadow(out, rect, radius, blur, color),
         }
     }
 
@@ -814,6 +845,7 @@ fn stream(dict: &str, data: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use noa_gpui_scene::BoxShadow;
     use noa_gpui_text::{FontOptions, TextStyle};
 
     /// The objects of a file this module wrote, checking the cross-reference table
@@ -857,6 +889,25 @@ mod tests {
                 text(offset..end)
             })
             .collect()
+    }
+
+    #[test]
+    fn a_shadow_is_drawn_as_eight_faint_rounded_rectangles() {
+        let mut list = DisplayList::new();
+        let shadow = BoxShadow {
+            color: Color::rgba(0.0, 0.0, 0.0, 0.4),
+            blur: 8.0,
+            ..BoxShadow::default()
+        };
+        list.box_shadow(Rect::new(20.0, 20.0, 40.0, 40.0), [6.0; 4], &shadow);
+        let mut text = TextStore::new(FontOptions::default());
+        let mut pdf = PdfDocument::new();
+        pdf.add_page(&list, &mut text, Size::new(100.0, 100.0), None);
+        let objects = objects(&pdf.finish());
+        let content = objects.iter().find(|o| o.contains("0 0 0 rg")).unwrap();
+        assert_eq!(content.matches("/A50 gs").count(), 8, "{content}");
+        // The outermost reaches 1.534 sigma (6.1 points) past the box.
+        assert!(content.contains("13.864 "), "{content}");
     }
 
     #[test]

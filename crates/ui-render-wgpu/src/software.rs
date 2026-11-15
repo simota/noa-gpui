@@ -472,6 +472,14 @@ impl Canvas {
                     (linear(c), rounded_box(p, h, radii))
                 });
             }
+            Shape::Shadow { radius, blur, .. } => {
+                let s = self.scale;
+                self.fill(bounds, None, |p, h| {
+                    let alpha = shadow_coverage(p, h, radius, blur, s);
+                    // Coverage comes with the color: the distance says "inside".
+                    ([ink[0], ink[1], ink[2], ink[3] * alpha], -1.0)
+                });
+            }
         }
     }
 
@@ -642,6 +650,46 @@ fn rounded_box(p: Point, half: Point, radii: CornerRadii) -> f32 {
     qx.max(qy).min(0.0) + length(qx.max(0.0), qy.max(0.0)) - r
 }
 
+/// As the quad shader's `shadow_coverage`: `p` is relative to the center of the
+/// shadow's bounds, which reach `1.5 * blur` past its box.
+fn shadow_coverage(p: Point, half: Point, radii: CornerRadii, blur: f32, scale: f32) -> f32 {
+    let h = Point::new(
+        (half.x - 1.5 * blur).max(0.0),
+        (half.y - 1.5 * blur).max(0.0),
+    );
+    let top = if p.x > 0.0 { radii[1] } else { radii[0] };
+    let bottom = if p.x > 0.0 { radii[2] } else { radii[3] };
+    let corner = if p.y > 0.0 { bottom } else { top }.clamp(0.0, h.x.min(h.y));
+    let sigma = blur * 0.5;
+    if sigma * scale < 0.25 {
+        let d = rounded_box(p, h, [corner; 4]) * scale;
+        return (0.5 - d).clamp(0.0, 1.0);
+    }
+    let erf = |x: f32| {
+        let a = x.abs();
+        let r = 1.0 + (0.278_393 + (0.230_389 + 0.078_108 * (a * a)) * a) * a;
+        let r = r * r;
+        x.signum() * (1.0 - 1.0 / (r * r))
+    };
+    let gaussian = |x: f32| (-(x * x) / (2.0 * sigma * sigma)).exp() / (2.506_628 * sigma);
+    let row = |x: f32, y: f32| {
+        let delta = (h.y - corner - y.abs()).min(0.0);
+        let curved = h.x - corner + (corner * corner - delta * delta).max(0.0).sqrt();
+        let k = std::f32::consts::FRAC_1_SQRT_2 / sigma;
+        0.5 * (erf((x + curved) * k) - erf((x - curved) * k))
+    };
+    let start = (-3.0 * sigma).clamp(p.y - h.y, p.y + h.y);
+    let end = (3.0 * sigma).clamp(p.y - h.y, p.y + h.y);
+    let step = (end - start) / 4.0;
+    let value: f32 = (0..4)
+        .map(|i| {
+            let y = start + step * (i as f32 + 0.5);
+            row(p.x, p.y - y) * gaussian(y) * step
+        })
+        .sum();
+    value.clamp(0.0, 1.0)
+}
+
 fn segment(p: Point, a: Point, b: Point) -> f32 {
     let (pax, pay) = (p.x - a.x, p.y - a.y);
     let (bax, bay) = (b.x - a.x, b.y - a.y);
@@ -715,6 +763,7 @@ fn arc(p: Point, r: f32, sweep: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use noa_gpui_scene::BoxShadow;
     use noa_gpui_text::{FontOptions, TextStyle};
 
     fn viewport(width: u32, height: u32, scale: f32) -> Viewport {
@@ -723,6 +772,69 @@ mod tests {
             height,
             scale_factor: scale,
         }
+    }
+
+    /// The alpha of a black shadow on white along the middle row, left to right (blended
+    /// in linear light, so the pixels decode to `1 - alpha`).
+    fn shadow_row(shadow: &BoxShadow, scale: f32) -> Vec<f32> {
+        let mut list = DisplayList::new();
+        list.box_shadow(Rect::new(20.0, 20.0, 40.0, 40.0), [8.0; 4], shadow);
+        let mut text = TextStore::new(FontOptions::default());
+        let image = SoftwareRenderer::new().render(
+            &list,
+            &mut text,
+            viewport((80.0 * scale) as u32, (80.0 * scale) as u32, scale),
+            Color::WHITE,
+        );
+        let y = (40.0 * scale) as u32;
+        (0..image.width)
+            .map(|x| 1.0 - decode(image.pixel(x, y)[0]))
+            .collect()
+    }
+
+    #[test]
+    fn a_shadow_is_solid_inside_and_fades_across_its_edge() {
+        let shadow = BoxShadow {
+            color: Color::BLACK,
+            blur: 12.0,
+            ..BoxShadow::default()
+        };
+        let row = shadow_row(&shadow, 1.0);
+        assert!(row[40] > 0.99, "inside: {}", row[40]);
+        // Half way down at the box's edge (x = 20).
+        assert!((0.4..0.6).contains(&row[20]), "edge: {}", row[20]);
+        assert!(row[2] < 0.01, "1.5 blur outside: {}", row[2]);
+        // Falling steadily from the inside out.
+        assert!(
+            row[2..=40].windows(2).all(|w| w[0] <= w[1] + 1e-3),
+            "{row:?}"
+        );
+        // Without blur the edge is sharp.
+        let sharp = shadow_row(
+            &BoxShadow {
+                blur: 0.0,
+                ..shadow
+            },
+            1.0,
+        );
+        assert!(sharp[21] > 0.99 && sharp[18] < 0.01, "{sharp:?}");
+        // The offset moves it.
+        let moved = shadow_row(
+            &BoxShadow {
+                offset: Point::new(6.0, 0.0),
+                ..shadow
+            },
+            1.0,
+        );
+        assert!((moved[26] - row[20]).abs() < 0.02);
+        // At 2x it is the same shadow.
+        let retina = shadow_row(&shadow, 2.0);
+        assert!(
+            (retina[40] - row[20]).abs() < 0.05,
+            "{} vs {}",
+            retina[40],
+            row[20]
+        );
     }
 
     #[test]
