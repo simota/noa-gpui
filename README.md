@@ -85,7 +85,7 @@ Add only `noa-gpui-platform` as a dependency. On desktop, enable `native`; on th
 
 ```toml
 [dependencies]
-noa-gpui-platform = { git = "https://github.com/simota/noa-gpui", features = ["native"] }
+noa-gpui-platform = { version = "0.1", features = ["native"] }
 ```
 
 A screen is a type that implements the `Screen` trait and holds the Widget Tree and the reactions to messages emitted by Widgets. Pass it to `App::new` and call `run` to open a window and run it. Crates such as `noa-gpui-core` are re-exported, as in `noa_gpui_platform::noa_gpui_core`. The minimal example is in `crates/ui-platform/examples/hello.rs`.
