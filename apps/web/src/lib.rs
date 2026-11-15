@@ -16,9 +16,15 @@ mod web {
     #[cfg(feature = "webgl2")]
     const BACKENDS: wgpu::Backends = wgpu::Backends::GL;
 
-    /// `query` is `location.search`.
+    /// `query` is `location.search`. `font` is a font for the characters the bundled
+    /// Latin font lacks (Japanese), if the loader could fetch one: the Web has no
+    /// system fonts to fall back to.
     #[wasm_bindgen]
-    pub async fn start(canvas: web_sys::HtmlCanvasElement, query: String) -> Result<(), JsValue> {
+    pub async fn start(
+        canvas: web_sys::HtmlCanvasElement,
+        query: String,
+        font: Option<Vec<u8>>,
+    ) -> Result<(), JsValue> {
         console_error_panic_hook::set_once();
         let _ = console_log::init_with_level(log::Level::Info);
 
@@ -35,8 +41,10 @@ mod web {
             .await
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-        demo::app_with_gpu(config, instance, ctx, canvas)
-            .spawn()
-            .map_err(|e| JsValue::from_str(&e.to_string()))
+        let mut app = demo::app_with_gpu(config, instance, ctx, canvas);
+        if let Some(font) = font {
+            app = app.with_font(font);
+        }
+        app.spawn().map_err(|e| JsValue::from_str(&e.to_string()))
     }
 }

@@ -112,10 +112,20 @@
       return canvas;
     }
 
+    // The Web has no system fonts: Japanese text needs this font, which downloads while
+    // the build does. Without it the demo still starts, with Latin text only.
+    const japaneseFont = fetch("fonts/NotoSansJP-Regular.otf")
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((b) => new Uint8Array(b))
+      .catch((e) => {
+        console.warn("noa-gpui: Japanese font not loaded", e);
+        return undefined;
+      });
+
     async function run(backend) {
       const wasm = await import(`./${backend}.js`);
       await wasm.default();
-      await wasm.start(freshCanvas(), location.search);
+      await wasm.start(freshCanvas(), location.search, await japaneseFont);
     }
 
     const forced = new URLSearchParams(location.search).get("backend");

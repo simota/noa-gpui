@@ -388,6 +388,17 @@ impl TextStore {
         }
     }
 
+    /// Add a font (TrueType or OpenType data) to fall back to for characters the other
+    /// fonts lack, such as Japanese on the Web, where no system fonts are loaded.
+    ///
+    /// Load fonts before laying out text: layouts made earlier keep the glyphs they
+    /// were shaped with.
+    pub fn load_font(&mut self, data: Vec<u8>) {
+        self.font_system
+            .db_mut()
+            .load_font_source(fontdb::Source::Binary(std::sync::Arc::new(data)));
+    }
+
     /// The operating system's locale with [`FontOptions::default`]. Use it to format dates
     /// and numbers the user's way.
     pub fn locale(&self) -> &str {
