@@ -212,24 +212,52 @@ impl PdfDocument {
         out.op(format_args!("/A{key} gs"));
     }
 
+    /// The fill and the border do not overlap, as on the GPU: the fill covers the
+    /// inside of the border, and the border is a ring, so a translucent border shows
+    /// what is under the quad rather than its fill.
     fn quad(&mut self, out: &mut Content, rect: Rect, radii: CornerRadii, color: Color, b: Border) {
         let max = (rect.width / 2.0).min(rect.height / 2.0).max(0.0);
         let radii = radii.map(|r| if r.is_nan() { 0.0 } else { r.clamp(0.0, max) });
-        self.fill_with(out, color, |out| out.rounded_rect(rect, radii));
-        if b.width > 0.0 {
-            // The border lies inside the rectangle: stroke a path half its width in.
-            let h = b.width.min(max) / 2.0;
-            let inner = Rect::new(
-                rect.x + h,
-                rect.y + h,
-                rect.width - 2.0 * h,
-                rect.height - 2.0 * h,
-            );
-            let radii = radii.map(|r| (r - h).max(0.0));
-            self.stroke_with(out, b.color, 2.0 * h, |out| {
-                out.rounded_rect(inner, radii);
-            });
+        let w = b.width.clamp(0.0, max);
+        if w <= 0.0 {
+            self.fill_with(out, color, |out| out.rounded_rect(rect, radii));
+            return;
         }
+        let (inner, inner_radii) = inset(rect, radii, w);
+        // A border as wide as half the quad leaves no inside.
+        let hollow = w < max;
+        if hollow {
+            self.fill_with(out, color, |out| out.rounded_rect(inner, inner_radii));
+        }
+        self.fill_even_odd_with(out, b.color, |out| {
+            out.rounded_rect(rect, radii);
+            if hollow {
+                out.rounded_rect(inner, inner_radii);
+            }
+        });
+    }
+
+    /// [`PdfDocument::fill_with`] with the even-odd rule, for rings.
+    fn fill_even_odd_with(
+        &mut self,
+        out: &mut Content,
+        color: Color,
+        path: impl FnOnce(&mut Content),
+    ) {
+        if color.a <= 0.0 {
+            return;
+        }
+        out.op(format_args!("q"));
+        self.alpha(out, color.a);
+        out.op(format_args!(
+            "{} {} {} rg",
+            num(color.r),
+            num(color.g),
+            num(color.b)
+        ));
+        path(out);
+        out.op(format_args!("f*"));
+        out.op(format_args!("Q"));
     }
 
     fn shape(&mut self, out: &mut Content, shape: &Shape, color: Color) {
@@ -616,6 +644,17 @@ impl Content {
     }
 }
 
+/// `rect` and its corner radii moved `by` inward on every side.
+fn inset(rect: Rect, radii: CornerRadii, by: f32) -> (Rect, CornerRadii) {
+    let inner = Rect::new(
+        rect.x + by,
+        rect.y + by,
+        (rect.width - 2.0 * by).max(0.0),
+        (rect.height - 2.0 * by).max(0.0),
+    );
+    (inner, radii.map(|r| (r - by).max(0.0)))
+}
+
 /// A number as PDF writes it: at most three decimals, no trailing zeros.
 fn num(value: f32) -> String {
     if !value.is_finite() {
@@ -874,15 +913,20 @@ mod tests {
         let content = &objects[4];
         assert!(content.contains("1 0 0 -1 0 100 cm"), "y down");
         assert!(content.contains("0 0 200 100 re"), "background");
+        // The fill stops inside the 2-point border; the border is a ring around it.
         assert!(
-            content.contains("/A500 gs\n0.2 0.4 1 rg\n16 20 m"),
+            content.contains("/A500 gs\n0.2 0.4 1 rg\n16 22 m"),
             "{content}"
         );
-        // The border is stroked a half-width in: 1 point.
+        let ring = content
+            .find("0 0 0 rg\n16 20 m")
+            .expect("the ring's outer edge");
+        let ring = &content[ring..];
         assert!(
-            content.contains("0 0 0 RG 2 w 1 J 1 j\n16 21 m"),
-            "{content}"
+            ring.contains("h\n16 22 m"),
+            "the inner edge follows: {ring}"
         );
+        assert!(ring.contains("f*"), "even-odd: {ring}");
         assert!(content.contains("q\n0 0 50 50 re\nW n"), "clip");
         assert!(content.contains("1 0 0 RG 3 w"));
         let lines: Vec<&str> = content.lines().collect();
