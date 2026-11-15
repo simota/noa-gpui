@@ -658,10 +658,26 @@ impl TextStore {
         let mut buffer = Buffer::new_empty(Metrics::new(style.font_size, style.line_height));
         buffer.set_rich_text(pieces, &attrs, Shaping::Advanced, None);
         let size = lay_out(&mut buffer, &mut self.font_system, style.align, max_width);
-        let backgrounds = spans
-            .iter()
-            .filter_map(|s| Some((s.range.clone(), s.background?)))
-            .collect();
+        // Each piece takes the background of the last span over it that has one;
+        // neighbours of one color are one range, and transparent ones none.
+        let mut backgrounds: Vec<(Range<usize>, Color)> = Vec::new();
+        for piece in cuts.windows(2).map(|w| w[0]..w[1]) {
+            let Some(color) = spans
+                .iter()
+                .rev()
+                .filter(|s| s.range.start <= piece.start && piece.end <= s.range.end)
+                .find_map(|s| s.background)
+                .filter(|c| c.a > 0.0)
+            else {
+                continue;
+            };
+            match backgrounds.last_mut() {
+                Some((range, last)) if range.end == piece.start && *last == color => {
+                    range.end = piece.end;
+                }
+                _ => backgrounds.push((piece, color)),
+            }
+        }
         self.layouts.insert(Layout {
             buffer,
             size,
@@ -1662,6 +1678,36 @@ mod rich_tests {
 
         let plain = store.create(text, TextStyle::new(14.0), None);
         assert!(store.decorations(plain).is_empty());
+    }
+
+    /// Where backgrounds overlap the later one is drawn alone: a translucent one is
+    /// not mixed with the one before it, and a transparent one clears it.
+    #[test]
+    fn a_later_background_replaces_an_earlier_one() {
+        let mut store = store();
+        let half_blue = BLUE.with_alpha(0.5);
+        let spans = [
+            TextSpan::new(0..6).background(RED),
+            TextSpan::new(2..4).background(half_blue),
+            TextSpan::new(5..6).background(Color::TRANSPARENT),
+        ];
+        let id = store.create_rich("abcdef", &spans, TextStyle::new(14.0), None);
+        let x = |i| store.caret_x(id, i);
+        let mut found: Vec<(f32, f32, Color)> = store
+            .decorations(id)
+            .backgrounds
+            .iter()
+            .map(|(r, c)| (r.x, r.right(), *c))
+            .collect();
+        found.sort_by(|a, b| a.0.total_cmp(&b.0));
+        assert_eq!(
+            found,
+            [
+                (x(0), x(2), RED),
+                (x(2), x(4), half_blue),
+                (x(4), x(5), RED),
+            ]
+        );
     }
 
     #[test]
