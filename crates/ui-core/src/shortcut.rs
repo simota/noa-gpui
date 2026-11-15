@@ -125,11 +125,11 @@ impl Shortcut {
     }
 
     pub fn matches(&self, key: Key, modifiers: Modifiers) -> bool {
-        let control = if modifiers.ctrl_is_command() {
-            // Ctrl is the command key, so either flag asks for it.
-            self.command || self.ctrl
-        } else {
+        let control = if modifiers.command_is_meta {
             self.command == modifiers.command && self.ctrl == modifiers.control()
+        } else {
+            // Ctrl is the command key, so either flag asks for it.
+            (self.command || self.ctrl) == modifiers.command
         };
         self.key == key && control && self.shift == modifiers.shift && self.alt == modifiers.alt
     }
@@ -182,7 +182,7 @@ mod tests {
         let mac_cmd = Modifiers {
             command: true,
             meta: true,
-            ..Default::default()
+            ..Modifiers::on_apple()
         };
         let mac_ctrl_cmd = Modifiers {
             ctrl: true,
@@ -193,7 +193,7 @@ mod tests {
         assert!(!Shortcut::command('f').matches(Key::Char('f'), mac_ctrl_cmd));
         let mac_ctrl = Modifiers {
             ctrl: true,
-            ..Default::default()
+            ..Modifiers::on_apple()
         };
         let tab = Shortcut::key(Key::Tab).with_ctrl();
         assert!(tab.matches(Key::Tab, mac_ctrl));
@@ -214,6 +214,38 @@ mod tests {
         assert_eq!(find.label(true), "⌃⌘F");
         assert_eq!(find.label(false), "Ctrl+F");
         assert_eq!(tab.with_shift().keys(true), ["⌃", "⇧", "⇥"]);
+    }
+
+    /// Outside Apple platforms the Super (Windows) key is not Cmd: holding it with
+    /// Ctrl still presses the Ctrl shortcut's key with an extra modifier, and a
+    /// recorder takes Ctrl as the command key.
+    #[test]
+    fn ctrl_with_super_elsewhere_is_not_a_mac_command() {
+        let ctrl_super = Modifiers {
+            ctrl: true,
+            meta: true,
+            command: true,
+            ..Modifiers::elsewhere()
+        };
+        assert!(!ctrl_super.control(), "Ctrl is the command key here");
+        assert!(Shortcut::command('s').matches(Key::Char('s'), ctrl_super));
+        // A Ctrl-only shortcut is the same as the command one there.
+        let tab = Shortcut::key(Key::Tab).with_ctrl();
+        let ctrl = Modifiers {
+            ctrl: true,
+            command: true,
+            ..Modifiers::elsewhere()
+        };
+        assert!(tab.matches(Key::Tab, ctrl));
+        assert!(Shortcut::command('s').matches(Key::Char('s'), ctrl));
+        // On a Mac the same keys are Ctrl+Cmd.
+        let mac = Modifiers {
+            ctrl: true,
+            meta: true,
+            command: true,
+            ..Modifiers::on_apple()
+        };
+        assert!(mac.control());
     }
 
     #[test]

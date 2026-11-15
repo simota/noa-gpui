@@ -76,6 +76,7 @@ impl InputState {
                     alt: state.alt_key(),
                     meta,
                     command: if command_is_meta() { meta } else { ctrl },
+                    command_is_meta: command_is_meta(),
                 };
                 vec![Event::ModifiersChanged(self.modifiers)]
             }

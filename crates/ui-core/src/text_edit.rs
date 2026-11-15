@@ -520,6 +520,7 @@ mod tests {
         alt: false,
         meta: true,
         command: true,
+        command_is_meta: true,
     };
 
     #[test]

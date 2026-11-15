@@ -24,19 +24,30 @@ pub struct Modifiers {
     /// The platform's shortcut modifier: Cmd (`meta`) on Apple platforms, Ctrl
     /// elsewhere. Set by the platform layer.
     pub command: bool,
+    /// [`Self::command`] is Cmd (Apple platforms), not Ctrl. Set by the platform layer
+    /// with the keys, as the keys alone cannot tell Ctrl+Cmd on a Mac from Ctrl+Super
+    /// elsewhere. Off by default.
+    pub command_is_meta: bool,
 }
 
 impl Modifiers {
-    /// Whether Ctrl is held as a key of its own, apart from [`Self::command`]: on Apple
-    /// platforms, where the command key is Cmd. Elsewhere Ctrl is the command key.
-    pub fn control(&self) -> bool {
-        self.ctrl && !self.ctrl_is_command()
+    /// No keys held, on an Apple platform (Cmd is the command key).
+    pub fn on_apple() -> Self {
+        Self {
+            command_is_meta: true,
+            ..Self::default()
+        }
     }
 
-    /// Ctrl is the command key: held together with no Meta, as the platform layer sets
-    /// [`Self::command`] outside Apple platforms.
-    pub(crate) fn ctrl_is_command(&self) -> bool {
-        self.command && !self.meta
+    /// No keys held, elsewhere (Ctrl is the command key).
+    pub fn elsewhere() -> Self {
+        Self::default()
+    }
+
+    /// Whether Ctrl is held as a key of its own, apart from [`Self::command`]: only on
+    /// Apple platforms, where the command key is Cmd. Elsewhere Ctrl is the command key.
+    pub fn control(&self) -> bool {
+        self.ctrl && self.command_is_meta
     }
 }
 

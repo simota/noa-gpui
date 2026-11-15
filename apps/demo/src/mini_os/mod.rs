@@ -1069,6 +1069,7 @@ mod tests {
         alt: true,
         meta: false,
         command: false,
+        command_is_meta: false,
     };
 
     fn setup() -> (MiniOs, TextStore) {

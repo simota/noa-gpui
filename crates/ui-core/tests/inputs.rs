@@ -132,11 +132,12 @@ fn values<T: 'static + Clone>(messages: &[Message]) -> Vec<T> {
         .collect()
 }
 
+/// Cmd on a Mac.
 fn command() -> Modifiers {
     Modifiers {
         command: true,
         meta: true,
-        ..Default::default()
+        ..Modifiers::on_apple()
     }
 }
 
