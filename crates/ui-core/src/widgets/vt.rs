@@ -91,6 +91,12 @@ pub(crate) struct VtScreen {
     saved_main: Option<(Vec<Line>, Cursor)>,
     scrollback: VecDeque<Line>,
     max_scrollback: usize,
+    /// Lines that left the top of the main screen and are no longer in the scrollback.
+    dropped_lines: usize,
+    /// Where lines appeared between kept ones: a scroll region at the top of the screen
+    /// scrolled, and the lines below it did not move. Each entry is the new line's
+    /// number, counted from the first line ever shown.
+    inserted_lines: Vec<usize>,
     cursor: Cursor,
     saved_cursor: Cursor,
     /// Scroll region, inclusive.
@@ -100,6 +106,8 @@ pub(crate) struct VtScreen {
     insert_mode: bool,
     pub app_cursor_keys: bool,
     pub cursor_visible: bool,
+    /// The program asked for pasted text to be bracketed (mode 2004).
+    pub bracketed_paste: bool,
     pub title: String,
     state: State,
     params: Vec<u16>,
@@ -122,6 +130,8 @@ impl VtScreen {
             saved_main: None,
             scrollback: VecDeque::new(),
             max_scrollback,
+            dropped_lines: 0,
+            inserted_lines: Vec::new(),
             cursor: Cursor::default(),
             saved_cursor: Cursor::default(),
             top: 0,
@@ -130,6 +140,7 @@ impl VtScreen {
             insert_mode: false,
             app_cursor_keys: false,
             cursor_visible: true,
+            bracketed_paste: false,
             title: String::new(),
             state: State::Ground,
             params: Vec::new(),
@@ -154,12 +165,25 @@ impl VtScreen {
         &self.scrollback
     }
 
+    /// How many lines scrolled off the main screen without staying in the scrollback:
+    /// the oldest line kept is this many lines after the first one ever shown.
+    pub fn dropped_lines(&self) -> usize {
+        self.dropped_lines
+    }
+
     pub fn cursor(&self) -> (usize, usize) {
         (self.cursor.col, self.cursor.row)
     }
 
     pub fn is_alternate_screen(&self) -> bool {
         self.saved_main.is_some()
+    }
+
+    /// The lines that appeared between kept ones since the last call, oldest first, as
+    /// line numbers counted from the first line ever shown: every line that had that
+    /// number or a later one is now one line further down.
+    pub fn take_inserted_lines(&mut self) -> Vec<usize> {
+        std::mem::take(&mut self.inserted_lines)
     }
 
     pub fn take_responses(&mut self) -> Vec<u8> {
@@ -178,7 +202,12 @@ impl VtScreen {
             let shift = self.cursor.row + 1 - rows;
             for line in self.lines.drain(..shift) {
                 if !alternate {
-                    push_bounded(&mut self.scrollback, line, self.max_scrollback);
+                    push_bounded(
+                        &mut self.scrollback,
+                        &mut self.dropped_lines,
+                        line,
+                        self.max_scrollback,
+                    );
                 }
             }
             self.cursor.row -= shift;
@@ -318,8 +347,10 @@ impl VtScreen {
             b'c' => {
                 let (cols, rows, max) = (self.cols, self.rows, self.max_scrollback);
                 let scrollback = std::mem::take(&mut self.scrollback);
+                let dropped_lines = self.dropped_lines;
                 *self = Self::new(cols, rows, max);
                 self.scrollback = scrollback;
+                self.dropped_lines = dropped_lines;
             }
             _ => {}
         }
@@ -474,6 +505,7 @@ impl VtScreen {
                 25 => self.cursor_visible = on,
                 47 | 1047 => self.alternate_screen(on, false),
                 1049 => self.alternate_screen(on, true),
+                2004 => self.bracketed_paste = on,
                 _ => {}
             }
         }
@@ -674,9 +706,18 @@ impl VtScreen {
         for _ in 0..n {
             let line = self.lines.remove(self.top);
             if keep {
-                push_bounded(&mut self.scrollback, line, self.max_scrollback);
+                push_bounded(
+                    &mut self.scrollback,
+                    &mut self.dropped_lines,
+                    line,
+                    self.max_scrollback,
+                );
             }
             self.lines.insert(self.bottom, blank.clone());
+            if keep && self.bottom + 1 < self.rows {
+                self.inserted_lines
+                    .push(self.dropped_lines + self.scrollback.len() + self.bottom);
+            }
         }
     }
 
@@ -769,7 +810,10 @@ impl VtScreen {
                     line.fill(blank);
                 }
             }
-            3 => self.scrollback.clear(),
+            3 => {
+                self.dropped_lines += self.scrollback.len();
+                self.scrollback.clear();
+            }
             _ => {}
         }
     }
@@ -816,12 +860,14 @@ fn blank_line(cols: usize, style: CellStyle) -> Line {
     vec![TerminalCell { ch: ' ', style }; cols]
 }
 
-fn push_bounded(scrollback: &mut VecDeque<Line>, line: Line, max: usize) {
+fn push_bounded(scrollback: &mut VecDeque<Line>, dropped: &mut usize, line: Line, max: usize) {
     if max == 0 {
+        *dropped += 1;
         return;
     }
     if scrollback.len() == max {
         scrollback.pop_front();
+        *dropped += 1;
     }
     scrollback.push_back(line);
 }

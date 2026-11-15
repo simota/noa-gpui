@@ -6,11 +6,15 @@ use noa_gpui_text::{FontFamily, TextStore, TextStyle};
 use super::rows::TextCache;
 use super::view_height;
 use super::vt::{CellStyle, TermColor, TerminalCell, VtScreen, WIDE_TAIL, char_width};
-use crate::event::{Cursor, Event, Key};
+use crate::event::{Cursor, Event, Key, PointerButton};
 use crate::theme::Role;
 use crate::widget::{EventCx, PaintCx, UpdateCx, Widget};
 
 const PAD: f32 = 6.0;
+
+/// A cell: its line counted from the first line the screen ever showed (so the number
+/// stays with the line as older ones leave the scrollback), and its column.
+type CellPos = (usize, usize);
 
 /// Emitted with the bytes a key press or typed text sends. Write them to the
 /// pseudo-terminal.
@@ -24,6 +28,11 @@ pub struct TerminalInput(pub Vec<u8>);
 /// [`Terminal::feed`], writes [`TerminalInput`] to it, and sends it the grid size from
 /// [`Terminal::take_resized`] (on desktop through `noa_gpui_platform::Pty`). The grid fills
 /// the height its parent leaves unless [`Terminal::rows`] fixes it.
+///
+/// Dragging selects text, in the scrollback too. Cmd+C (Ctrl+Shift+C where Ctrl is the
+/// shortcut modifier, since Ctrl+C interrupts the program) copies it, and Cmd+V
+/// (Ctrl+Shift+V) sends the clipboard's text as [`TerminalInput`], bracketed when the
+/// program asked for that.
 pub struct Terminal {
     screen: VtScreen,
     font_size: f32,
@@ -33,6 +42,10 @@ pub struct Terminal {
     resized: Option<(usize, usize)>,
     scroll: usize,
     wheel: f32,
+    /// Where the drag in progress started.
+    drag: Option<CellPos>,
+    /// The selection's two ends, both inside it, in the order they were set.
+    selected: Option<(CellPos, CellPos)>,
     runs: TextCache<(usize, usize, bool, bool)>,
 }
 
@@ -62,6 +75,8 @@ impl Terminal {
             resized: None,
             scroll: 0,
             wheel: 0.0,
+            drag: None,
+            selected: None,
             runs: TextCache::default(),
         }
     }
@@ -86,7 +101,20 @@ impl Terminal {
     /// Show the program's output. Returns the replies the program asked for (a cursor
     /// position report), to write back to it.
     pub fn feed(&mut self, cx: &mut UpdateCx, bytes: &[u8]) -> Vec<u8> {
+        let selected = self.selected_text();
         self.screen.feed(bytes);
+        for inserted in self.screen.take_inserted_lines() {
+            let ends = self.selected.iter_mut().flat_map(|(a, b)| [a, b]);
+            for (row, _) in ends.chain(&mut self.drag) {
+                if *row >= inserted {
+                    *row += 1;
+                }
+            }
+        }
+        // The output wrote over the selection or moved it.
+        if selected.is_some() && self.selected_text() != selected {
+            self.selected = None;
+        }
         cx.request_paint();
         self.screen.take_responses()
     }
@@ -132,6 +160,73 @@ impl Terminal {
         self.scroll
     }
 
+    /// The selected text, one line per screen line without trailing spaces, or `None`
+    /// without a selection.
+    pub fn selected_text(&self) -> Option<String> {
+        let (start, end) = self.selection()?;
+        let lines: Vec<String> = (start.0..=end.0)
+            .map(|row| {
+                let line = self.line_at(row);
+                line_text(&line[selected_columns(line, row, start, end)])
+            })
+            .collect();
+        Some(lines.join("\n"))
+    }
+
+    /// The selection's first and last cell with their lines counted from the oldest
+    /// scrollback line, if those lines still exist.
+    fn selection(&self) -> Option<(CellPos, CellPos)> {
+        let (a, b) = self.selected?;
+        let (start, end) = (a.min(b), a.max(b));
+        let first = start.0.checked_sub(self.screen.dropped_lines())?;
+        let last = end.0 - self.screen.dropped_lines();
+        (last < self.line_count()).then_some(((first, start.1), (last, end.1)))
+    }
+
+    fn line_count(&self) -> usize {
+        self.screen.scrollback().len() + self.screen.size().1
+    }
+
+    fn line_at(&self, row: usize) -> &[TerminalCell] {
+        let scrollback = self.screen.scrollback();
+        match scrollback.get(row) {
+            Some(line) => line,
+            None => self.screen.line(row - scrollback.len()),
+        }
+    }
+
+    /// The cell under `local`, or the nearest one.
+    fn cell_at(&self, local: Point) -> CellPos {
+        let (cols, rows) = self.screen.size();
+        let col = ((local.x - PAD) / self.cell.width).floor();
+        let row = ((local.y - PAD) / self.cell.height).floor();
+        let scrollback = self.screen.scrollback().len();
+        (
+            self.screen.dropped_lines() + scrollback - self.scroll.min(scrollback)
+                + (row.max(0.0) as usize).min(rows - 1),
+            (col.max(0.0) as usize).min(cols - 1),
+        )
+    }
+
+    fn paste(&mut self, cx: &mut EventCx) {
+        let Some(text) = cx.clipboard().read_text() else {
+            return;
+        };
+        if text.is_empty() {
+            return;
+        }
+        // Enter sends a carriage return, so a pasted line break does too.
+        let mut text = text.replace("\r\n", "\r").replace('\n', "\r");
+        let bytes = if self.screen.bracketed_paste {
+            // Without ESC the text cannot end the bracket and run as typed input.
+            text.retain(|c| c != '\x1b');
+            format!("\x1b[200~{text}\x1b[201~").into_bytes()
+        } else {
+            text.into_bytes()
+        };
+        self.send(cx, bytes);
+    }
+
     fn text_style(&self, family: FontFamily, bold: bool, italic: bool) -> TextStyle {
         TextStyle::new(self.font_size)
             .family(family)
@@ -163,6 +258,7 @@ impl Terminal {
         if (cols, rows) != self.screen.size() {
             self.screen.resize(cols, rows);
             self.resized = Some((cols, rows));
+            self.selected = None;
             self.scroll = self.scroll.min(self.screen.scrollback().len());
         }
     }
@@ -226,6 +322,29 @@ fn line_text(line: &[TerminalCell]) -> String {
         .map(|c| c.ch)
         .collect();
     text.trim_end().to_owned()
+}
+
+/// The columns of line `row` between `start` and `end`, widened to whole wide characters.
+fn selected_columns(
+    line: &[TerminalCell],
+    row: usize,
+    start: CellPos,
+    end: CellPos,
+) -> std::ops::Range<usize> {
+    let len = line.len();
+    let mut from = if row == start.0 { start.1.min(len) } else { 0 };
+    let mut to = if row == end.0 {
+        (end.1 + 1).min(len)
+    } else {
+        len
+    };
+    if from > 0 && from < len && line[from].ch == WIDE_TAIL {
+        from -= 1;
+    }
+    if to < len && line[to].ch == WIDE_TAIL {
+        to += 1;
+    }
+    from..to.max(from)
 }
 
 /// The xterm palette: 16 named colors, the 6×6×6 cube and 24 grays.
@@ -319,6 +438,12 @@ impl Widget for Terminal {
         let mut text = String::new();
         let scrollback = self.screen.scrollback().len();
         let scroll = self.scroll.min(scrollback);
+        let selection = self.selection();
+        let selection_fill = if cx.is_focused() {
+            cx.color(Role::Accent).with_alpha(0.4)
+        } else {
+            text_color.with_alpha(0.12)
+        };
         for view_row in 0..rows {
             // Scrolled back: the last `scroll` scrollback lines come first.
             let line: &[TerminalCell] = if view_row < scroll {
@@ -368,6 +493,21 @@ impl Widget for Terminal {
                 }
                 start = end;
             }
+            let row = scrollback - scroll + view_row;
+            if let Some((first, last)) = selection
+                && (first.0..=last.0).contains(&row)
+            {
+                let columns = selected_columns(line, row, first, last);
+                cx.fill_rect(
+                    Rect::new(
+                        PAD + columns.start as f32 * cell.width,
+                        y,
+                        columns.len() as f32 * cell.width,
+                        cell.height,
+                    ),
+                    selection_fill,
+                );
+            }
         }
         let store = cx.text_store();
         self.runs.end(store);
@@ -405,8 +545,45 @@ impl Widget for Terminal {
 
     fn event(&mut self, cx: &mut EventCx, event: &Event) {
         match event {
-            Event::PointerDown { .. } => {
+            Event::PointerDown { pos, button } => {
                 cx.request_focus();
+                if *button == PointerButton::Primary {
+                    self.drag = Some(self.cell_at(cx.local(*pos)));
+                    cx.capture_pointer();
+                    if self.selected.take().is_some() {
+                        cx.request_paint();
+                    }
+                }
+                cx.set_handled();
+            }
+            Event::PointerMove { pos } => {
+                let Some(anchor) = self.drag else {
+                    return;
+                };
+                let lead = self.cell_at(cx.local(*pos));
+                let oldest = self.screen.dropped_lines();
+                // The line the drag started on has left the scrollback.
+                if anchor.0 < oldest {
+                    self.drag = None;
+                    cx.release_pointer();
+                    cx.set_handled();
+                    return;
+                }
+                // The screen may have lost rows.
+                let newest = oldest + self.line_count() - 1;
+                let anchor = (anchor.0.min(newest), anchor.1);
+                // A press that never leaves its cell selects nothing.
+                if (lead != anchor || self.selected.is_some())
+                    && self.selected != Some((anchor, lead))
+                {
+                    self.selected = Some((anchor, lead));
+                    cx.request_paint();
+                }
+                cx.set_handled();
+            }
+            Event::PointerUp { .. } if self.drag.is_some() => {
+                self.drag = None;
+                cx.release_pointer();
                 cx.set_handled();
             }
             Event::Wheel { delta, .. } if !self.screen.is_alternate_screen() => {
@@ -425,6 +602,28 @@ impl Widget for Terminal {
                 cx.set_handled();
             }
             Event::KeyDown { key, modifiers } if cx.is_focused() => {
+                // Ctrl+C and Ctrl+V belong to the program, so where Ctrl is the shortcut
+                // modifier the clipboard shortcuts take Shift as well.
+                if let Key::Char(c) = key
+                    && modifiers.command
+                    && (modifiers.meta || modifiers.shift)
+                {
+                    match c.to_ascii_lowercase() {
+                        'c' => {
+                            if let Some(text) = self.selected_text() {
+                                cx.clipboard().write_text(&text);
+                            }
+                            cx.set_handled();
+                            return;
+                        }
+                        'v' => {
+                            self.paste(cx);
+                            cx.set_handled();
+                            return;
+                        }
+                        _ => {}
+                    }
+                }
                 if let Some(mut bytes) = self.key_bytes(*key, cx) {
                     // Alt (Option) with a key sends ESC first, as xterm's meta does.
                     if modifiers.alt {
