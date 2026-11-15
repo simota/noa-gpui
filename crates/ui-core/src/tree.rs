@@ -198,6 +198,8 @@ pub struct UiTree {
     animating: Vec<WidgetId>,
     /// Seconds on the application's clock.
     now: f64,
+    /// Input dispatched since recording started (see [`UiTree::start_recording`]).
+    recording: Option<Vec<crate::recording::Step>>,
     shortcuts: Vec<(Shortcut, WidgetId)>,
     /// The item each focus group focused last: `(group, item)`.
     group_focus: Vec<(WidgetId, WidgetId)>,
@@ -283,6 +285,7 @@ impl Default for UiTree {
             overlays: Vec::new(),
             animating: Vec::new(),
             now: 0.0,
+            recording: None,
             shortcuts: Vec::new(),
             group_focus: Vec::new(),
             clipboard: Box::new(MemoryClipboard::default()),
@@ -1045,6 +1048,32 @@ impl UiTree {
     /// dispatching events and before [`UiTree::animate`].
     pub fn set_now(&mut self, now: f64) {
         self.now = now;
+    }
+
+    /// Keep every input event dispatched from now on, with the clock (see
+    /// [`crate::recording`]). Starting again drops what was kept.
+    pub fn start_recording(&mut self) {
+        self.recording = Some(Vec::new());
+    }
+
+    /// The input kept since recording started or since the last call; recording goes
+    /// on. Empty when not recording.
+    pub fn take_recorded(&mut self) -> Vec<crate::recording::Step> {
+        self.recording
+            .as_mut()
+            .map(std::mem::take)
+            .unwrap_or_default()
+    }
+
+    pub fn is_recording(&self) -> bool {
+        self.recording.is_some()
+    }
+
+    /// Stop recording and return what was not taken yet.
+    pub fn stop_recording(&mut self) -> crate::recording::Recording {
+        crate::recording::Recording {
+            steps: self.recording.take().unwrap_or_default(),
+        }
     }
 
     pub fn now(&self) -> f64 {
@@ -2604,6 +2633,11 @@ impl UiTree {
     /// the one capturing it), keyboard and text events to the focused widget; each then
     /// bubbles to ancestors until handled. Unhandled Tab moves focus.
     pub fn dispatch(&mut self, event: Event, text: &mut TextStore) {
+        if let Some(steps) = &mut self.recording
+            && let Some(step) = crate::recording::Step::new(self.now, &event)
+        {
+            steps.push(step);
+        }
         self.dispatch_event(event, text);
         self.deliver_focus_changes(text);
     }

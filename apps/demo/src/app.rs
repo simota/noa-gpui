@@ -108,8 +108,17 @@ pub fn snapshot(
     path: &std::path::Path,
     scale: f32,
     stylesheet: Option<&std::path::Path>,
+    replay: Option<&std::path::Path>,
 ) -> Result<(), String> {
     let sheet = stylesheet.map(load_stylesheet).transpose()?;
+    let recording = replay
+        .map(|path| {
+            let source = std::fs::read_to_string(path)
+                .map_err(|e| format!("read {}: {e}", path.display()))?;
+            noa_gpui_platform::noa_gpui_core::recording::Recording::parse(&source)
+                .map_err(|e| format!("{}: {e}", path.display()))
+        })
+        .transpose()?;
     let mut headless = noa_gpui_platform::Headless::new_or_software();
     let mut screen = if headless.is_software() {
         screen_with(
@@ -124,6 +133,12 @@ pub fn snapshot(
     }
     let mut text = noa_gpui_platform::noa_gpui_text::TextStore::new(Default::default());
     let (width, height) = options().size;
+    if let Some(recording) = &recording {
+        let size = noa_gpui_platform::noa_gpui_scene::Size::new(width as f32, height as f32);
+        noa_gpui_platform::replay(screen.as_mut(), recording, &mut text, size);
+        // Let animations the last steps started finish, as a window left for a second.
+        noa_gpui_platform::advance(screen.as_mut(), &mut text, size, 1.0);
+    }
     let image = headless
         .render_screen(
             screen.as_mut(),

@@ -33,6 +33,7 @@ A cross-platform UI framework written in Rust, with its own 2D renderer on top o
 > - Accessibility through AccessKit
 > - The OS menu bar (macOS), menu bar extras / the system tray (macOS, Windows, Linux; on Linux, desktops that can show StatusNotifierItem), open / save file dialogs
 > - Windowless rendering (`Headless`): writes the Widget Tree or the screen to PNG. In environments without a GPU adapter, it renders on the CPU
+> - Recording and replaying input: `App::record_input` writes the main window's input to a text file as it happens (one step per line, `noa_gpui_core::recording`), `noa_gpui_platform::replay` plays it back into a screen, and `check_golden` compares the rendered image with a saved one, writing the rendered image and a picture of the differences on a mismatch (`NOA_GPUI_UPDATE_GOLDEN=1` rewrites them). The demo takes `--record=FILE` and `--replay=FILE` (with `--snapshot`)
 >
 > On the Web, the accessibility tree is mirrored as ARIA elements inside the canvas (see [docs/architecture.md](docs/architecture.md), "Web Accessibility Support").
 >
@@ -45,7 +46,7 @@ noa-gpui is for dense desktop applications written in Rust — admin consoles, d
 - **Components for data-heavy work, built in.** A data grid with per-cell editing, range selection, paste from spreadsheets, undo, and CSV / TSV import and export; a table that keeps every frame under 16ms at 100,000 rows (checked in CI by `cargo bench -p noa-gpui-core --bench table`); a command palette, an inspector, a rule editor, and view state that is saved and restored between runs.
 - **WebGL2 as the floor.** The renderer needs no Compute Shaders or Storage Buffers, so the same screens draw on WebGPU and on WebGL2 browsers. Some platform features are still desktop-only (see the status above).
 - **Japanese input from the start.** IME composition is part of the text widgets' event model, not an afterthought.
-- **Testable without a window.** `Headless` renders a widget tree or a screen to PNG, on the CPU when there is no GPU, and widgets are tested by sending events to a `UiTree`.
+- **Testable without a window.** `Headless` renders a widget tree or a screen to PNG, on the CPU when there is no GPU; input recorded from a real session can be replayed and the result compared with a saved image, and widgets are tested by sending events to a `UiTree`.
 - **Styled with CSS-like sheets**, reloaded on save, rather than a separate UI language.
 
 It is not aimed at games, immediate-mode tool panels, or mobile apps.
@@ -128,6 +129,8 @@ cargo run -p desktop --release -- --scene=minios                  # Mini OS: a d
 cargo run -p desktop --release -- --scene=showcase                # Phase 1: showcase of rendering primitives
 cargo run -p desktop --release -- --scene=stress --count=1500     # Phase 1: 1,500 Widgets built directly as a Display List
 cargo run -p desktop --release -- --scene=catalog --snapshot=catalog.png   # Write the first frame to PNG and exit (no window or GPU needed)
+cargo run -p desktop --release -- --scene=catalog --record=session.rec              # Write the window's input to session.rec while it runs
+cargo run -p desktop --release -- --scene=catalog --replay=session.rec --snapshot=after.png   # Play it back without a window and write the result
 cargo run -p desktop --release -- --scene=catalog --stylesheet=apps/demo/styles/example.noa.css   # Apply a Noa Style sheet and reapply it on every save
 cargo run -p desktop --release -- --scene=minios --view-state=demo-state.txt   # Save column widths, dividers, window positions, and so on at exit, and restore them at the next launch
 ```

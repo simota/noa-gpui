@@ -8,6 +8,7 @@ pub mod event;
 pub mod invalidation;
 pub mod kana;
 pub mod overlay;
+pub mod recording;
 pub mod shortcut;
 pub mod styling;
 pub mod text_edit;

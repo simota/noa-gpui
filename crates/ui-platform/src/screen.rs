@@ -238,3 +238,298 @@ pub(crate) fn run_accessibility_actions(
     }
     !actions.is_empty()
 }
+
+/// Seconds between the frames [`replay`] and [`advance`] draw while something moves.
+const FRAME: f64 = 1.0 / 60.0;
+
+/// Play `recording` back into `screen` laid out at `size` logical points, as the app
+/// would: between steps, animations get a frame every 1/60 s and timers fire when
+/// due, so each input meets the layout a window would have shown at that moment; each
+/// step's input is then dispatched at its time (messages handled). Draw the result
+/// with [`crate::Headless::render_screen`], after [`advance`] if animations started by
+/// the last steps should finish first.
+pub fn replay(
+    screen: &mut dyn Screen,
+    recording: &noa_gpui_core::recording::Recording,
+    text: &mut TextStore,
+    size: Size,
+) {
+    screen.prepare(size, text);
+    let Some(first) = recording.steps.first() else {
+        return;
+    };
+    let mut now = first.at;
+    for step in &recording.steps {
+        advance_from(screen, text, size, now, step.at);
+        now = step.at;
+        screen.tree_mut().set_now(now);
+        screen.dispatch(step.event.clone(), text);
+        frame(screen, text, size, now);
+    }
+}
+
+/// Let `seconds` pass on `screen`'s clock as in a window left alone: animations get a
+/// frame every 1/60 s and timers fire when due.
+pub fn advance(screen: &mut dyn Screen, text: &mut TextStore, size: Size, seconds: f64) {
+    let now = screen.tree().now();
+    advance_from(screen, text, size, now, now + seconds);
+}
+
+fn advance_from(screen: &mut dyn Screen, text: &mut TextStore, size: Size, from: f64, until: f64) {
+    let mut now = from;
+    while now < until {
+        let tree = screen.tree();
+        // While nothing moves, go straight to the next due timer (or the end); a frame
+        // is the shortest step, as in a window.
+        let next = if tree.wants_animation_frame() {
+            now + FRAME
+        } else {
+            tree.next_timer().map_or(until, |due| due.max(now + FRAME))
+        };
+        now = next.min(until);
+        screen.tree_mut().set_now(now);
+        frame(screen, text, size, now);
+    }
+}
+
+/// What the app does each frame: animation frames and due timers, then layout.
+fn frame(screen: &mut dyn Screen, text: &mut TextStore, size: Size, now: f64) {
+    if crate::app::wants_frame(screen.tree(), now) {
+        screen.animate(now, text);
+    }
+    screen.prepare(size, text);
+}
+
+#[cfg(all(test, feature = "native"))]
+mod tests {
+    use noa_gpui_core::widgets::{Button, ButtonClicked, Container, Label};
+    use noa_gpui_core::{Event, Message, PointerButton, UiTree, WidgetId};
+    use noa_gpui_render_wgpu::{Tolerance, check_golden};
+    use noa_gpui_scene::{Point, Size};
+    use noa_gpui_text::TextStore;
+
+    use super::{Screen, advance, replay};
+    use crate::Headless;
+
+    const SIZE: Size = Size::new(240.0, 120.0);
+
+    struct Counter {
+        tree: UiTree,
+        button: WidgetId,
+        label: WidgetId,
+        clicks: usize,
+    }
+
+    impl Counter {
+        fn with_tooltip() -> Self {
+            let mut tree = UiTree::new();
+            let root = tree.insert(None, Container::new(Default::default()));
+            let button = tree.insert(Some(root), Button::new("Count").tooltip("Adds one"));
+            let label = tree.insert(Some(root), Label::new("0"));
+            Self {
+                tree,
+                button,
+                label,
+                clicks: 0,
+            }
+        }
+
+        /// A screen around `tree`; `id` stands in for the button and label.
+        fn from_tree(tree: UiTree, id: WidgetId) -> Self {
+            Self {
+                tree,
+                button: id,
+                label: id,
+                clicks: 0,
+            }
+        }
+
+        fn new() -> Self {
+            let mut tree = UiTree::new();
+            let root = tree.insert(None, Container::new(Default::default()));
+            let button = tree.insert(Some(root), Button::new("Count"));
+            let label = tree.insert(Some(root), Label::new("0"));
+            Self {
+                tree,
+                button,
+                label,
+                clicks: 0,
+            }
+        }
+    }
+
+    impl Screen for Counter {
+        fn tree(&self) -> &UiTree {
+            &self.tree
+        }
+
+        fn tree_mut(&mut self) -> &mut UiTree {
+            &mut self.tree
+        }
+
+        fn handle(&mut self, message: Message, _text: &mut TextStore) {
+            if message.source == self.button && message.downcast_ref::<ButtonClicked>().is_some() {
+                self.clicks += 1;
+                let clicks = self.clicks.to_string();
+                self.tree
+                    .update::<Label, _>(self.label, |l, cx| l.set_text(cx, clicks));
+            }
+        }
+    }
+
+    #[test]
+    fn a_replayed_session_draws_what_the_recorded_one_did() {
+        let mut text = TextStore::new(Default::default());
+        let mut original = Counter::new();
+        original.prepare(SIZE, &mut text);
+        original.tree.start_recording();
+        let r = original.tree.window_rect(original.button).unwrap();
+        let pos = Point::new(r.x + 8.0, r.y + 8.0);
+        let button = PointerButton::Primary;
+        for (i, at) in [0.0, 1.0, 2.0].into_iter().enumerate() {
+            original.tree.set_now(at);
+            original.dispatch(Event::PointerMove { pos }, &mut text);
+            original.dispatch(Event::PointerDown { pos, button }, &mut text);
+            original.dispatch(Event::PointerUp { pos, button }, &mut text);
+            assert_eq!(original.clicks, i + 1);
+            original.prepare(SIZE, &mut text);
+        }
+        let recording = original.tree.stop_recording();
+
+        let mut replayed = Counter::new();
+        replay(&mut replayed, &recording, &mut text, SIZE);
+        assert_eq!(replayed.clicks, 3);
+
+        // Compare once hover and press animations have finished on both.
+        for screen in [&mut original as &mut dyn Screen, &mut replayed] {
+            advance(screen, &mut text, SIZE, 2.0);
+        }
+
+        let mut headless = Headless::software();
+        let size = (SIZE.width as u32, SIZE.height as u32);
+        let expected = headless
+            .render_screen(&mut original, &mut text, size, 1.0)
+            .unwrap();
+        let actual = headless
+            .render_screen(&mut replayed, &mut text, size, 1.0)
+            .unwrap();
+        let dir = std::env::temp_dir().join(format!("noa-gpui-replay-{}", std::process::id()));
+        let golden = dir.join("counter.png");
+        std::fs::create_dir_all(&dir).unwrap();
+        expected.save_png(&golden).unwrap();
+        let result = check_golden(&actual, &golden, Tolerance::default());
+        if result.is_ok() {
+            let _ = std::fs::remove_dir_all(&dir);
+        }
+        result.expect("the replayed screen draws as the recorded one");
+    }
+
+    #[test]
+    fn timers_fire_between_steps_without_running_animations() {
+        let mut text = TextStore::new(Default::default());
+        let mut screen = Counter::new();
+        screen.prepare(SIZE, &mut text);
+        let r = screen.tree.window_rect(screen.button).unwrap();
+        let pos = Point::new(r.x + 8.0, r.y + 8.0);
+        // The button's tooltip opens on a timer after the pointer rests on it; the next
+        // step comes long after.
+        let recording = noa_gpui_core::recording::Recording {
+            steps: vec![
+                noa_gpui_core::recording::Step {
+                    at: 0.0,
+                    event: Event::PointerMove { pos },
+                },
+                noa_gpui_core::recording::Step {
+                    at: 5.0,
+                    event: Event::ModifiersChanged(Default::default()),
+                },
+            ],
+        };
+        let mut tipped = Counter::with_tooltip();
+        replay(&mut tipped, &recording, &mut text, SIZE);
+        assert!(
+            tipped.tree.tooltip_overlay().is_some(),
+            "the tooltip opened"
+        );
+    }
+
+    #[test]
+    fn scrolling_momentum_runs_between_steps_as_in_a_window() {
+        use noa_gpui_core::widgets::ScrollView;
+
+        let mut text = TextStore::new(Default::default());
+        let build = || {
+            let mut tree = UiTree::new();
+            let root = tree.insert(None, Container::new(Default::default()));
+            let scroll = tree.insert(
+                Some(root),
+                ScrollView::new(noa_gpui_core::Style {
+                    size: noa_gpui_core::style::Size {
+                        width: noa_gpui_core::style::length(200.0),
+                        height: noa_gpui_core::style::length(100.0),
+                    },
+                    ..Default::default()
+                }),
+            );
+            let column = tree.insert(
+                Some(scroll),
+                Container::new(noa_gpui_core::Style {
+                    flex_direction: noa_gpui_core::style::FlexDirection::Column,
+                    ..Default::default()
+                }),
+            );
+            for i in 0..60 {
+                tree.insert(Some(column), Label::new(format!("Row {i}")));
+            }
+            (tree, scroll)
+        };
+        let wheel = |at: f64| noa_gpui_core::recording::Step {
+            at,
+            event: Event::Wheel {
+                pos: Point::new(50.0, 50.0),
+                delta: Point::new(0.0, -40.0),
+            },
+        };
+        // A flick, then a pause long enough for any momentum to stop.
+        let recording = noa_gpui_core::recording::Recording {
+            steps: vec![
+                wheel(0.0),
+                wheel(0.016),
+                wheel(0.032),
+                noa_gpui_core::recording::Step {
+                    at: 3.0,
+                    event: Event::ModifiersChanged(Default::default()),
+                },
+            ],
+        };
+
+        // What a window shows: frames every 1/60 s from the flick until the pause ends.
+        let (tree, scroll) = build();
+        let mut window = Counter::from_tree(tree, scroll);
+        window.prepare(SIZE, &mut text);
+        let mut now = 0.0;
+        for step in &recording.steps {
+            while now + 1.0 / 60.0 < step.at {
+                now += 1.0 / 60.0;
+                window.tree.set_now(now);
+                window.animate(now, &mut text);
+                window.prepare(SIZE, &mut text);
+            }
+            now = step.at;
+            window.tree.set_now(now);
+            window.dispatch(step.event.clone(), &mut text);
+            window.animate(now, &mut text);
+            window.prepare(SIZE, &mut text);
+        }
+
+        let (tree, replayed_scroll) = build();
+        let mut replayed = Counter::from_tree(tree, replayed_scroll);
+        replay(&mut replayed, &recording, &mut text, SIZE);
+        let offset = |tree: &UiTree, id| tree.get::<ScrollView>(id).unwrap().offset();
+        assert!(offset(&window.tree, scroll) > 0.0, "the flick scrolled");
+        assert_eq!(
+            offset(&replayed.tree, replayed_scroll),
+            offset(&window.tree, scroll)
+        );
+    }
+}

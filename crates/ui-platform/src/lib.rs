@@ -45,9 +45,9 @@ pub use noa_gpui_render_wgpu::{GpuContext, InitError, wgpu};
 pub use noa_gpui_render_wgpu::{RenderError, RgbaImage};
 #[cfg(all(feature = "native", any(target_os = "macos", target_os = "linux")))]
 pub use pty::Pty;
-pub use screen::Screen;
 #[cfg(feature = "native")]
 pub use screen::{Detached, FileDialogRequest, FileDialogResult, WindowRequest};
+pub use screen::{Screen, advance, replay};
 #[cfg(feature = "native")]
 pub use stylesheet::{StyleSheetLoad, StyleSheetLoadError, StyleSheetWatcher};
 #[cfg(feature = "native")]
