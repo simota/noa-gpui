@@ -102,11 +102,11 @@ In practice, UTF-8 byte offsets, UTF-16 offsets, and grapheme cluster boundaries
 
 AccessKit has adapters for Windows, macOS, and Linux. An adapter for Canvas-based Web, however, is still listed as planned in the official repository.
 
-For the Web, exposing the accessibility tree through HTML elements, focus synchronization, and screen reader support are designed separately.
+For the Web, the AccessKit tree is mirrored as ARIA elements inside the canvas, with focus announced through `aria-activedescendant` (see "Appendix: Web Accessibility Support").
 
 ## 4. Rust Workspace Layout
 
-Responsibilities are separated from the start. To avoid splitting into too many crates, the layout centers on the following six (the actual layout as of 2026-11-14; for where each feature lives, see [feature-map.md](feature-map.md)).
+Responsibilities are separated from the start. To avoid splitting into too many crates, the layout centers on the following six (the actual layout as of 2026-11-15; for where each feature lives, see [feature-map.md](feature-map.md)).
 
 ```text
 noa-gpui/
@@ -117,19 +117,22 @@ noa-gpui/
 │   ├── ui-layout/src/        lib.rs (Taffy adapter)
 │   ├── ui-core/
 │   │   ├── src/              tree / widget / event / invalidation / theme / overlay /
-│   │   │                     animation / shortcut / clipboard / text_edit / date / styling
+│   │   │                     animation / shortcut / clipboard / text_edit / date / styling /
+│   │   │                     view_state / recording / inspect / kana
 │   │   ├── src/widgets/      widgets (one to a few per file)
 │   │   ├── tests/            integration tests per feature group
 │   │   └── benches/          ui_tree / table / desktop / styling
 │   ├── ui-render-wgpu/
 │   │   ├── src/              renderer / pipelines / buffers / gpu / images / icons /
-│   │   │                     backdrop / offscreen / software / png
+│   │   │                     backdrop / offscreen / software / png / golden / pdf
 │   │   ├── src/shaders/      common / quad / image / icon / backdrop (.wgsl)
 │   │   ├── tests/render.rs   draws on the GPU and reads pixels back
 │   │   └── benches/gpu_frame.rs
 │   └── ui-platform/
 │       ├── src/              app / screen / input / windows / accessibility / clipboard /
-│       │                     system_menu / linux_tray / reopen / wake / pty / headless
+│       │                     system_menu / linux_tray / reopen / wake / pty / headless /
+│       │                     stylesheet / view_state / inspector / web_ime / web_text /
+│       │                     web_a11y / web_aria
 │       └── examples/         hello / snapshot
 ├── apps/
 │   ├── demo/                 screens shared by desktop and Web (catalog / mini_os)
@@ -413,7 +416,7 @@ While implementing Phase 1 ([#1](https://github.com/simota/noa-gpui/issues/1)), 
 - **No `first_instance`:** WebGL2 lacks it, so instance buffers are specified as byte-offset slices.
 - **Color handling:** Input colors are sRGB. If the surface is an sRGB format (desktop, WebGL2), the shader converts to linear; otherwise (WebGPU's `Bgra8Unorm`) it outputs as is. glyphon picks `ColorMode::Accurate` / `Web` by the same rule.
 - **Images:** In Phase 1, one texture per image. Atlasing is handled in Phase 4 ([#4](https://github.com/simota/noa-gpui/issues/4)).
-- **Fonts:** The Web has no system fonts, so Inter (OFL) is bundled. Japanese displays on desktop through fallback to system fonts, but is not supported on the Web.
+- **Fonts:** The Web has no system fonts, so Inter (OFL) is bundled. Japanese displays on desktop through fallback to system fonts, but is not supported on the Web. (Later the Web loader fetches Noto Sans JP and hands it to `App::with_font`; see README.)
 
 ### Phase 1 Measurements
 
@@ -915,3 +918,10 @@ Features after #16 do not have per-issue appendices. The list of widgets is in [
 - **Drawing without a window:** `OffscreenRenderer` draws to a texture and reads the pixels back. For environments without a GPU adapter (sandboxes, CI without a GPU), there is also `SoftwareRenderer`, which draws the same Display List on the CPU. It matches the GPU pipelines' distance fields, blending, and glyph placement, but differences remain in the details of glyph rasterization and in background blur (full resolution rather than half), so CPU images are compared with each other. `noa-gpui-platform`'s `Headless` combines both, and the demo's `--snapshot=FILE.png` and CI snapshots use it. PNGs are written uncompressed using only the standard library (`png.rs`).
 - **Filtering:** `set_filter_text` / `set_filter` on TableView and OutlineView. As with virtualization (#12), only the display-order array is rebuilt, and no row Widgets are created.
 - **CSS-like styling (Noa Style, [#44](https://github.com/simota/noa-gpui/pull/44)):** `noa-gpui-core::styling` parses a typed stylesheet and resolves it per tree node. Layout properties go to the node's Taffy style, and paint and text properties go to the Widget's painting. Supported properties, precedence, and what is out of scope are in [styling.md](styling.md). When resolving a node, the node's state (found by walking ancestors) is computed only once, and the rules, sorted at parse time by specificity (by source order when equal), are applied in order. In `cargo bench -p noa-gpui-core --bench styling` (2,000 rows, 8,101 Widgets, 20 rules), re-resolving every Widget was p50 5.8ms and a frame that moves the pointer to another row was p50 0.08ms (a frame that re-resolves descendant-selector targets across groups was p95 9.5ms) (on a 4-core Linux VM).
+- **Japanese form input ([PR #9](https://github.com/simota/noa-gpui/pull/9)):** `TextField::capture_reading` keeps the reading of what is typed from the IME events the field already handles: the last composition made only of kana (words may be separated by a space) is the reading of the next commit, and kana committed as is are their own reading. The reading only grows; it is cleared when the field becomes empty or `set_text` replaces the text, and deleting part of the text does not shorten it. `noa-gpui-core::kana` holds the script conversion and width normalization (a voicing mark typed after its letter merges into it, so normalizing after every keystroke gives the same text).
+- **Web accessibility ([PR #10](https://github.com/simota/noa-gpui/pull/10)):** see "Appendix: Web Accessibility Support".
+- **Recording and replaying input ([PR #11](https://github.com/simota/noa-gpui/pull/11)):** recording happens in `UiTree::dispatch`, so it captures what the tree was given (pointer, wheel, keys, text, composition, modifiers) and not what the tree makes for itself (focus changes, timers, animation frames). The saved form is one text line per step. `noa_gpui_platform::replay` plays a recording into a `Screen` as the app would: between steps it draws frames every 1/60 s while something animates and fires due timers, so each input meets the layout a window would have shown (momentum scrolling and tooltips depend on this). Golden images use the PNG module's own encoder and a matching reader, so no image crate was added; `check_golden` writes the rendered image and a difference picture next to a golden one that does not match.
+- **Inspector ([PR #12](https://github.com/simota/noa-gpui/pull/12)):** the stylesheet parser keeps each selector's and declaration's source text so `StyleSheet::matching_rules` can show the rules as written, in the order `resolve_in` applies them. The overlay in `noa-gpui-platform` is a separate `UiTree` drawn after the app's display list, so it never enters the app's focus, hit testing or accessibility tree. It hit-tests with `UiTree::hit_test_including_disabled` (disabled widgets matter for `:disabled` rules) and takes only the releases of presses it took itself, so a drag the app began before the inspector opened ends in the app.
+- **Grouping table rows ([PR #13](https://github.com/simota/noa-gpui/pull/13)):** grouping is a `TableData` adapter (`GroupedData`), not a TableView mode: TableView already draws group rows, pins them while scrolling, and sorts and filters rows within them. Edits to an aggregated column update that group's aggregates; edits to the grouping column are left to the app (the row would change groups, and TableView's row mapping with it). TableView keeps a group row with no rows under it (a folded group) while a filter is on, so it can be unfolded.
+- **Rows loaded a page at a time ([PR #14](https://github.com/simota/noa-gpui/pull/14)):** `RemoteRows` is shared state (`Rc<RefCell<…>>`) between the app and the table data on the main thread; a background fetch hands its rows back through a channel and a `Waker`. A row whose page is not loaded is drawn as `CellLook::Loading`, and asking for its look queues the page (the placeholder is drawn without reading the cell). Pages are cached up to a bound and carry a generation, so pages fetched before `reset` (another sort order or search at the source) are refused. Anything that reads every row asks for every page, so `TableView::sorts_rows(false)` leaves sorting to the source.
+- **PDF output ([PR #15](https://github.com/simota/noa-gpui/pull/15)):** `PdfDocument` is a third backend for the display list beside the GPU and CPU renderers, written without new dependencies. Shapes, gradients (axial shadings) and icons (`VectorIcon::layers`) stay vector; text is drawn as glyph outlines from the font through cosmic-text's swash, so no fonts are embedded and the text cannot be selected; images are Flate streams in stored deflate blocks with an alpha mask; a quad's fill and border do not overlap, as on the GPU. Backdrops lose their blur, glyphs without outlines are skipped, and there is no page breaking: a page is one display list.
