@@ -34,7 +34,9 @@ use crate::assets::Assets;
 use crate::bench::{Meter, center_of};
 use kit::{DIVIDER, Kit, gap, zero};
 #[cfg(feature = "native")]
-use noa_gpui_platform::{FileDialogRequest, FileDialogResult, WindowRequest};
+use noa_gpui_platform::{
+    AlertRequest, AlertResult, FileDialogRequest, FileDialogResult, WindowRequest,
+};
 use noa_gpui_platform::{FrameReport, Screen};
 
 const HEADER_BG: Color = Color::hex(0x1e2230);
@@ -77,6 +79,9 @@ pub trait Demo {
 
     #[cfg(feature = "native")]
     fn file_dialog_finished(&mut self, _cx: &mut DemoCx, _result: &FileDialogResult) {}
+
+    #[cfg(feature = "native")]
+    fn alert_finished(&mut self, _cx: &mut DemoCx, _result: AlertResult) {}
 }
 
 #[derive(Debug, Clone)]
@@ -99,6 +104,8 @@ pub struct DemoCx<'a> {
     pub windows: &'a mut Vec<WindowRequest>,
     #[cfg(feature = "native")]
     pub file_dialogs: &'a mut Vec<FileDialogRequest>,
+    #[cfg(feature = "native")]
+    pub alerts: &'a mut Vec<AlertRequest>,
     pub status_item: &'a mut StatusItem,
     /// The top of the content area (below the menu bar and header), where sheets hang.
     pub content_top: f32,
@@ -146,6 +153,8 @@ pub struct Catalog {
     window_requests: Vec<WindowRequest>,
     #[cfg(feature = "native")]
     file_dialogs: Vec<FileDialogRequest>,
+    #[cfg(feature = "native")]
+    alerts: Vec<AlertRequest>,
     meter: Meter,
 }
 
@@ -339,6 +348,8 @@ impl Catalog {
             window_requests: Vec::new(),
             #[cfg(feature = "native")]
             file_dialogs: Vec::new(),
+            #[cfg(feature = "native")]
+            alerts: Vec::new(),
         };
         // ⌘K is the View menu's; ⇧⌘P is only a shortcut.
         catalog
@@ -543,6 +554,8 @@ impl Catalog {
             windows: &mut self.window_requests,
             #[cfg(feature = "native")]
             file_dialogs: &mut self.file_dialogs,
+            #[cfg(feature = "native")]
+            alerts: &mut self.alerts,
             status_item: &mut self.status_item,
             content_top,
         };
@@ -684,6 +697,8 @@ impl Screen for Catalog {
             windows: &mut self.window_requests,
             #[cfg(feature = "native")]
             file_dialogs: &mut self.file_dialogs,
+            #[cfg(feature = "native")]
+            alerts: &mut self.alerts,
             status_item: &mut self.status_item,
             content_top,
         };
@@ -771,6 +786,16 @@ impl Screen for Catalog {
     #[cfg(feature = "native")]
     fn file_dialog_finished(&mut self, result: FileDialogResult, text: &mut TextStore) {
         self.with_demos(text, |demo, cx| demo.file_dialog_finished(cx, &result));
+    }
+
+    #[cfg(feature = "native")]
+    fn take_alerts(&mut self) -> Vec<AlertRequest> {
+        std::mem::take(&mut self.alerts)
+    }
+
+    #[cfg(feature = "native")]
+    fn alert_finished(&mut self, result: AlertResult, text: &mut TextStore) {
+        self.with_demos(text, |demo, cx| demo.alert_finished(cx, result));
     }
 
     fn after_input(&mut self) {
