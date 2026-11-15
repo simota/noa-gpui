@@ -1093,6 +1093,11 @@ impl UiTree {
         self.clicks.distance = distance;
     }
 
+    /// The double-click interval (seconds) and distance (logical pixels).
+    pub fn multi_click(&self) -> (f64, f32) {
+        (self.clicks.interval, self.clicks.distance)
+    }
+
     /// Set the clock (seconds, monotonic) used for animations. Call it before
     /// dispatching events and before [`UiTree::animate`].
     pub fn set_now(&mut self, now: f64) {
@@ -1122,6 +1127,7 @@ impl UiTree {
     pub fn stop_recording(&mut self) -> crate::recording::Recording {
         crate::recording::Recording {
             steps: self.recording.take().unwrap_or_default(),
+            multi_click: Some(self.multi_click()),
         }
     }
 

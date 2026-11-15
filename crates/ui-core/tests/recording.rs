@@ -224,6 +224,7 @@ fn every_input_event_survives_the_saved_form() {
             .enumerate()
             .map(|(i, event)| Step::new(i as f64 * 0.125, event).unwrap())
             .collect(),
+        multi_click: None,
     };
     let saved = recording.to_text();
     assert_eq!(saved.lines().count(), events.len());
@@ -250,4 +251,30 @@ fn saved_recordings_skip_comments_and_report_bad_lines() {
     );
     let ok = Recording::parse("# only\n0.5 text \"x\"\n").unwrap();
     assert_eq!(ok.steps[0].event, Event::Text("x".into()));
+}
+
+/// A session recorded with a slower double click (the OS setting) replays the same
+/// on a tree that has never seen that setting.
+#[test]
+fn a_recording_keeps_the_double_click_interval_it_was_made_with() {
+    let mut form = Form::new();
+    form.tree.set_multi_click(0.8, 4.0);
+    form.tree.start_recording();
+    let field = form.at(form.field, 100.0, 10.0);
+    form.click(0.0, field);
+    form.send(0.2, Event::Text("alpha beta".into()));
+    // 0.6 s apart: a double click at 0.8 s, two single ones at the default 0.4 s.
+    let word = form.at(form.field, 14.0, 10.0);
+    form.click(1.0, word);
+    form.click(1.6, word);
+    let selected = |form: &Form| form.tree.get::<TextField>(form.field).unwrap().selection();
+    assert_eq!(selected(&form), 0..5, "selected while recording");
+    let saved = form.tree.stop_recording().to_text();
+
+    let mut fresh = Form::new();
+    Recording::parse(&saved)
+        .unwrap()
+        .replay(&mut fresh.tree, &mut fresh.text);
+    fresh.tree.prepare(VIEWPORT, &mut fresh.text);
+    assert_eq!(selected(&fresh), 0..5, "selected on replay");
 }
