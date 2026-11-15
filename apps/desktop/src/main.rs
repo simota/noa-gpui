@@ -8,8 +8,8 @@
 //! GPU adapter it draws on the CPU.
 //!
 //! `--record` writes the window's input to a file as it happens. `--replay` plays such
-//! a file back before `--snapshot` takes its picture, so a session can be turned into
-//! an image to compare.
+//! a file back before `--snapshot` takes its picture (a second after the last step,
+//! so animations have finished), so a session can be turned into an image to compare.
 //!
 //! `--stylesheet` applies a Noa Style sheet and, in a window, reloads it on each save.
 //!

@@ -136,6 +136,8 @@ pub fn snapshot(
     if let Some(recording) = &recording {
         let size = noa_gpui_platform::noa_gpui_scene::Size::new(width as f32, height as f32);
         noa_gpui_platform::replay(screen.as_mut(), recording, &mut text, size);
+        // Let animations the last steps started finish, as a window left for a second.
+        noa_gpui_platform::advance(screen.as_mut(), &mut text, size, 1.0);
     }
     let image = headless
         .render_screen(

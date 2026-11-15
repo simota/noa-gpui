@@ -76,8 +76,10 @@ impl RgbaImage {
         let mut image = Vec::with_capacity(expected.pixels.len());
         for (actual, wanted) in self
             .pixels
-            .chunks_exact(4)
-            .zip(expected.pixels.chunks_exact(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(expected.pixels.as_chunks::<4>().0)
         {
             let delta = actual
                 .iter()

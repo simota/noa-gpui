@@ -47,7 +47,7 @@ pub use noa_gpui_render_wgpu::{RenderError, RgbaImage};
 pub use pty::Pty;
 #[cfg(feature = "native")]
 pub use screen::{Detached, FileDialogRequest, FileDialogResult, WindowRequest};
-pub use screen::{Screen, replay};
+pub use screen::{Screen, advance, replay};
 #[cfg(feature = "native")]
 pub use stylesheet::{StyleSheetLoad, StyleSheetLoadError, StyleSheetWatcher};
 #[cfg(feature = "native")]
