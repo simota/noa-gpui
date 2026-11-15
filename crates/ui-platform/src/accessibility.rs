@@ -25,16 +25,7 @@ struct Shared {
 impl Shared {
     fn run_actions(&self, screen: &mut dyn Screen, text: &mut TextStore) -> bool {
         let actions = std::mem::take(&mut *self.actions.lock().expect("not poisoned"));
-        for request in &actions {
-            screen.tree_mut().accessibility_action(request, text);
-            for message in screen.tree_mut().take_messages() {
-                screen.handle(message, text);
-            }
-            // Match Screen::dispatch: synchronize menus, selection and other
-            // screen state only after the action's widget messages were handled.
-            screen.after_input();
-        }
-        !actions.is_empty()
+        crate::screen::run_accessibility_actions(screen, text, &actions)
     }
 }
 

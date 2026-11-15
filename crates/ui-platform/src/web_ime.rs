@@ -168,6 +168,19 @@ impl WebIme {
     /// Keep the text area focused at the caret while a text widget has focus (`area`,
     /// in logical pixels of the canvas), and give focus back to the canvas when none
     /// has. A click on the canvas focuses the canvas, so this runs after input too.
+    /// Name the text area after the text widget it stands in for (`None`: no name), so
+    /// assistive technology announces that widget while the text area has focus.
+    pub fn set_label(&self, label: Option<&str>) {
+        let current = self.textarea.get_attribute("aria-label");
+        if current.as_deref() == label {
+            return;
+        }
+        let _ = match label {
+            Some(label) => self.textarea.set_attribute("aria-label", label),
+            None => self.textarea.remove_attribute("aria-label"),
+        };
+    }
+
     pub fn sync(&mut self, area: Option<Rect>) {
         match area {
             Some(rect) => {

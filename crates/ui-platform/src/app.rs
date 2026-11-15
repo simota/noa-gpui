@@ -134,6 +134,9 @@ pub struct App {
     /// Keyboard and IME input while a text widget has focus.
     #[cfg(target_arch = "wasm32")]
     web_ime: Option<crate::web_ime::WebIme>,
+    /// The accessibility tree as ARIA elements inside the canvas.
+    #[cfg(target_arch = "wasm32")]
+    web_a11y: Option<crate::web_a11y::WebA11y>,
     #[cfg(feature = "native")]
     stylesheet: Option<crate::stylesheet::StyleSheetWatcher>,
     #[cfg(feature = "native")]
@@ -153,6 +156,8 @@ impl App {
             // Before `waker` and `canvas` move in below.
             #[cfg(target_arch = "wasm32")]
             web_ime: crate::web_ime::WebIme::new(&canvas, &waker),
+            #[cfg(target_arch = "wasm32")]
+            web_a11y: crate::web_a11y::WebA11y::new(&canvas, &waker),
             #[cfg(all(feature = "native", any(target_os = "macos", target_os = "windows")))]
             system_menus: crate::system_menu::SystemMenus::new(&options),
             #[cfg(all(feature = "native", target_os = "linux"))]
@@ -435,6 +440,11 @@ impl App {
         if let Some(accessibility) = &mut self.accessibility {
             accessibility.run_actions(screen.as_mut(), &mut self.text);
         }
+        #[cfg(target_arch = "wasm32")]
+        if let Some(web_a11y) = &self.web_a11y {
+            let actions = web_a11y.take_actions();
+            crate::screen::run_accessibility_actions(screen.as_mut(), &mut self.text, &actions);
+        }
         let changed = screen.prepare(viewport.logical_size(), &mut self.text);
         if changed {
             self.needs_present = true;
@@ -442,6 +452,13 @@ impl App {
         #[cfg(feature = "native")]
         if let Some(accessibility) = &mut self.accessibility {
             accessibility.update(screen.as_ref(), changed, viewport.scale_factor as f64);
+        }
+        #[cfg(target_arch = "wasm32")]
+        if let Some(web_a11y) = &mut self.web_a11y {
+            web_a11y.update(screen.tree(), changed);
+            if let Some(web_ime) = &self.web_ime {
+                web_ime.set_label(web_a11y.focused_name().as_deref());
+            }
         }
         sync_ime(&window, &mut self.ime_area, screen.text_input_area());
         #[cfg(target_arch = "wasm32")]
@@ -788,6 +805,13 @@ impl ApplicationHandler<Wake> for App {
             && !events.is_empty()
         {
             self.dispatch(events);
+        }
+        // Actions from assistive technology run on the next redraw.
+        #[cfg(target_arch = "wasm32")]
+        if self.web_a11y.as_ref().is_some_and(|a| a.has_actions())
+            && let Some(window) = &self.window
+        {
+            window.request_redraw();
         }
         if !self.waker.take() {
             return;

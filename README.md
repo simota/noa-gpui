@@ -34,7 +34,9 @@ A cross-platform UI framework written in Rust, with its own 2D renderer on top o
 > - The OS menu bar (macOS), menu bar extras / the system tray (macOS, Windows, Linux; on Linux, desktops that can show StatusNotifierItem), open / save file dialogs
 > - Windowless rendering (`Headless`): writes the Widget Tree or the screen to PNG. In environments without a GPU adapter, it renders on the CPU
 >
-> iOS and Android are not supported. Accessibility and file dialogs on the Web are not supported yet. On the Web, IME input goes through a hidden text area (see [docs/architecture.md](docs/architecture.md), "Web IME Support").
+> On the Web, the accessibility tree is mirrored as ARIA elements inside the canvas (see [docs/architecture.md](docs/architecture.md), "Web Accessibility Support").
+>
+> iOS and Android are not supported. File dialogs on the Web are not supported yet. On the Web, IME input goes through a hidden text area (see [docs/architecture.md](docs/architecture.md), "Web IME Support").
 
 ## Who it is for
 
