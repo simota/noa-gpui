@@ -72,7 +72,8 @@ pub const SECTIONS: [SectionSpec; 9] = [
         description: "A VT100 / xterm screen for a program in a pseudo-terminal (on desktop, \
                       noa_gpui_platform::Pty): colors, cursor movement, the alternate screen of \
                       full-screen programs and a scrollback the wheel scrolls. Keys become the \
-                      bytes a program reads (TerminalInput). Here a tiny line editor answers \
+                      bytes a program reads (TerminalInput). Drag to select, Cmd+C \
+                      (Ctrl+Shift+C) to copy and Cmd+V (Ctrl+Shift+V) to paste. Here a tiny line editor answers \
                       instead of a shell.",
         build: terminal,
     },
