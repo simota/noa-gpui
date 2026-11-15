@@ -1686,9 +1686,15 @@ impl TableView {
             let mut texts = Vec::new();
             let mut order = Vec::new();
             let mut group = None;
-            for &id in &self.all {
+            for (at, &id) in self.all.iter().enumerate() {
                 if groups[id] {
-                    group = Some(id);
+                    // A group row with no rows under it (a folded group) stays, so it
+                    // can be unfolded while the filter is on.
+                    let empty = self.all.get(at + 1).is_none_or(|&next| groups[next]);
+                    group = (!empty).then_some(id);
+                    if empty {
+                        order.push(id);
+                    }
                 } else if self.filter.matches(data, id, &searched, &mut texts) {
                     order.extend(group.take());
                     order.push(id);

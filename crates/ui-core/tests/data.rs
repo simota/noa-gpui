@@ -4325,3 +4325,46 @@ fn grouped_rows_sort_within_their_groups_and_edits_reach_the_source() {
     assert_eq!(data.source()[0][1], "Yokohama");
     assert!(!data.set_cell(0, 1, "x"), "group rows take no edits");
 }
+
+#[test]
+fn edits_to_grouped_rows_update_the_aggregates_but_not_the_grouping_column() {
+    let grouping = Grouping::by(0).aggregate(2, Aggregate::Sum);
+    let mut data = grouping.apply(sales());
+    assert_eq!(data.cell(0, 2), "1,600");
+    assert!(data.set_cell(1, 2, "2,000"));
+    assert_eq!(data.cell(1, 2), "2,000");
+    assert_eq!(data.cell(0, 2), "2,400", "East's sum follows the edit");
+    assert_eq!(data.cell(3, 2), "1,100", "other groups are unchanged");
+    // Moving a row to another group is the app's: it re-applies the grouping.
+    assert!(!data.set_cell(1, 0, "West"));
+    assert_eq!(data.source()[0][0], "East");
+}
+
+#[test]
+fn folded_groups_stay_visible_under_a_filter_so_they_can_be_unfolded() {
+    let mut h = Harness::new();
+    let mut grouping = Grouping::by(0).aggregate(2, Aggregate::Sum);
+    let t = h.add(
+        TableView::new(sales_columns(), grouping.apply(sales()))
+            .group_row_cells(true)
+            .height(TEN_ROWS),
+    );
+    h.prepare();
+    h.tree
+        .update::<TableView, _>(t, |table, cx| table.set_filter_text(cx, "Tokyo"));
+    h.prepare();
+    // East and its matching row; the other groups have no match.
+    assert_eq!(get(&h, t).displayed_rows(), [0, 1]);
+
+    grouping.toggle("East");
+    let folded = grouping.apply(sales());
+    h.tree.update::<TableView, _>(t, |table, cx| {
+        table.set_data(cx, folded);
+        table.set_filter_text(cx, "Tokyo");
+    });
+    h.prepare();
+    // The folded East is still there to click; West and North keep their rows, which
+    // do not match, and so are hidden as before.
+    assert_eq!(get(&h, t).displayed_rows(), [0]);
+    assert!(get(&h, t).is_group_row(0));
+}

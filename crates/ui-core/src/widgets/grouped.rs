@@ -168,9 +168,27 @@ enum Row {
 #[derive(Debug)]
 struct Group {
     key: String,
-    rows: usize,
+    /// The source rows in the group, folded or not.
+    members: Vec<usize>,
     /// One per aggregate of the grouping, in its order.
     values: Vec<Option<f64>>,
+}
+
+impl Group {
+    fn compute(&mut self, source: &dyn TableData, grouping: &Grouping) {
+        self.values = grouping
+            .aggregates
+            .iter()
+            .map(|&(column, aggregate)| {
+                let numbers: Vec<f64> = self
+                    .members
+                    .iter()
+                    .filter_map(|&r| source.sort_number(r, column))
+                    .collect();
+                aggregate.compute(&numbers, self.members.len())
+            })
+            .collect();
+    }
 }
 
 #[derive(Debug)]
@@ -199,27 +217,18 @@ impl Layout {
         }
         let mut rows = Vec::with_capacity(source.row_count() + keys.len());
         let mut groups = Vec::with_capacity(keys.len());
-        for (g, (key, member_rows)) in keys.into_iter().zip(&members).enumerate() {
-            let values = grouping
-                .aggregates
-                .iter()
-                .map(|&(column, aggregate)| {
-                    let numbers: Vec<f64> = member_rows
-                        .iter()
-                        .filter_map(|&r| source.sort_number(r, column))
-                        .collect();
-                    aggregate.compute(&numbers, member_rows.len())
-                })
-                .collect();
+        for (g, (key, members)) in keys.into_iter().zip(members).enumerate() {
             rows.push(Row::Group(g));
             if !grouping.collapsed.contains(&key) {
-                rows.extend(member_rows.iter().map(|&r| Row::Item(r)));
+                rows.extend(members.iter().map(|&r| Row::Item(r)));
             }
-            groups.push(Group {
+            let mut group = Group {
                 key,
-                rows: member_rows.len(),
-                values,
-            });
+                members,
+                values: Vec::new(),
+            };
+            group.compute(source, grouping);
+            groups.push(group);
         }
         Self { rows, groups }
     }
@@ -313,12 +322,26 @@ impl<D: TableData> TableData for GroupedData<D> {
         matches!(self.layout.rows.get(row), Some(Row::Group(_)))
     }
 
-    /// Edits go to the source's row; group rows take none.
+    /// Edits go to the source's row, and the group's aggregates follow. Group rows take
+    /// none, and neither does the grouping column: an edit there would move the row to
+    /// another group, so it is left to the app (which gets [`super::CellEdited`] with
+    /// `stored` false), to store it and apply the grouping again.
     fn set_cell(&mut self, row: usize, column: usize, text: &str) -> bool {
-        match self.source_row(row) {
-            Some(r) => self.source.set_cell(r, column, text),
-            None => false,
+        let Some(Row::Item(r)) = self.layout.rows.get(row).copied() else {
+            return false;
+        };
+        if column == self.grouping.column || !self.source.set_cell(r, column, text) {
+            return false;
         }
+        if let Some(group) = self
+            .layout
+            .groups
+            .iter_mut()
+            .find(|g| g.members.contains(&r))
+        {
+            group.compute(&self.source, &self.grouping);
+        }
+        true
     }
 
     fn cell_look(&self, row: usize, column: usize) -> CellLook {
@@ -344,10 +367,10 @@ impl<D: TableData> TableData for GroupedData<D> {
         if column != 0 {
             return None;
         }
-        Some(Cow::Owned(if group.rows == 1 {
+        Some(Cow::Owned(if group.members.len() == 1 {
             "1 row".to_owned()
         } else {
-            format!("{} rows", group.rows)
+            format!("{} rows", group.members.len())
         }))
     }
 
