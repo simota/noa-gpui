@@ -7,10 +7,13 @@ pub use cosmic_text;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use std::ops::Range;
+
 use cosmic_text::{
-    Align, Attrs, Buffer, Cursor, Family, FontSystem, Metrics, Shaping, Style, Weight, fontdb,
+    Align, Attrs, Buffer, Cursor, Family, FontSystem, Metrics, Shaping, Style, TextDecoration,
+    UnderlineStyle, Weight, fontdb,
 };
-use noa_gpui_scene::{Rect, Size, TextLayoutId};
+use noa_gpui_scene::{Color, Rect, Size, TextLayoutId};
 
 /// The font bundled with the framework (Inter, SIL Open Font License 1.1).
 ///
@@ -100,9 +103,87 @@ impl TextStyle {
     }
 }
 
+/// The style of bytes `range` of a text made with [`TextStore::create_rich`]. What is
+/// `None` comes from the text's [`TextStyle`] (and, for the color, from the color the
+/// text is drawn in). Where spans overlap, the later one wins.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct TextSpan {
+    pub range: Range<usize>,
+    pub color: Option<Color>,
+    /// CSS-style weight, 100..=900.
+    pub weight: Option<u16>,
+    pub italic: Option<bool>,
+    /// Filled behind the glyphs, a line high.
+    pub background: Option<Color>,
+    /// A line under the glyphs, placed and as thick as the font says.
+    pub underline: Option<Color>,
+}
+
+impl TextSpan {
+    pub fn new(range: Range<usize>) -> Self {
+        Self {
+            range,
+            ..Self::default()
+        }
+    }
+
+    pub fn color(self, color: Color) -> Self {
+        Self {
+            color: Some(color),
+            ..self
+        }
+    }
+
+    pub fn weight(self, weight: u16) -> Self {
+        Self {
+            weight: Some(weight),
+            ..self
+        }
+    }
+
+    pub fn italic(self, italic: bool) -> Self {
+        Self {
+            italic: Some(italic),
+            ..self
+        }
+    }
+
+    pub fn background(self, color: Color) -> Self {
+        Self {
+            background: Some(color),
+            ..self
+        }
+    }
+
+    pub fn underline(self, color: Color) -> Self {
+        Self {
+            underline: Some(color),
+            ..self
+        }
+    }
+}
+
+/// What to draw with a layout made by [`TextStore::create_rich`], in layout coordinates:
+/// the backgrounds before the text, the underlines after it.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct TextDecorations {
+    pub backgrounds: Vec<(Rect, Color)>,
+    pub underlines: Vec<(Rect, Color)>,
+}
+
+impl TextDecorations {
+    pub fn is_empty(&self) -> bool {
+        self.backgrounds.is_empty() && self.underlines.is_empty()
+    }
+}
+
 struct Layout {
     buffer: Buffer,
     size: Size,
+    /// Made by [`TextStore::create_rich`]: never copied for plain text.
+    rich: bool,
+    /// The backgrounds of a rich text's spans, by bytes.
+    backgrounds: Vec<(Range<usize>, Color)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -244,6 +325,44 @@ impl TextLayouts {
                 .zip(layout.buffer.lines.last())
                 .map_or(0, |(start, line)| start + line.text().len()),
         }
+    }
+
+    /// The backgrounds and underlines of a layout made by [`TextStore::create_rich`];
+    /// empty for plain text.
+    pub fn decorations(&self, id: TextLayoutId) -> TextDecorations {
+        let layout = self.get(id);
+        let mut decorations = TextDecorations::default();
+        for (range, color) in &layout.backgrounds {
+            let rects = self.selection_rects(id, range.start, range.end);
+            decorations
+                .backgrounds
+                .extend(rects.into_iter().map(|r| (r, *color)));
+        }
+        for run in layout.buffer.layout_runs() {
+            for span in run.decorations {
+                let data = &span.data;
+                let Some(color) = data.text_decoration.underline_color_opt else {
+                    continue;
+                };
+                let glyphs = &run.glyphs[span.glyph_range.clone()];
+                // Right-to-left runs keep their glyphs right to left.
+                let left = glyphs.iter().map(|g| g.x).fold(f32::INFINITY, f32::min);
+                let right = glyphs
+                    .iter()
+                    .map(|g| g.x + g.w)
+                    .fold(f32::NEG_INFINITY, f32::max);
+                if right <= left {
+                    continue;
+                }
+                let thickness = (data.underline_metrics.thickness * span.font_size).max(1.0);
+                let y = run.line_y - data.underline_metrics.offset * span.font_size;
+                decorations.underlines.push((
+                    Rect::new(left, y, right - left, thickness),
+                    scene_color(color),
+                ));
+            }
+        }
+        decorations
     }
 
     /// Rectangles covering bytes `start..end`, one or more per visual line.
@@ -493,6 +612,8 @@ impl TextStore {
             let copy = Layout {
                 buffer: layout.buffer.clone(),
                 size: layout.size,
+                rich: false,
+                backgrounds: Vec::new(),
             };
             return self.layouts.insert(copy);
         }
@@ -501,11 +622,96 @@ impl TextStore {
         let mut buffer = Buffer::new_empty(Metrics::new(style.font_size, style.line_height));
         buffer.set_text(text, &attrs, Shaping::Advanced, None);
         let size = lay_out(&mut buffer, &mut self.font_system, style.align, max_width);
-        let id = self.layouts.insert(Layout { buffer, size });
+        let id = self.layouts.insert(Layout {
+            buffer,
+            size,
+            rich: false,
+            backgrounds: Vec::new(),
+        });
         if let Some(place) = place {
             self.recent[place] = id.0;
         }
         id
+    }
+
+    /// Like [`TextStore::create`], with `spans` styling parts of the text: a line of
+    /// highlighted code in one layout. Draw its [`TextLayouts::decorations`] with it.
+    ///
+    /// Span ranges are clamped to the text and to character boundaries.
+    ///
+    /// A span's color is drawn as given: the GPU renderer does not apply the draw
+    /// command's alpha to it, so fading the text (as an overlay appears) leaves the
+    /// colored spans opaque.
+    pub fn create_rich(
+        &mut self,
+        text: &str,
+        spans: &[TextSpan],
+        style: TextStyle,
+        max_width: Option<f32>,
+    ) -> TextLayoutId {
+        let attrs = attrs_of(&self.family_names, style);
+        let at_char = |i: usize| {
+            let mut i = i.min(text.len());
+            while !text.is_char_boundary(i) {
+                i -= 1;
+            }
+            i
+        };
+        let spans: Vec<TextSpan> = spans
+            .iter()
+            .map(|s| TextSpan {
+                range: at_char(s.range.start)..at_char(s.range.end),
+                ..s.clone()
+            })
+            .filter(|s| s.range.start < s.range.end)
+            .collect();
+        let mut cuts: Vec<usize> = spans
+            .iter()
+            .flat_map(|s| [s.range.start, s.range.end])
+            .chain([0, text.len()])
+            .collect();
+        cuts.sort_unstable();
+        cuts.dedup();
+        let pieces = cuts.windows(2).map(|w| {
+            let piece = w[0]..w[1];
+            let mut piece_attrs = attrs.clone();
+            for span in spans
+                .iter()
+                .filter(|s| s.range.start <= piece.start && piece.end <= s.range.end)
+            {
+                piece_attrs = styled(piece_attrs, span);
+            }
+            (&text[piece], piece_attrs)
+        });
+        let mut buffer = Buffer::new_empty(Metrics::new(style.font_size, style.line_height));
+        buffer.set_rich_text(pieces, &attrs, Shaping::Advanced, None);
+        let size = lay_out(&mut buffer, &mut self.font_system, style.align, max_width);
+        // Each piece takes the background of the last span over it that has one;
+        // neighbours of one color are one range, and transparent ones none.
+        let mut backgrounds: Vec<(Range<usize>, Color)> = Vec::new();
+        for piece in cuts.windows(2).map(|w| w[0]..w[1]) {
+            let Some(color) = spans
+                .iter()
+                .rev()
+                .filter(|s| s.range.start <= piece.start && piece.end <= s.range.end)
+                .find_map(|s| s.background)
+                .filter(|c| c.a > 0.0)
+            else {
+                continue;
+            };
+            match backgrounds.last_mut() {
+                Some((range, last)) if range.end == piece.start && *last == color => {
+                    range.end = piece.end;
+                }
+                _ => backgrounds.push((piece, color)),
+            }
+        }
+        self.layouts.insert(Layout {
+            buffer,
+            size,
+            rich: true,
+            backgrounds,
+        })
     }
 
     /// Where [`TextStore::recent`] keeps a layout of `text` in `style` wrapped at
@@ -567,6 +773,7 @@ impl TextStore {
         let buffer = &layout.buffer;
         // The buffer keeps the width clamped as `lay_out` set it.
         (style.align == TextAlign::Start
+            && !layout.rich
             && buffer.size().0 == max_width.map(|w| w.max(0.0))
             && made_with_style(buffer, attrs, style)
             && holds_text(buffer, text))
@@ -644,6 +851,10 @@ impl TextStore {
         self.layouts.selection_rects(id, start, end)
     }
 
+    pub fn decorations(&self, id: TextLayoutId) -> TextDecorations {
+        self.layouts.decorations(id)
+    }
+
     pub fn layouts(&self) -> &TextLayouts {
         &self.layouts
     }
@@ -668,6 +879,35 @@ fn attrs_of(family_names: &[String], style: TextStyle) -> Attrs<'_> {
         } else {
             Style::Normal
         })
+}
+
+/// `attrs` with what `span` sets.
+fn styled<'a>(attrs: Attrs<'a>, span: &TextSpan) -> Attrs<'a> {
+    let mut attrs = attrs;
+    if let Some(color) = span.color {
+        let [r, g, b, a] = color.to_rgba8();
+        attrs = attrs.color(cosmic_text::Color::rgba(r, g, b, a));
+    }
+    if let Some(weight) = span.weight {
+        attrs = attrs.weight(Weight(weight));
+    }
+    if let Some(italic) = span.italic {
+        attrs = attrs.style(if italic { Style::Italic } else { Style::Normal });
+    }
+    if let Some(color) = span.underline {
+        let [r, g, b, a] = color.to_rgba8();
+        attrs.text_decoration = TextDecoration {
+            underline: UnderlineStyle::Single,
+            underline_color_opt: Some(cosmic_text::Color::rgba(r, g, b, a)),
+            ..attrs.text_decoration
+        };
+    }
+    attrs
+}
+
+fn scene_color(color: cosmic_text::Color) -> Color {
+    let [r, g, b, a] = color.as_rgba().map(|c| f32::from(c) / 255.0);
+    Color::rgba(r, g, b, a)
 }
 
 /// Hashes the key of a layout in [`TextStore::recent`] by mixing in a word at a time.
@@ -1365,5 +1605,183 @@ mod align_tests {
         assert_eq!(store.size(plain), store.size(center));
         assert!(store.size(center).width <= 120.0);
         assert!(lines(&store, center).iter().any(|&(x, _)| x > 1.0));
+    }
+}
+
+#[cfg(test)]
+mod rich_tests {
+    use super::*;
+
+    fn store() -> TextStore {
+        TextStore::new(FontOptions {
+            locale: "en-US".into(),
+            load_system_fonts: false,
+        })
+    }
+
+    /// (byte start, color, weight) of each glyph.
+    fn glyphs(store: &TextStore, id: TextLayoutId) -> Vec<(usize, Option<[u8; 4]>, u16)> {
+        store
+            .layouts()
+            .buffer(id)
+            .layout_runs()
+            .flat_map(|run| run.glyphs.iter())
+            .map(|g| (g.start, g.color_opt.map(|c| c.as_rgba()), g.font_weight.0))
+            .collect()
+    }
+
+    const RED: Color = Color::rgba(1.0, 0.0, 0.0, 1.0);
+    const BLUE: Color = Color::rgba(0.0, 0.0, 1.0, 1.0);
+
+    #[test]
+    fn spans_color_and_embolden_their_bytes_only() {
+        let mut store = store();
+        let spans = [
+            TextSpan::new(0..2).color(RED),
+            TextSpan::new(3..6).color(BLUE).weight(700),
+        ];
+        let id = store.create_rich("fn main", &spans, TextStyle::new(14.0), None);
+        let red = Some([255, 0, 0, 255]);
+        let blue = Some([0, 0, 255, 255]);
+        assert_eq!(
+            glyphs(&store, id),
+            [
+                (0, red, 400),
+                (1, red, 400),
+                (2, None, 400),
+                (3, blue, 700),
+                (4, blue, 700),
+                (5, blue, 700),
+                (6, None, 400),
+            ]
+        );
+        // The bold part is wider than the same text in the base style.
+        let plain = store.create("fn main", TextStyle::new(14.0), None);
+        assert!(store.size(id).width > store.size(plain).width);
+    }
+
+    #[test]
+    fn a_later_span_wins_where_spans_overlap() {
+        let mut store = store();
+        let spans = [
+            TextSpan::new(0..4).color(RED),
+            TextSpan::new(2..3).color(BLUE),
+        ];
+        let id = store.create_rich("abcd", &spans, TextStyle::new(14.0), None);
+        let colors: Vec<_> = glyphs(&store, id).iter().map(|g| g.1).collect();
+        let (red, blue) = (Some([255, 0, 0, 255]), Some([0, 0, 255, 255]));
+        assert_eq!(colors, [red, red, blue, red]);
+    }
+
+    #[test]
+    fn backgrounds_and_underlines_cover_their_spans() {
+        let mut store = store();
+        let spans = [
+            TextSpan::new(0..3).background(BLUE),
+            TextSpan::new(4..7).underline(RED),
+        ];
+        let text = "let x = 1";
+        let id = store.create_rich(text, &spans, TextStyle::new(14.0), None);
+        let decorations = store.decorations(id);
+        let x = |i| store.caret_x(id, i);
+        let [(background, BLUE)] = decorations.backgrounds[..] else {
+            panic!("one blue background: {decorations:?}");
+        };
+        assert_eq!((background.x, background.right()), (x(0), x(3)));
+        assert_eq!(background.height, TextStyle::new(14.0).line_height);
+        let [(underline, RED)] = decorations.underlines[..] else {
+            panic!("one red underline: {decorations:?}");
+        };
+        assert!((underline.x - x(4)).abs() < 0.5);
+        assert!((underline.right() - x(7)).abs() < 0.5);
+        let baseline = store
+            .layouts()
+            .buffer(id)
+            .layout_runs()
+            .next()
+            .unwrap()
+            .line_y;
+        assert!(underline.y > baseline && underline.bottom() < background.bottom());
+        assert!(underline.height >= 1.0);
+
+        let plain = store.create(text, TextStyle::new(14.0), None);
+        assert!(store.decorations(plain).is_empty());
+    }
+
+    /// Where backgrounds overlap the later one is drawn alone: a translucent one is
+    /// not mixed with the one before it, and a transparent one clears it.
+    #[test]
+    fn a_later_background_replaces_an_earlier_one() {
+        let mut store = store();
+        let half_blue = BLUE.with_alpha(0.5);
+        let spans = [
+            TextSpan::new(0..6).background(RED),
+            TextSpan::new(2..4).background(half_blue),
+            TextSpan::new(5..6).background(Color::TRANSPARENT),
+        ];
+        let id = store.create_rich("abcdef", &spans, TextStyle::new(14.0), None);
+        let x = |i| store.caret_x(id, i);
+        let mut found: Vec<(f32, f32, Color)> = store
+            .decorations(id)
+            .backgrounds
+            .iter()
+            .map(|(r, c)| (r.x, r.right(), *c))
+            .collect();
+        found.sort_by(|a, b| a.0.total_cmp(&b.0));
+        assert_eq!(
+            found,
+            [
+                (x(0), x(2), RED),
+                (x(2), x(4), half_blue),
+                (x(4), x(5), RED),
+            ]
+        );
+    }
+
+    #[test]
+    fn plain_text_never_copies_a_rich_layout() {
+        let mut store = store();
+        let rich = store.create_rich(
+            "same",
+            &[TextSpan::new(0..4).color(RED)],
+            TextStyle::new(14.0),
+            None,
+        );
+        let plain = store.create("same", TextStyle::new(14.0), None);
+        assert!(glyphs(&store, plain).iter().all(|g| g.1.is_none()));
+        store.remove(rich);
+        // The freed id may be reused, but not as a copy of the rich text.
+        let again = store.create("same", TextStyle::new(14.0), None);
+        assert!(glyphs(&store, again).iter().all(|g| g.1.is_none()));
+    }
+
+    #[test]
+    fn span_ranges_are_clamped_to_characters_and_the_text() {
+        let mut store = store();
+        // "é" is two bytes: a span ending inside it ends before it.
+        let spans = [
+            TextSpan::new(0..2).color(RED),
+            TextSpan::new(3..99).color(BLUE),
+        ];
+        let id = store.create_rich("aéb", &spans, TextStyle::new(14.0), None);
+        let colors: Vec<_> = glyphs(&store, id).iter().map(|g| (g.0, g.1)).collect();
+        let (red, blue) = (Some([255, 0, 0, 255]), Some([0, 0, 255, 255]));
+        assert_eq!(colors, [(0, red), (1, None), (3, blue)]);
+    }
+
+    #[test]
+    fn a_rich_layout_rewraps_keeping_its_spans() {
+        let mut store = store();
+        let style = TextStyle::new(14.0);
+        let text = "alpha beta gamma delta";
+        let id = store.create_rich(text, &[TextSpan::new(6..10).color(RED)], style, None);
+        assert!(store.rewrap(id, style, Some(60.0)));
+        assert!(store.layouts().buffer(id).layout_runs().count() > 1);
+        let red: Vec<usize> = glyphs(&store, id)
+            .iter()
+            .filter(|g| g.1.is_some())
+            .map(|g| g.0)
+            .collect();
+        assert_eq!(red, [6, 7, 8, 9]);
     }
 }

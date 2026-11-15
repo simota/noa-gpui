@@ -1376,3 +1376,85 @@ fn kana_helpers_convert_scripts_and_normalize_widths() {
     });
     assert_eq!(typed, "パン");
 }
+
+/// One line of highlighted code, laid out once with its spans.
+struct CodeLine {
+    layout: Option<noa_gpui_scene::TextLayoutId>,
+}
+
+impl noa_gpui_core::Widget for CodeLine {
+    fn style(&self) -> Style {
+        Style {
+            size: LayoutSize {
+                width: length(200.0),
+                height: length(20.0),
+            },
+            ..Default::default()
+        }
+    }
+
+    fn paint(&mut self, cx: &mut noa_gpui_core::PaintCx) {
+        use noa_gpui_text::{TextSpan, TextStyle};
+        let keyword = Color::rgba(0.8, 0.2, 0.6, 1.0);
+        let layout = *self.layout.get_or_insert_with(|| {
+            let spans = [
+                TextSpan::new(0..2).color(keyword).weight(700),
+                TextSpan::new(3..7).italic(true).underline(Color::BLACK),
+                TextSpan::new(8..10).background(Color::rgba(1.0, 1.0, 0.0, 1.0)),
+            ];
+            cx.text_store()
+                .create_rich("fn main() {}", &spans, TextStyle::new(14.0), None)
+        });
+        cx.rich_text(cx.bounds(), layout, Color::BLACK);
+    }
+}
+
+#[test]
+fn a_highlighted_line_is_one_layout_with_its_background_and_underline() {
+    let mut h = Harness::new();
+    let line = h.add(CodeLine { layout: None });
+    let rect = h.tree.window_rect(line).unwrap();
+    let commands: Vec<_> = h
+        .tree
+        .display_list()
+        .commands()
+        .iter()
+        .filter(|c| match c {
+            DrawCommand::Quad { rect: r, .. } | DrawCommand::Text { rect: r, .. } => {
+                rect.contains(Point::new(r.x, r.y))
+            }
+            _ => false,
+        })
+        .cloned()
+        .collect();
+    let [
+        DrawCommand::Quad {
+            rect: background,
+            color: yellow,
+            ..
+        },
+        DrawCommand::Text { layout, .. },
+        DrawCommand::Quad {
+            rect: underline,
+            color: Color::BLACK,
+            ..
+        },
+    ] = commands[..]
+    else {
+        panic!("background, text, underline: {commands:?}");
+    };
+    assert_eq!(yellow, Color::rgba(1.0, 1.0, 0.0, 1.0));
+    // Both sit where their bytes are, in window coordinates.
+    let x = |i| rect.x + h.text.caret_x(layout, i);
+    assert_eq!((background.x, background.right()), (x(8), x(10)));
+    assert!((underline.x - x(3)).abs() < 0.5 && (underline.right() - x(7)).abs() < 0.5);
+    let styles: Vec<_> = h
+        .text
+        .layouts()
+        .buffer(layout)
+        .layout_runs()
+        .flat_map(|run| run.glyphs.iter())
+        .map(|g| (g.font_weight.0, g.color_opt.is_some()))
+        .collect();
+    assert_eq!(styles[..3], [(700, true), (700, true), (400, false)]);
+}

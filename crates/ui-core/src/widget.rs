@@ -505,6 +505,20 @@ impl PaintCx<'_> {
             color,
         });
     }
+
+    /// Draw a layout made by [`TextStore::create_rich`] with its span backgrounds behind
+    /// it and its underlines over it. `color` is for the text no span colors.
+    pub fn rich_text(&mut self, rect: Rect, layout: TextLayoutId, color: Color) {
+        let decorations = self.text.decorations(layout);
+        let at = |r: Rect| Rect::new(rect.x + r.x, rect.y + r.y, r.width, r.height);
+        for (r, fill) in decorations.backgrounds {
+            self.fill_rect(at(r), fill);
+        }
+        self.text(rect, layout, color);
+        for (r, fill) in decorations.underlines {
+            self.fill_rect(at(r), fill);
+        }
+    }
 }
 
 /// Passed to [`Widget::event`]. Requests are applied after the handler returns.

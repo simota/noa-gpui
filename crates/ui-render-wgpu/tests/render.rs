@@ -2,7 +2,7 @@ use std::sync::{Mutex, MutexGuard};
 
 use noa_gpui_render_wgpu::{Renderer, SoftwareRenderer, Viewport, wgpu};
 use noa_gpui_scene::{Border, BoxShadow, Color, DisplayList, Point, Rect};
-use noa_gpui_text::{FontOptions, TextStore, TextStyle};
+use noa_gpui_text::{FontOptions, TextSpan, TextStore, TextStyle};
 
 const SIZE: u32 = 64;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -119,6 +119,41 @@ fn text_store() -> TextStore {
         locale: "en-US".into(),
         load_system_fonts: false,
     })
+}
+
+/// A rich layout's spans keep their own color, the rest takes the command's.
+#[test]
+fn draws_span_colors_in_one_text_layout() {
+    let gpu = gpu();
+    let mut renderer = Renderer::new(&gpu.device, &gpu.queue, FORMAT);
+    let mut text = text_store();
+    let style = TextStyle::new(24.0).weight(900);
+    let spans = [TextSpan::new(0..2).color(Color::hex(0xff0000))];
+    let layout = text.create_rich("HHHH", &spans, style, None);
+    let split = text.caret_x(layout, 2);
+    let size = text.size(layout);
+    let mut list = DisplayList::new();
+    list.text(
+        Rect::from_origin_size(noa_gpui_scene::Point::new(2.0, 2.0), size),
+        layout,
+        Color::hex(0x0000ff),
+    );
+    let data = render(&gpu, &mut renderer, &list, &mut text);
+    let count = |range: std::ops::Range<u32>, wanted: fn([u8; 4]) -> bool| {
+        (2..2 + size.height as u32)
+            .flat_map(|y| range.clone().map(move |x| (x, y)))
+            .filter(|&(x, y)| wanted(pixel(&data, x, y)))
+            .count()
+    };
+    let left = 2..2 + split as u32;
+    // The text runs past the 64 px target: count only what is on it.
+    let right = 2 + split as u32 + 1..(2 + size.width as u32).min(SIZE);
+    let red = |p: [u8; 4]| p[0] > 200 && p[2] < 80;
+    let blue = |p: [u8; 4]| p[2] > 200 && p[0] < 80;
+    assert!(count(left.clone(), red) > 20, "the span is red");
+    assert_eq!(count(left, blue), 0);
+    assert!(count(right.clone(), blue) > 20, "the rest is blue");
+    assert_eq!(count(right, red), 0);
 }
 
 /// The shader's shadow matches the software renderer's, which follows the same
