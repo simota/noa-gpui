@@ -16,8 +16,6 @@ use crate::tree::{UiTree, WidgetId};
 use crate::view_state;
 use crate::widget::{EventCx, PaintCx, UpdateCx, Widget};
 
-/// Seconds within which a second press counts as a double click.
-const DOUBLE_CLICK: f64 = 0.4;
 /// Seconds a rail pane takes to narrow or widen.
 pub const RAIL_DURATION: f64 = 0.22;
 
@@ -116,7 +114,6 @@ pub struct SplitView {
     /// The divider being dragged: visible panes before and after it, and where in the
     /// divider it was grabbed.
     dragging: Option<(usize, usize, f32)>,
-    last_press: Option<(f64, usize)>,
 }
 
 impl SplitView {
@@ -126,7 +123,6 @@ impl SplitView {
             side_by_side: true,
             panes: Vec::new(),
             dragging: None,
-            last_press: None,
         }
     }
 
@@ -447,12 +443,7 @@ impl Widget for SplitView {
                 };
                 cx.set_handled();
                 let now = cx.now();
-                let double = self
-                    .last_press
-                    .is_some_and(|(t, d)| d == a && now - t < DOUBLE_CLICK);
-                self.last_press = Some((now, a));
-                if double && self.toggle_collapse(a, b) {
-                    self.last_press = None;
+                if cx.click_count() == 2 && self.toggle_collapse(a, b) {
                     cx.request_layout();
                     cx.request_paint();
                     if self.start_rails(now, cx.motion(RAIL_DURATION)) {

@@ -1453,6 +1453,101 @@ fn dragging_and_double_clicking_select_text() {
     assert_eq!(&field_ref.text()[field_ref.selection()], "beta");
 }
 
+#[derive(Default)]
+struct ClickProbe {
+    counts: Vec<u8>,
+}
+
+impl noa_gpui_core::Widget for ClickProbe {
+    fn style(&self) -> Style {
+        fixed(100.0, 40.0)
+    }
+    fn paint(&mut self, _cx: &mut noa_gpui_core::PaintCx) {}
+    fn event(&mut self, cx: &mut noa_gpui_core::EventCx, event: &Event) {
+        if let Event::PointerDown { .. } = event {
+            self.counts.push(cx.click_count());
+            cx.set_handled();
+        }
+    }
+}
+
+#[test]
+fn presses_close_in_time_and_place_count_up() {
+    let mut text = text_store();
+    let mut tree = UiTree::new();
+    let root = tree.insert(None, Container::new(column()));
+    let probe = tree.insert(Some(root), ClickProbe::default());
+    tree.prepare(VIEWPORT, &mut text);
+    let origin = tree.window_origin(probe).unwrap();
+    let press = |tree: &mut UiTree, text: &mut TextStore, at: f64, dx: f32, button| {
+        tree.set_now(at);
+        let pos = Point::new(origin.x + 20.0 + dx, origin.y + 20.0);
+        tree.dispatch(Event::PointerDown { pos, button }, text);
+        tree.dispatch(Event::PointerUp { pos, button }, text);
+    };
+    let primary = PointerButton::Primary;
+    // Three quick presses count up; a fourth after a pause starts over.
+    press(&mut tree, &mut text, 1.0, 0.0, primary);
+    press(&mut tree, &mut text, 1.2, 1.0, primary);
+    press(&mut tree, &mut text, 1.4, 0.0, primary);
+    press(&mut tree, &mut text, 2.4, 0.0, primary);
+    // Moving too far, or another button, starts over too.
+    press(&mut tree, &mut text, 2.5, 10.0, primary);
+    press(&mut tree, &mut text, 2.6, 10.0, PointerButton::Secondary);
+    // A longer OS interval lets slower presses count.
+    tree.set_multi_click(1.0, 4.0);
+    press(&mut tree, &mut text, 3.0, 0.0, primary);
+    press(&mut tree, &mut text, 3.8, 0.0, primary);
+    assert_eq!(
+        tree.get::<ClickProbe>(probe).unwrap().counts,
+        [1, 2, 3, 1, 1, 1, 1, 2]
+    );
+}
+
+#[test]
+fn a_triple_click_selects_the_line_and_a_fourth_starts_over() {
+    let mut text = text_store();
+    let mut tree = UiTree::new();
+    let root = tree.insert(None, Container::new(column()));
+    let area = tree.insert(Some(root), TextArea::new(""));
+    tree.prepare(VIEWPORT, &mut text);
+    tree.set_focus(Some(area));
+    type_text(&mut tree, &mut text, "alpha beta");
+    tree.dispatch(
+        Event::KeyDown {
+            key: Key::Enter,
+            modifiers: Modifiers::default(),
+        },
+        &mut text,
+    );
+    type_text(&mut tree, &mut text, "gamma");
+    tree.prepare(VIEWPORT, &mut text);
+    let origin = tree.window_origin(area).unwrap();
+    let pos = Point::new(origin.x + 14.0, origin.y + 14.0);
+    let primary = PointerButton::Primary;
+    let mut selections = Vec::new();
+    for t in [5.0, 5.1, 5.2, 5.3] {
+        tree.set_now(t);
+        tree.dispatch(
+            Event::PointerDown {
+                pos,
+                button: primary,
+            },
+            &mut text,
+        );
+        tree.dispatch(
+            Event::PointerUp {
+                pos,
+                button: primary,
+            },
+            &mut text,
+        );
+        let area = tree.get::<TextArea>(area).unwrap();
+        selections.push(area.text()[area.selection()].to_owned());
+    }
+    assert_eq!(selections, ["", "alpha", "alpha beta", ""]);
+}
+
 #[test]
 fn long_text_scrolls_to_keep_the_caret_visible() {
     let mut text = text_store();
