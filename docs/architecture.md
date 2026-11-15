@@ -487,6 +487,18 @@ winit 0.30's Web backend reports no IME events (`set_ime_allowed` and `set_ime_c
 - **Composition cursor:** `compositionupdate` carries only the string, so the cursor is put at the end of it and no clause is shown. Chromium's EditContext API reports clause formats; it is not used, since other browsers lack it.
 - **Not verified automatically:** Real IME input in browsers is not covered by tests; only the translation in `web_text.rs` is.
 
+## Appendix: Web Accessibility Support
+
+AccessKit has no Web adapter, so on the Web the same `TreeUpdate` the desktop sends is mirrored as ARIA elements.
+
+- **Split:** `crates/ui-platform/src/web_aria.rs` keeps what the DOM holds and turns each `TreeUpdate` into a short list of DOM operations (create, set or remove an attribute, set the text, append in order, remove, move focus). It holds no DOM types, so it is tested on the desktop. `crates/ui-platform/src/web_a11y.rs` (wasm32 only) carries the operations out.
+- **Where the elements live:** Inside the canvas, as its fallback content. Browsers expose a rendered canvas's fallback content to assistive technology, and events on it bubble to the canvas, so winit's keyboard listeners still see keys typed while a mirrored element has focus. Fallback content is not laid out, so bounds are not mirrored.
+- **Mapping:** Every node is a `div` with the ARIA role for its AccessKit role (none for role-less nodes). Static text and text inputs carry their text as content; other elements carry `aria-label` and `aria-valuetext`. Toggled, expanded, selected, disabled, required, read-only, modal, pop-up, numeric value and range, level, row index and count, orientation and live state become the matching `aria-*` attributes. Nodes that take Click or Focus get `tabindex="-1"`, so the page's Tab order stays the canvas's.
+- **Focus:** The canvas gets `role="application"` (unless the page gave it a role) and `aria-activedescendant` names the focused widget's element, so DOM focus stays on the canvas or the IME text area. When assistive technology moves focus to an element, a Focus action is queued and focus goes back to the canvas.
+- **Actions:** A click on an element (or inside one) queues a Click action. Actions run on the next redraw through the same path as the desktop (`run_accessibility_actions` in `screen.rs`).
+- **Cost:** The tree is rebuilt and compared on every frame where the widget tree changed, as on the desktop when assistive technology is active. On the Web there is no way to tell whether a screen reader is running, so it is always on.
+- **Not verified automatically:** Screen readers (VoiceOver, NVDA, JAWS) with real browsers. Only the translation in `web_aria.rs` is tested.
+
 ## Appendix: Decisions Made While Implementing Phase 4
 
 Decisions made in Phase 4 ([#4](https://github.com/simota/noa-gpui/issues/4)).
@@ -618,7 +630,7 @@ Mechanisms added as groundwork for implementing the standard macOS components ([
 
 - **Reading text aloud:** The contents of text inputs are passed as the AccessKit value. However, they do not appear in AT-SPI's Text interface (because AccessKit's `TextRun` node is not implemented). For a screen reader to read the text being typed, `TextRun` is required.
 - **File drops from the OS:** On some platforms winit does not report the pointer position during a drag. In that case the drop position is the last known pointer position. On the Web, winit does not support file drops.
-- **Web constraints:** The OS clipboard, multiple windows, and accessibility (a Web-specific implementation using ARIA) are not supported.
+- **Web constraints:** The OS clipboard and multiple windows are not supported. (Accessibility on the Web was added later; see "Web Accessibility Support".)
 - **Not verified:**
   - Accessibility (VoiceOver / Narrator) and multiple windows on real macOS and Windows machines.
   - File drops from the OS (not checked on any platform).

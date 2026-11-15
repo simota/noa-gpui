@@ -26,6 +26,10 @@ mod system_menu;
 mod view_state;
 mod wake;
 #[cfg(target_arch = "wasm32")]
+mod web_a11y;
+#[cfg(any(target_arch = "wasm32", test))]
+mod web_aria;
+#[cfg(target_arch = "wasm32")]
 mod web_ime;
 #[cfg(any(target_arch = "wasm32", test))]
 mod web_text;

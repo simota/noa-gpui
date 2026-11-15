@@ -218,3 +218,23 @@ pub trait Screen {
         self.tree().len()
     }
 }
+
+/// Carry out requests from assistive technology (AccessKit actions) on `screen`,
+/// handling the messages each one emits. Returns whether there were any.
+#[cfg(any(feature = "native", target_arch = "wasm32"))]
+pub(crate) fn run_accessibility_actions(
+    screen: &mut dyn Screen,
+    text: &mut TextStore,
+    actions: &[noa_gpui_core::accesskit::ActionRequest],
+) -> bool {
+    for request in actions {
+        screen.tree_mut().accessibility_action(request, text);
+        for message in screen.tree_mut().take_messages() {
+            screen.handle(message, text);
+        }
+        // Match Screen::dispatch: synchronize menus, selection and other screen
+        // state only after the action's widget messages were handled.
+        screen.after_input();
+    }
+    !actions.is_empty()
+}
