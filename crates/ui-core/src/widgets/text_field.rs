@@ -262,6 +262,10 @@ impl Widget for TextField {
         (!self.line.edit.read_only).then(|| self.line.input_area())
     }
 
+    fn ime_context(&self, text: &TextStore) -> Option<crate::ImeContext> {
+        self.line.ime_context(text)
+    }
+
     fn accessibility_role(&self) -> Option<accesskit::Role> {
         Some(accesskit::Role::TextInput)
     }

@@ -1376,3 +1376,74 @@ fn kana_helpers_convert_scripts_and_normalize_widths() {
     });
     assert_eq!(typed, "パン");
 }
+
+/// What an input method sees of a field: its text, selection and characters in window
+/// coordinates, with a composition in place of the selection.
+#[test]
+fn the_input_method_sees_the_selection_and_where_each_character_is() {
+    let mut h = Harness::new();
+    let field = h.add(TextField::new("", 240.0));
+    h.focus(field);
+    h.type_text("alpha beta");
+    // Select "beta" from the end.
+    for _ in 0..4 {
+        h.key_with(
+            Key::ArrowLeft,
+            Modifiers {
+                shift: true,
+                ..Default::default()
+            },
+        );
+    }
+    let context = h
+        .tree
+        .ime_context(&h.text)
+        .expect("a focused field answers");
+    assert_eq!(context.text, "alpha beta");
+    assert_eq!((context.base, context.selection.clone()), (0, 6..10));
+    assert_eq!(context.composition, None);
+    // The selected characters are inside the field, left to right on one line.
+    let field_rect = h.tree.window_rect(field).unwrap();
+    let beta = context.first_rect(6..10);
+    assert!(
+        field_rect.contains(Point::new(beta.x, beta.y + 1.0)),
+        "{beta:?}"
+    );
+    assert!(beta.width > 10.0);
+    let inside = Point::new(beta.x + 1.0, beta.y + beta.height / 2.0);
+    assert_eq!(context.index_at(inside), Some(6));
+
+    // A composition takes the selection's place.
+    h.compose("べーた");
+    let context = h.tree.ime_context(&h.text).unwrap();
+    assert_eq!(context.text, "alpha べーた");
+    assert_eq!(context.composition, Some(6..15));
+    assert_eq!(context.selection, 15..15);
+    assert_eq!(context.first_rect(6..15).x, beta.x);
+
+    // Secure fields tell the input method nothing.
+    let secure = h.add(SecureTextField::new("Password", 200.0));
+    h.focus(secure);
+    assert_eq!(h.tree.ime_context(&h.text), None);
+}
+
+/// Reconversion: the input method selects the text it converts again, composes over
+/// it and commits the result in its place.
+#[test]
+fn the_input_method_can_select_text_to_convert_it_again() {
+    let mut h = Harness::new();
+    let area = h.add(TextArea::new(""));
+    h.focus(area);
+    h.type_text("first line\nにほんご です");
+    let context = h.tree.ime_context(&h.text).unwrap();
+    // Only the caret's paragraph.
+    assert_eq!(context.text, "にほんご です");
+    assert_eq!(context.base, "first line\n".len());
+    let word = context.base..context.base + "にほんご".len();
+    h.tree.dispatch(Event::ImeSelect(word), &mut h.text);
+    h.prepare();
+    h.compose("日本語");
+    h.type_text("日本語");
+    let area = h.tree.get::<TextArea>(area).unwrap();
+    assert_eq!(area.text(), "first line\n日本語 です");
+}

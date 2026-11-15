@@ -854,6 +854,10 @@ impl Widget for CommandPalette {
         Some(self.line.edit.input_area(self.text_origin()))
     }
 
+    fn ime_context(&self, text: &TextStore) -> Option<crate::ImeContext> {
+        self.line.edit.ime_context(text, self.text_origin())
+    }
+
     fn accessibility_role(&self) -> Option<accesskit::Role> {
         Some(accesskit::Role::ComboBox)
     }

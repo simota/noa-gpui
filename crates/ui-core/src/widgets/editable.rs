@@ -327,8 +327,21 @@ impl Editable {
                 cx.set_handled();
                 return;
             }
-            Event::Text(_) | Event::Composition { .. } if self.read_only => return,
-            Event::Composition { .. } if self.secure => return,
+            Event::Text(_) | Event::Composition { .. } | Event::ImeSelect(_) if self.read_only => {
+                return;
+            }
+            Event::Composition { .. } | Event::ImeSelect(_) if self.secure => return,
+            Event::ImeSelect(range) => {
+                // Only before a composition: the text shown is then the content.
+                if self.preedit.is_empty() {
+                    let len = self.editor.text().len();
+                    self.editor.select(range.start.min(len)..range.end.min(len));
+                    self.goal_x = None;
+                    cx.request_layout();
+                }
+                cx.set_handled();
+                return;
+            }
             Event::Text(input) => {
                 self.preedit.clear();
                 self.preedit_cursor = None;
@@ -553,6 +566,44 @@ impl Editable {
         }
     }
 
+    /// What the input method may ask about the text, for a layout drawn at `origin` in
+    /// widget coordinates, as of the last [`Editable::shape`]. `None` for secure text,
+    /// which takes no composition.
+    pub fn ime_context(&self, text: &TextStore, origin: Point) -> Option<crate::ImeContext> {
+        if self.secure || self.read_only {
+            return None;
+        }
+        let layout = self.shaped.layout()?;
+        if self.showing_placeholder() {
+            let caret = Rect::new(origin.x, origin.y, 1.0, self.style.line_height);
+            return Some(crate::ImeContext {
+                caret,
+                ..Default::default()
+            });
+        }
+        let selection = self.editor.selection();
+        let (selection, composition) = if self.preedit.is_empty() {
+            (selection, None)
+        } else {
+            let start = selection.start;
+            let (from, to) = self
+                .preedit_cursor
+                .unwrap_or((self.preedit.len(), self.preedit.len()));
+            (
+                start + from..start + to,
+                Some(start..start + self.preedit.len()),
+            )
+        };
+        Some(crate::ImeContext::of_layout(
+            text,
+            layout,
+            &self.display(),
+            selection,
+            composition,
+            origin,
+        ))
+    }
+
     /// The caret rectangle in widget coordinates, for placing the IME candidate window.
     pub fn input_area(&self, origin: Point) -> Rect {
         Rect::new(
@@ -712,6 +763,10 @@ impl SingleLine {
 
     pub fn input_area(&self) -> Rect {
         self.edit.input_area(self.origin())
+    }
+
+    pub fn ime_context(&self, text: &TextStore) -> Option<crate::ImeContext> {
+        self.edit.ime_context(text, self.origin())
     }
 
     pub fn cursor(&self, local: Point) -> Option<Cursor> {

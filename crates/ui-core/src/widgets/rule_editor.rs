@@ -756,6 +756,14 @@ impl Widget for RuleEditor {
         Some(self.rows[self.active].value.edit.input_area(origin))
     }
 
+    fn ime_context(&self, text: &TextStore) -> Option<crate::ImeContext> {
+        self.rows
+            .get(self.active)?
+            .value
+            .edit
+            .ime_context(text, self.value_origin(self.active))
+    }
+
     fn accessibility_role(&self) -> Option<accesskit::Role> {
         Some(accesskit::Role::Group)
     }

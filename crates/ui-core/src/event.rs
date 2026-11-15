@@ -151,6 +151,10 @@ pub enum Event {
         text: String,
         cursor: Option<(usize, usize)>,
     },
+    /// The input method is about to convert bytes `range` of the text again (bytes of
+    /// the text shown: [`crate::ImeContext::base`] plus a range of its text): select
+    /// them, so that the composition that follows takes their place.
+    ImeSelect(std::ops::Range<usize>),
     /// The modifier keys changed. Not delivered to widgets; read the current state with
     /// [`crate::EventCx::modifiers`].
     ModifiersChanged(Modifiers),

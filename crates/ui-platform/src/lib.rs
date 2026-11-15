@@ -9,6 +9,8 @@ mod app;
 mod clipboard;
 #[cfg(feature = "native")]
 mod headless;
+#[cfg(all(feature = "native", target_os = "macos"))]
+mod ime_macos;
 mod input;
 mod inspector;
 #[cfg(all(feature = "native", any(target_os = "macos", target_os = "linux")))]

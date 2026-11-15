@@ -1,7 +1,8 @@
 //! Recording input and playing it back, for tests made from a real session.
 //!
 //! [`UiTree::start_recording`] keeps every input event the tree is given (pointer,
-//! wheel, keys, text, IME composition and modifiers) with the tree's clock. A
+//! wheel, keys, text, IME composition and reconversion, and modifiers) with the
+//! tree's clock. A
 //! [`Recording`] is saved as text, one step per line, so it can be read, edited and
 //! checked in next to a test:
 //!
@@ -12,6 +13,7 @@
 //! 0.502 key Char('s') cmd
 //! 0.900 text "山田"
 //! 1.000 compose "やまだ" 9 9
+//! 1.200 ime-select 0 6
 //! ```
 //!
 //! [`Recording::replay`] gives the steps to a tree again, setting its clock to each
@@ -47,6 +49,7 @@ impl Step {
                 | Event::KeyDown { .. }
                 | Event::Text(_)
                 | Event::Composition { .. }
+                | Event::ImeSelect(_)
                 | Event::ModifiersChanged(_)
         );
         recorded.then(|| Self {
@@ -159,6 +162,9 @@ pub fn step_line(step: &Step) -> Option<String> {
                 None => line.push_str(" -"),
             }
         }
+        Event::ImeSelect(range) => {
+            let _ = write!(line, "ime-select {} {}", range.start, range.end);
+        }
         Event::ModifiersChanged(modifiers) => {
             let _ = write!(line, "modifiers {}", modifier_names(*modifiers));
         }
@@ -269,6 +275,13 @@ fn parse_step(line: &str) -> Result<Step, String> {
                 _ => return Err("expected a cursor range or -".into()),
             };
             Event::Composition { text, cursor }
+        }
+        "ime-select" => {
+            let index = |i: usize| -> Result<usize, String> {
+                let word = words.get(i).copied().unwrap_or_default();
+                word.parse().map_err(|_| format!("not an index: {word}"))
+            };
+            Event::ImeSelect(index(0)?..index(1)?)
         }
         "modifiers" => Event::ModifiersChanged(parse_modifiers(args)?),
         other => return Err(format!("unknown event: {other}")),
