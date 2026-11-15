@@ -33,6 +33,11 @@ pub struct AppOptions {
     /// draws its own and moves and resizes the window through
     /// [`Screen::take_window_drags`]. On by default.
     pub decorations: bool,
+    /// Desktop: the main window's title bar (macOS).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub titlebar: crate::Titlebar,
+    /// Desktop: the smallest logical size the main window can be resized to.
+    pub min_size: Option<(f64, f64)>,
 }
 
 impl AppOptions {
@@ -46,6 +51,9 @@ impl AppOptions {
             size: (1280.0, 800.0),
             keep_running: false,
             decorations: true,
+            #[cfg(not(target_arch = "wasm32"))]
+            titlebar: crate::Titlebar::default(),
+            min_size: None,
         }
     }
 
@@ -54,9 +62,13 @@ impl AppOptions {
     fn window_attributes(&self) -> winit::window::WindowAttributes {
         let attributes = Window::default_attributes().with_title(&self.title);
         #[cfg(not(target_arch = "wasm32"))]
-        let attributes = attributes
-            .with_inner_size(winit::dpi::LogicalSize::new(self.size.0, self.size.1))
-            .with_decorations(self.decorations);
+        let attributes = crate::titlebar::apply(
+            attributes
+                .with_inner_size(winit::dpi::LogicalSize::new(self.size.0, self.size.1))
+                .with_decorations(self.decorations),
+            &self.titlebar,
+            self.min_size,
+        );
         attributes
     }
 }
@@ -930,6 +942,8 @@ impl ApplicationHandler<Wake> for App {
                     .create_window(self.window_attributes(event_loop))
                     .expect("create window"),
             );
+            #[cfg(not(target_arch = "wasm32"))]
+            crate::titlebar::follow(&window, &self.options.titlebar, None);
             #[cfg(feature = "native")]
             {
                 self.accessibility = Some(crate::accessibility::Accessibility::attach(
@@ -980,6 +994,10 @@ impl ApplicationHandler<Wake> for App {
         #[cfg(feature = "native")]
         if let (Some(accessibility), Some(window)) = (&mut self.accessibility, &self.window) {
             accessibility.process_event(window, &event);
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(window) = &self.window {
+            crate::titlebar::follow(window, &self.options.titlebar, Some(&event));
         }
         match event {
             WindowEvent::CloseRequested if self.options.keep_running => {

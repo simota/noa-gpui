@@ -20,6 +20,10 @@ pub struct WindowRequest {
     pub screen: Box<dyn Screen>,
     /// A panel: stays above the app's other windows and is not resizable.
     pub floating: bool,
+    /// The title bar (macOS).
+    pub titlebar: crate::Titlebar,
+    /// The smallest logical size the window can be resized to.
+    pub min_size: Option<(f64, f64)>,
 }
 
 #[cfg(feature = "native")]

@@ -502,6 +502,8 @@ impl Demo for PanelDemo {
                     cx.tree.theme().clone(),
                 )),
                 floating: true,
+                titlebar: Default::default(),
+                min_size: None,
             });
             return true;
         }
@@ -844,6 +846,8 @@ impl Demo for InnerWindowsDemo {
                                 cx.tree.theme().clone(),
                             )),
                             floating: false,
+                            titlebar: Default::default(),
+                            min_size: None,
                         });
                         set_label(cx, self.status, "Moved to its own OS window");
                     }
