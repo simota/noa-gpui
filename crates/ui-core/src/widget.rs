@@ -507,6 +507,7 @@ pub struct EventCx<'a> {
     pub(crate) now: f64,
     pub(crate) reduce_motion: bool,
     pub(crate) modifiers: Modifiers,
+    pub(crate) click_count: u8,
     pub(crate) text: &'a mut TextStore,
     pub(crate) clipboard: &'a mut dyn Clipboard,
     pub(crate) requests: Requests,
@@ -578,6 +579,14 @@ impl EventCx<'_> {
     /// Seconds, for starting animations.
     pub fn now(&self) -> f64 {
         self.now
+    }
+
+    /// 1 for a single click, 2 for a double click, 3 for a triple click and so on:
+    /// presses of the same button close in time and place (see
+    /// [`crate::UiTree::set_multi_click`]). It stays the latest press's count until the
+    /// next press, so a drag can select by words after a double click.
+    pub fn click_count(&self) -> u8 {
+        self.click_count
     }
 
     pub fn reduces_motion(&self) -> bool {

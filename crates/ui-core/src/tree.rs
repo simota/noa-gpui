@@ -208,6 +208,7 @@ pub struct UiTree {
     drag: Option<Drag>,
     drop_accepted: bool,
     shortcut_glyphs: bool,
+    clicks: ClickCounter,
     tooltip: TooltipState,
     hover_card: HoverCardState,
     timers: Vec<(f64, WidgetId)>,
@@ -293,6 +294,7 @@ impl Default for UiTree {
             drag: None,
             drop_accepted: false,
             shortcut_glyphs: cfg!(target_vendor = "apple"),
+            clicks: ClickCounter::default(),
             tooltip: TooltipState::default(),
             hover_card: HoverCardState::default(),
             timers: Vec::new(),
@@ -301,6 +303,45 @@ impl Default for UiTree {
             reduce_motion: false,
             view_state: ViewState::default(),
         }
+    }
+}
+
+/// Counts presses of the same button close together in time and place.
+struct ClickCounter {
+    /// Seconds within which the next press counts on.
+    interval: f64,
+    /// Logical pixels the pointer may move between presses, on either axis.
+    distance: f32,
+    last: Option<(f64, Point, PointerButton)>,
+    count: u8,
+}
+
+impl Default for ClickCounter {
+    fn default() -> Self {
+        Self {
+            interval: 0.4,
+            distance: 4.0,
+            last: None,
+            count: 0,
+        }
+    }
+}
+
+impl ClickCounter {
+    fn press(&mut self, now: f64, pos: Point, button: PointerButton) -> u8 {
+        let near = |(time, at, pressed): (f64, Point, PointerButton)| {
+            pressed == button
+                && now - time <= self.interval
+                && (pos.x - at.x).abs() <= self.distance
+                && (pos.y - at.y).abs() <= self.distance
+        };
+        self.count = if self.last.is_some_and(near) {
+            self.count.saturating_add(1)
+        } else {
+            1
+        };
+        self.last = Some((now, pos, button));
+        self.count
     }
 }
 
@@ -1042,6 +1083,14 @@ impl UiTree {
 
     pub fn shortcut_glyphs(&self) -> bool {
         self.shortcut_glyphs
+    }
+
+    /// How close presses must be to count as a double or triple click: within
+    /// `interval` seconds and `distance` logical pixels of the one before. The platform
+    /// sets the OS double-click interval; the default is 0.4 s and 4 px.
+    pub fn set_multi_click(&mut self, interval: f64, distance: f32) {
+        self.clicks.interval = interval;
+        self.clicks.distance = distance;
     }
 
     /// Set the clock (seconds, monotonic) used for animations. Call it before
@@ -2738,6 +2787,7 @@ impl UiTree {
                 }
             }
             Event::PointerDown { pos, button } => {
+                self.clicks.press(self.now, *pos, *button);
                 self.hide_tooltip(true, text);
                 let hit = self.hit_test(*pos);
                 self.hover_card.due = None;
@@ -3137,13 +3187,14 @@ impl UiTree {
         text: &mut TextStore,
     ) -> Option<(bool, Option<WidgetId>)> {
         let origin = self.window_origin(id)?;
-        let (focused, hovered, captured, now, modifiers, reduce_motion) = (
+        let (focused, hovered, captured, now, modifiers, reduce_motion, click_count) = (
             self.focused == Some(id),
             self.hovered == Some(id),
             self.captured == Some(id),
             self.now,
             self.modifiers,
             self.reduce_motion,
+            self.clicks.count,
         );
         let Self {
             slots, clipboard, ..
@@ -3164,6 +3215,7 @@ impl UiTree {
             now,
             reduce_motion,
             modifiers,
+            click_count,
             text: &mut *text,
             clipboard: clipboard.as_mut(),
             requests: Requests::default(),

@@ -24,8 +24,6 @@ pub struct ItemRenamed {
 
 const PAD_X: f32 = 3.0;
 const PAD_Y: f32 = 1.0;
-/// Seconds within which a second press counts as a double click.
-const DOUBLE_CLICK: f64 = 0.4;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum InlineOutcome {
@@ -158,7 +156,6 @@ pub struct InlineEditableLabel {
     max_width: Option<f32>,
     shaped: CachedText,
     editing: Option<InlineEditor>,
-    last_press: Option<f64>,
 }
 
 impl InlineEditableLabel {
@@ -171,7 +168,6 @@ impl InlineEditableLabel {
             max_width: None,
             shaped: CachedText::default(),
             editing: None,
-            last_press: None,
         }
     }
 
@@ -350,13 +346,9 @@ impl Widget for InlineEditableLabel {
             } => {
                 cx.request_focus();
                 cx.set_handled();
-                let now = cx.now();
-                if self.last_press.is_some_and(|t| now - t < DOUBLE_CLICK) {
-                    self.last_press = None;
+                if cx.click_count() == 2 {
                     self.start();
                     cx.request_layout();
-                } else {
-                    self.last_press = Some(now);
                 }
             }
             Event::KeyDown {

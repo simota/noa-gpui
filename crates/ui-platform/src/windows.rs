@@ -132,6 +132,7 @@ impl SecondaryWindow {
             }
             event => {
                 self.screen.tree_mut().set_now(now);
+                crate::input::sync_multi_click(self.screen.tree_mut());
                 for event in self.input.translate(&event, self.window.scale_factor()) {
                     self.screen.dispatch(event, text);
                 }

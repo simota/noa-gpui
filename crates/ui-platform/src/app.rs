@@ -745,6 +745,7 @@ impl App {
         gfx.screen
             .tree_mut()
             .set_now(self.clock.elapsed().as_secs_f64());
+        crate::input::sync_multi_click(gfx.screen.tree_mut());
         #[cfg(feature = "native")]
         if self.recorder.is_some() && !gfx.screen.tree().is_recording() {
             gfx.screen.tree_mut().start_recording();

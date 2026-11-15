@@ -166,6 +166,24 @@ fn character_key(event: &winit::event::KeyEvent, logical: &str) -> Key {
         .map_or(Key::Other, |c| Key::Char(c.to_ascii_lowercase()))
 }
 
+/// Logical pixels the pointer may move between the presses of a double click.
+const MULTI_CLICK_DISTANCE: f32 = 4.0;
+
+/// Use the OS double-click interval for `tree`'s click counting, where the platform
+/// reports one (macOS); elsewhere the tree keeps its default.
+pub fn sync_multi_click(tree: &mut noa_gpui_core::UiTree) {
+    #[cfg(all(feature = "native", target_os = "macos"))]
+    {
+        // SAFETY: `+[NSEvent doubleClickInterval]` takes no arguments and returns an
+        // NSTimeInterval (a double).
+        let interval: f64 =
+            unsafe { objc2::msg_send![objc2::class!(NSEvent), doubleClickInterval] };
+        tree.set_multi_click(interval, MULTI_CLICK_DISTANCE);
+    }
+    #[cfg(not(all(feature = "native", target_os = "macos")))]
+    let _ = (tree, MULTI_CLICK_DISTANCE);
+}
+
 /// Whether the shortcut modifier is Cmd (Apple platforms) rather than Ctrl.
 pub fn command_is_meta() -> bool {
     #[cfg(target_arch = "wasm32")]
