@@ -25,6 +25,9 @@ pub(crate) struct Inspector {
     active: bool,
     pointer: Option<Point>,
     pinned: Option<WidgetId>,
+    /// The inspector took the last primary press, so it takes its release too. A press
+    /// the app got before the inspector was turned on is released to the app.
+    pressed: bool,
     /// The panel, a tree of its own drawn over the app's.
     panel: UiTree,
     root: WidgetId,
@@ -83,6 +86,7 @@ impl Inspector {
             active: false,
             pointer: None,
             pinned: None,
+            pressed: false,
             panel,
             root,
             card,
@@ -109,6 +113,14 @@ impl Inspector {
                 self.pinned = None;
                 true
             }
+            // The release of the inspector's own press, even if it was closed since.
+            Event::PointerUp {
+                button: PointerButton::Primary,
+                ..
+            } if self.pressed => {
+                self.pressed = false;
+                true
+            }
             _ if !self.active => false,
             Event::PointerMove { pos } => {
                 self.pointer = Some(*pos);
@@ -122,14 +134,11 @@ impl Inspector {
                 pos,
                 button: PointerButton::Primary,
             } => {
-                let hit = tree.hit_test(*pos);
+                let hit = tree.hit_test_including_disabled(*pos);
                 self.pinned = if self.pinned.is_some() { None } else { hit };
+                self.pressed = true;
                 true
             }
-            Event::PointerUp {
-                button: PointerButton::Primary,
-                ..
-            } => true,
             Event::KeyDown {
                 key: Key::Escape, ..
             } => {
@@ -146,7 +155,10 @@ impl Inspector {
     pub fn target(&self, tree: &UiTree) -> Option<WidgetId> {
         self.pinned
             .filter(|id| tree.window_rect(*id).is_some())
-            .or_else(|| self.pointer.and_then(|pos| tree.hit_test(pos)))
+            .or_else(|| {
+                self.pointer
+                    .and_then(|pos| tree.hit_test_including_disabled(pos))
+            })
     }
 
     /// `app` with the highlight and the panel drawn over it, at `viewport` logical
@@ -334,5 +346,59 @@ mod tests {
         assert_eq!(inspector.target(&tree), Some(button), "pinned");
         inspector.compose(&app_list, &tree, &mut text, VIEWPORT);
         assert!(panel_text(&inspector).contains("pinned"));
+    }
+
+    #[test]
+    fn disabled_widgets_can_be_pointed_at_and_pinned() {
+        let (mut tree, button, mut text) = app();
+        tree.set_enabled(button, false);
+        tree.prepare(VIEWPORT, &mut text);
+        let rect = tree.window_rect(button).unwrap();
+        let over = Point::new(rect.x + 5.0, rect.y + 5.0);
+        assert_ne!(tree.hit_test(over), Some(button), "the app cannot hit it");
+        let mut inspector = Inspector::new();
+        inspector.filter(&toggle(), &tree);
+        inspector.filter(&Event::PointerMove { pos: over }, &tree);
+        assert_eq!(inspector.target(&tree), Some(button));
+        inspector.filter(
+            &Event::PointerDown {
+                pos: over,
+                button: PointerButton::Primary,
+            },
+            &tree,
+        );
+        assert_eq!(inspector.pinned, Some(button));
+        let info = tree.inspect(button).unwrap();
+        assert_eq!(info.pseudo_classes(), ":disabled");
+    }
+
+    #[test]
+    fn a_press_made_before_turning_it_on_is_released_to_the_app() {
+        let (tree, _, _) = app();
+        let mut inspector = Inspector::new();
+        let at = Point::new(30.0, 30.0);
+        let down = Event::PointerDown {
+            pos: at,
+            button: PointerButton::Primary,
+        };
+        let up = Event::PointerUp {
+            pos: at,
+            button: PointerButton::Primary,
+        };
+        assert!(!inspector.filter(&down, &tree), "the app gets the press");
+        inspector.filter(&toggle(), &tree);
+        assert!(!inspector.filter(&up, &tree), "and its release");
+        assert!(inspector.filter(&down, &tree), "the inspector's own press");
+        assert!(inspector.filter(&up, &tree), "and its release");
+
+        // Closed between its own press and the release: the release is still its own.
+        assert!(inspector.filter(&down, &tree));
+        inspector.filter(&toggle(), &tree);
+        assert!(!inspector.is_active());
+        assert!(inspector.filter(&up, &tree));
+        assert!(
+            !inspector.filter(&up, &tree),
+            "later releases go to the app"
+        );
     }
 }
