@@ -401,4 +401,64 @@ mod tests {
             "later releases go to the app"
         );
     }
+
+    #[test]
+    fn a_slider_drag_started_before_turning_it_on_ends_in_the_app() {
+        use noa_gpui_core::widgets::Slider;
+
+        let mut tree = UiTree::new();
+        let root = tree.insert(None, Container::column().padding(20.0));
+        let slider = tree.insert(Some(root), Slider::new(0.0, 100.0, 50.0));
+        let mut text = TextStore::new(Default::default());
+        tree.prepare(VIEWPORT, &mut text);
+        let r = tree.window_rect(slider).unwrap();
+        let y = r.y + r.height / 2.0;
+        let at = |x: f32| Point::new(r.x + r.width * x, y);
+        let mut inspector = Inspector::new();
+        // What App::dispatch does: the inspector looks first, the app gets the rest.
+        let mut send = |tree: &mut UiTree, inspector: &mut Inspector, event: Event| {
+            if !inspector.filter(&event, tree) {
+                tree.dispatch(event, &mut text);
+            }
+        };
+        let button = PointerButton::Primary;
+        send(
+            &mut tree,
+            &mut inspector,
+            Event::PointerDown {
+                pos: at(0.5),
+                button,
+            },
+        );
+        send(
+            &mut tree,
+            &mut inspector,
+            Event::PointerMove { pos: at(0.7) },
+        );
+        send(&mut tree, &mut inspector, toggle());
+        send(
+            &mut tree,
+            &mut inspector,
+            Event::PointerUp {
+                pos: at(0.7),
+                button,
+            },
+        );
+        let released = tree.get::<Slider>(slider).unwrap().value();
+        // After the release, moving the pointer no longer drags the slider, with the
+        // inspector on and after it is closed.
+        send(
+            &mut tree,
+            &mut inspector,
+            Event::PointerMove { pos: at(0.1) },
+        );
+        send(&mut tree, &mut inspector, toggle());
+        send(
+            &mut tree,
+            &mut inspector,
+            Event::PointerMove { pos: at(0.9) },
+        );
+        assert!(released > 50.0, "the drag moved it: {released}");
+        assert_eq!(tree.get::<Slider>(slider).unwrap().value(), released);
+    }
 }
