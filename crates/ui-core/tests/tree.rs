@@ -2252,3 +2252,58 @@ fn widgets_created_hidden_are_measured_before_they_paint() {
         assert_eq!(tree.window_rect(id).unwrap().height, 10.0);
     }
 }
+
+struct Lifted;
+
+impl noa_gpui_core::Widget for Lifted {
+    fn style(&self) -> Style {
+        fixed(100.0, 40.0)
+    }
+    fn paint(&mut self, cx: &mut noa_gpui_core::PaintCx) {
+        let shadow = noa_gpui_scene::BoxShadow {
+            color: Color::rgba(0.0, 0.0, 0.0, 0.3),
+            offset: Point::new(0.0, 4.0),
+            blur: 12.0,
+            spread: 0.0,
+        };
+        cx.box_shadow(cx.bounds(), [8.0; 4], &shadow);
+        // A transparent shadow draws nothing.
+        let none = noa_gpui_scene::BoxShadow {
+            color: Color::TRANSPARENT,
+            ..shadow
+        };
+        cx.box_shadow(cx.bounds(), [8.0; 4], &none);
+    }
+}
+
+#[test]
+fn a_box_shadow_is_one_shape_in_window_coordinates() {
+    let mut text = text_store();
+    let mut tree = UiTree::new();
+    let root = tree.insert(None, Container::new(column()));
+    tree.insert(Some(root), Container::new(fixed(100.0, 30.0)));
+    let lifted = tree.insert(Some(root), Lifted);
+    tree.prepare(VIEWPORT, &mut text);
+    let rect = tree.window_rect(lifted).unwrap();
+    let shadows: Vec<_> = tree
+        .display_list()
+        .commands()
+        .iter()
+        .filter_map(|c| match c {
+            DrawCommand::Shape {
+                shape: noa_gpui_scene::Shape::Shadow { rect, radius, blur },
+                color,
+            } => Some((*rect, *radius, *blur, *color)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        shadows,
+        [(
+            rect.translate(0.0, 4.0),
+            [8.0; 4],
+            12.0,
+            Color::rgba(0.0, 0.0, 0.0, 0.3)
+        )]
+    );
+}
