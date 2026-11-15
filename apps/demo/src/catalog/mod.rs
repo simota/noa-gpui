@@ -63,6 +63,10 @@ pub trait Demo {
     /// Called after the catalog has acted on the item.
     fn status_menu_chosen(&mut self, _cx: &mut DemoCx, _label: &str) {}
 
+    /// The event loop was woken (see [`Kit::waker`]): take what arrived in the
+    /// background.
+    fn woken(&mut self, _cx: &mut DemoCx) {}
+
     /// Called after every input event, to follow state that changes without a message,
     /// such as a scroll position.
     fn after_input(&mut self, _tree: &mut UiTree) {}
@@ -146,7 +150,15 @@ pub struct Catalog {
 }
 
 impl Catalog {
+    /// Without a waker, as the tests draw it.
+    #[cfg(test)]
     pub fn new(assets: &Assets) -> Self {
+        Self::with_waker(assets, None)
+    }
+
+    /// `waker` wakes the event loop for sections that load in the background; without
+    /// one (drawing without a window) they show what they have.
+    pub fn with_waker(assets: &Assets, waker: Option<noa_gpui_platform::Waker>) -> Self {
         let mut tree = UiTree::new();
         // Menus write shortcuts as ⌘S where the command key is Cmd (also on the Web).
         tree.set_shortcut_glyphs(noa_gpui_platform::command_is_meta());
@@ -275,6 +287,7 @@ impl Catalog {
                     tree: &mut tree,
                     assets,
                     grid,
+                    waker: waker.clone(),
                 }));
             }
         }
@@ -604,6 +617,10 @@ impl Screen for Catalog {
         let status = self.meter.status();
         self.tree
             .update::<Label, _>(self.status, |l, cx| l.set_text(cx, status));
+    }
+
+    fn woken(&mut self, text: &mut TextStore) {
+        self.with_demos(text, |demo, cx| demo.woken(cx));
     }
 
     fn frame_presented(&mut self, report: &FrameReport<'_>) {

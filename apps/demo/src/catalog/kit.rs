@@ -18,6 +18,9 @@ pub struct Kit<'a> {
     pub tree: &'a mut UiTree,
     pub assets: &'a Assets,
     pub grid: WidgetId,
+    /// Wakes the event loop, for sections that load in the background (`None` when
+    /// drawing without a window).
+    pub waker: Option<noa_gpui_platform::Waker>,
 }
 
 impl Kit<'_> {

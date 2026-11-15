@@ -40,6 +40,7 @@ mod popover;
 mod pressable;
 mod progress;
 mod property_grid;
+mod remote;
 mod resize;
 mod rows;
 mod rule_editor;
@@ -132,6 +133,7 @@ pub use popover::{POPOVER_ARROW, Popover};
 pub use pressable::Pressable;
 pub use progress::{BAR_PERIOD, ProgressBar, SPINNER_PERIOD, Spinner};
 pub use property_grid::{PropertyChanged, PropertyGrid, PropertyValue};
+pub use remote::{PageRequest, RemoteData, RemoteRows};
 pub use resize::{BoxResized, ResizableBox, ResizeEdges};
 pub use rows::{RowSelectionChanged, SelectionMode};
 pub use rule_editor::{
