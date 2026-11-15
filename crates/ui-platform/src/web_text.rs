@@ -164,14 +164,13 @@ fn named_key(key: &str) -> Option<Key> {
         "End" => Key::End,
         "PageUp" => Key::PageUp,
         "PageDown" => Key::PageDown,
-        "F10" => Key::F10,
         "ContextMenu" => Key::ContextMenu,
-        _ => return None,
+        _ => Key::function(key.strip_prefix('F')?.parse().ok()?)?,
     })
 }
 
 /// A single character, lowercase as on the desktop, so Cmd+Shift+Z reports 'z'. Other
-/// key names (Shift, F1, ...) are [`Key::Other`].
+/// key names (Shift, Meta, ...) are [`Key::Other`].
 fn character_key(key: &str) -> Key {
     let mut chars = key.chars();
     match (chars.next(), chars.next()) {

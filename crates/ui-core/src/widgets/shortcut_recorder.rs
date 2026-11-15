@@ -125,7 +125,7 @@ impl ShortcutRecorder {
             return None;
         }
         let modified = modifiers.command || modifiers.alt;
-        let function_key = matches!(key, Key::F10);
+        let function_key = key.function_number().is_some();
         if !(modified || function_key || self.bare_keys) {
             return None;
         }

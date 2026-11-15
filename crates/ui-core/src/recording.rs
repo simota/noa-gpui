@@ -307,11 +307,15 @@ fn parse_key(word: &str) -> Result<Key, String> {
         "End" => Key::End,
         "PageUp" => Key::PageUp,
         "PageDown" => Key::PageDown,
-        "F10" => Key::F10,
         "ContextMenu" => Key::ContextMenu,
         "Other" => Key::Other,
-        _ => return Err(format!("not a key: {word}")),
+        _ => function_key(word).ok_or_else(|| format!("not a key: {word}"))?,
     })
+}
+
+/// "F1" to "F12".
+fn function_key(word: &str) -> Option<Key> {
+    Key::function(word.strip_prefix('F')?.parse().ok()?)
 }
 
 fn parse_modifiers(word: &str) -> Result<Modifiers, String> {
