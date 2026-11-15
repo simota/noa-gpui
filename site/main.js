@@ -48,7 +48,11 @@
     new Image().src = url;
   };
 
+  // Each render gets a number; a decode that finishes after a newer render is ignored,
+  // so a slow image never replaces the one the visitor chose last.
+  let latest = 0;
   const render = () => {
+    const request = ++latest;
     const url = src(state.design, state.appearance);
     const text = `${names[state.design]} · ${appearanceNames[state.appearance]}`;
     designButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.design === state.design)));
@@ -64,12 +68,13 @@
     const next = new Image();
     next.src = url;
     (next.decode ? next.decode() : Promise.resolve()).catch(() => {}).then(() => {
+      if (request !== latest) return;
       swap();
       frame.classList.remove("is-swapping");
     });
   };
 
-  // C: fetch all fourteen renders once the gallery is near, instead of on hover.
+  // Fetch all fourteen renders once the gallery is near, so a switch rarely waits.
   if ("IntersectionObserver" in window) {
     const near = new IntersectionObserver((entries) => {
       if (!entries.some((e) => e.isIntersecting)) return;
