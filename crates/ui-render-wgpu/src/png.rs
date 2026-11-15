@@ -55,6 +55,27 @@ pub(crate) fn encode(width: u32, height: u32, pixels: &[u8]) -> Vec<u8> {
     png
 }
 
+/// `data` as a zlib stream of stored (uncompressed) deflate blocks: what a PDF's
+/// `/FlateDecode` filter reads.
+pub(crate) fn zlib_stored(data: &[u8]) -> Vec<u8> {
+    let blocks = data.len().div_ceil(BLOCK).max(1);
+    let mut out = Vec::with_capacity(2 + data.len() + blocks * 5 + 4);
+    out.extend_from_slice(&[0x78, 0x01]);
+    let mut stored = Stored {
+        out: &mut out,
+        left: data.len(),
+        room: 0,
+        checksum: Adler32::default(),
+    };
+    stored.write(data);
+    let checksum = stored.checksum.value();
+    if data.is_empty() {
+        out.extend_from_slice(&[1, 0, 0, 0xff, 0xff]);
+    }
+    out.extend_from_slice(&checksum.to_be_bytes());
+    out
+}
+
 /// Reads back what [`encode`] writes: 8-bit RGBA, stored deflate blocks, no filtering.
 /// Other PNG files (compressed, filtered, other color types) are refused with the
 /// reason. Returns the width, the height and the RGBA8 rows.
@@ -435,6 +456,18 @@ mod tests {
         assert_eq!(&raw[1..9], &pixels[..8]);
         assert_eq!(raw[9], 0);
         assert_eq!(&raw[10..], &pixels[8..]);
+    }
+
+    #[test]
+    fn zlib_streams_hold_the_data_in_stored_blocks() {
+        for len in [0, 1, 65_535, 65_536, 200_000] {
+            let data: Vec<u8> = (0..len).map(|i| (i % 251) as u8).collect();
+            assert_eq!(
+                super::inflate_stored(&zlib_stored(&data)),
+                Ok(data),
+                "{len}"
+            );
+        }
     }
 
     #[test]

@@ -105,7 +105,8 @@ pub fn app(config: Config) -> App {
 
 /// Draws the screen for `config` without a window, at the main window's size and
 /// `scale`, and writes it to `path` as a PNG. Uses the GPU, or the CPU when there is no
-/// GPU adapter.
+/// GPU adapter. A `path` ending in `.pdf` writes a one-page PDF instead (vector, at the
+/// window's size in points; `scale` is not used).
 #[cfg(feature = "native")]
 ///
 /// With `stylesheet`, the screen is styled with the Noa Style sheet in that file first.
@@ -125,6 +126,12 @@ pub fn snapshot(
                 .map_err(|e| format!("{}: {e}", path.display()))
         })
         .transpose()?;
+    if path
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("pdf"))
+    {
+        return snapshot_pdf(config, path, sheet, recording);
+    }
     let mut headless = noa_gpui_platform::Headless::new_or_software();
     let mut screen = if headless.is_software() {
         screen_with(
@@ -156,6 +163,52 @@ pub fn snapshot(
         .map_err(|e| e.to_string())?;
     image
         .save_png(path)
+        .map_err(|e| format!("write {}: {e}", path.display()))
+}
+
+#[cfg(feature = "native")]
+fn snapshot_pdf(
+    config: Config,
+    path: &std::path::Path,
+    sheet: Option<noa_gpui_platform::noa_gpui_core::StyleSheet>,
+    recording: Option<noa_gpui_platform::noa_gpui_core::recording::Recording>,
+) -> Result<(), String> {
+    use noa_gpui_platform::noa_gpui_render_wgpu::{PdfDocument, RgbaImage};
+    use noa_gpui_platform::noa_gpui_scene::{ImageId, Size};
+
+    let mut pdf = PdfDocument::new();
+    let mut next = 0;
+    // The images go to the PDF under the ids the screen draws them with.
+    let assets = Assets::generate(|width, height, rgba| {
+        let id = ImageId(next);
+        next += 1;
+        let pixels = rgba.to_vec();
+        pdf.set_image(
+            id,
+            RgbaImage {
+                width,
+                height,
+                pixels,
+            },
+        );
+        id
+    });
+    let mut screen = screen_with(config, assets, None);
+    if let Some(sheet) = sheet {
+        screen.tree_mut().set_stylesheet(sheet);
+    }
+    let mut text = noa_gpui_platform::noa_gpui_text::TextStore::new(Default::default());
+    let (width, height) = options().size;
+    let size = Size::new(width as f32, height as f32);
+    if let Some(recording) = &recording {
+        noa_gpui_platform::replay(screen.as_mut(), recording, &mut text, size);
+        noa_gpui_platform::advance(screen.as_mut(), &mut text, size, 1.0);
+    }
+    screen.before_frame(&mut text);
+    screen.prepare(size, &mut text);
+    let background = screen.background();
+    pdf.add_page(screen.display_list(), &mut text, size, Some(background));
+    pdf.save(path)
         .map_err(|e| format!("write {}: {e}", path.display()))
 }
 
