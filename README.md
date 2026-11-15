@@ -47,11 +47,12 @@ A cross-platform UI framework written in Rust, with its own 2D renderer on top o
 
 noa-gpui is for dense desktop applications written in Rust — admin consoles, data tools, developer tools, and in-house business software — that should also run in the browser from the same code.
 
-- **Components for data-heavy work, built in.** A data grid with per-cell editing, range selection, paste from spreadsheets, undo, and CSV / TSV import and export; a table that keeps every frame under 16ms at 100,000 rows (checked in CI by `cargo bench -p noa-gpui-core --bench table`); a command palette, an inspector, a rule editor, and view state that is saved and restored between runs.
+- **Components for data-heavy work, built in.** A data grid with per-cell editing, range selection, paste from spreadsheets, undo, and CSV / TSV import and export; a table that keeps every frame under 16ms at 100,000 rows (checked in CI by `cargo bench -p noa-gpui-core --bench table`); rows grouped by a column with totals, and rows loaded from a server a page at a time; a command palette, an inspector, a rule editor, and view state that is saved and restored between runs.
 - **WebGL2 as the floor.** The renderer needs no Compute Shaders or Storage Buffers, so the same screens draw on WebGPU and on WebGL2 browsers. Some platform features are still desktop-only (see the status above).
-- **Japanese input from the start.** IME composition is part of the text widgets' event model, not an afterthought.
+- **Japanese input from the start.** IME composition is part of the text widgets' event model, not an afterthought, on the desktop and the Web. Forms can take the reading of a name from the IME for its furigana field.
 - **Testable without a window.** `Headless` renders a widget tree or a screen to PNG, on the CPU when there is no GPU; input recorded from a real session can be replayed and the result compared with a saved image, and widgets are tested by sending events to a `UiTree`.
-- **Styled with CSS-like sheets**, reloaded on save, rather than a separate UI language.
+- **Styled with CSS-like sheets**, reloaded on save, rather than a separate UI language. An inspector shows which rules shape the widget under the pointer.
+- **Printable.** A screen's display list can be written as a vector PDF page.
 
 It is not aimed at games, immediate-mode tool panels, or mobile apps.
 
@@ -90,12 +91,12 @@ Only GPU rendering is built in-house; text shaping and layout use mature librari
 
 | crate | Role |
 | --- | --- |
-| `crates/ui-scene` | GPU-independent Display List, Clip, order-preserving batching, vector icons (SVG path parsing and rasterization) |
+| `crates/ui-scene` | GPU-independent Display List, Clip, order-preserving batching, vector icons (SVG path parsing and rasterization, and their paths for vector output) |
 | `crates/ui-text` | Text shaping with cosmic-text and retention of layouts (bundles Inter) |
 | `crates/ui-layout` | Adapter for Taffy (Flexbox / Grid) |
-| `crates/ui-core` | Widget Tree (an Arena with Generational IDs), events, Hit Testing, Focus, Dirty Flags, themes, overlays, animation, text editing, drag and drop, accessibility, tooltips, and the parts corresponding to macOS standard components |
-| `crates/ui-render-wgpu` | Three pipelines (Quad / Image / Text), the vector icon atlas, background blur, GPU initialization, windowless rendering (GPU offscreen, and CPU rendering for environments without a GPU) and PNG export |
-| `crates/ui-platform` | The winit application. Windows, input translation, the frame loop, multiple windows, the clipboard, screen readers, system menus and the tray, file dialogs, wake-ups from other threads (`Waker`), pseudo-terminals (`Pty`), windowless rendering (`Headless`), stylesheet file watching (`StyleSheetWatcher`). Also the entry point that re-exports the other crates |
+| `crates/ui-core` | Widget Tree (an Arena with Generational IDs), events, Hit Testing, Focus, Dirty Flags, themes, overlays, animation, text editing, drag and drop, accessibility, tooltips, input recording and replay, inspection (`UiTree::inspect`), kana helpers, and the parts corresponding to macOS standard components |
+| `crates/ui-render-wgpu` | Three pipelines (Quad / Image / Text), the vector icon atlas, background blur, GPU initialization, windowless rendering (GPU offscreen, and CPU rendering for environments without a GPU), PNG export and comparison with golden images, and vector PDF output |
+| `crates/ui-platform` | The winit application. Windows, input translation, the frame loop, multiple windows, the clipboard, screen readers, system menus and the tray, file dialogs, wake-ups from other threads (`Waker`), pseudo-terminals (`Pty`), windowless rendering (`Headless`), stylesheet file watching (`StyleSheetWatcher`), recording input to a file and replaying it (`App::record_input`, `replay`), the inspector overlay (`App::inspector`), and on the Web the IME text area and the ARIA mirror of the accessibility tree. Also the entry point that re-exports the other crates |
 | `apps/demo` | Demo screens shared by desktop and the Web (an example of using `noa-gpui-platform`) |
 | `apps/desktop` | The desktop executable `noa-demo` |
 | `apps/web` | The Web Wasm (two variants, WebGPU and WebGL2) and the loader |
@@ -140,7 +141,7 @@ cargo run -p desktop --release -- --scene=catalog --stylesheet=apps/demo/styles/
 cargo run -p desktop --release -- --scene=minios --view-state=demo-state.txt   # Save column widths, dividers, window positions, and so on at exit, and restore them at the next launch
 ```
 
-In the demo you can click buttons, move focus with Tab / Shift+Tab, activate with Enter / Space, type into text fields (on desktop, Japanese input through the IME also works), and scroll with the wheel. Frames with no changes are not rendered (0 FPS when idle).
+In the demo you can click buttons, move focus with Tab / Shift+Tab, activate with Enter / Space, type into text fields (Japanese input through the IME also works, on desktop and the Web), and scroll with the wheel. Frames with no changes are not rendered (0 FPS when idle).
 
 The UI catalog (`--scene=catalog`) has the following 12 groups.
 
