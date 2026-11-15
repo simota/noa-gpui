@@ -44,6 +44,7 @@ struct Mirrored {
     attrs: BTreeMap<&'static str, String>,
     text: String,
     children: Vec<NodeId>,
+    labelled_by: Vec<NodeId>,
 }
 
 #[derive(Debug, Default)]
@@ -95,6 +96,7 @@ impl AriaMirror {
                 attrs,
                 text,
                 children: node.children().to_vec(),
+                labelled_by: node.labelled_by().to_vec(),
             };
         }
         if let Some(tree) = &update.tree
@@ -146,6 +148,33 @@ impl AriaMirror {
         }
     }
 
+    /// The accessible name of the focused node, for an element that takes DOM focus in
+    /// its place (the IME text area), where `aria-activedescendant` cannot point.
+    pub fn focused_name(&self) -> Option<String> {
+        self.focus.and_then(|focus| self.name(focus))
+    }
+
+    /// The node's own label (or, for static text, its text), else the names of the
+    /// nodes that label it.
+    fn name(&self, node: NodeId) -> Option<String> {
+        let mirrored = self.nodes.get(&node)?;
+        if let Some(label) = mirrored.attrs.get("aria-label") {
+            return Some(label.clone());
+        }
+        let by: Vec<String> = mirrored
+            .labelled_by
+            .iter()
+            .filter_map(|by| {
+                let by = self.nodes.get(by)?;
+                by.attrs
+                    .get("aria-label")
+                    .cloned()
+                    .or_else(|| (!by.text.is_empty()).then(|| by.text.clone()))
+            })
+            .collect();
+        (!by.is_empty()).then(|| by.join(" "))
+    }
+
     #[cfg(test)]
     fn attr(&self, node: NodeId, name: &str) -> Option<&str> {
         self.nodes.get(&node)?.attrs.get(name).map(String::as_str)
@@ -185,6 +214,14 @@ fn describe(id: NodeId, node: &Node) -> (BTreeMap<&'static str, String>, String)
             String::new()
         }
     };
+    if !node.labelled_by().is_empty() {
+        let ids: Vec<String> = node
+            .labelled_by()
+            .iter()
+            .map(|by| element_id(by.0))
+            .collect();
+        set("aria-labelledby", ids.join(" "));
+    }
     if role == Role::MultilineTextInput {
         set("aria-multiline", "true".into());
     }
@@ -353,7 +390,9 @@ fn aria_role(role: Role) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use noa_gpui_core::widgets::{Button, CheckState, Checkbox, Container, Label};
+    use noa_gpui_core::widgets::{
+        Button, CheckState, Checkbox, Container, FormField, Label, TextField,
+    };
     use noa_gpui_core::{ACCESS_ROOT, UiTree, WidgetId, access_id};
     use noa_gpui_scene::Size;
     use noa_gpui_text::TextStore;
@@ -491,5 +530,23 @@ mod tests {
             Some("One")
         );
         assert_eq!(page.mirror.attr(access_id(second), "aria-label"), None);
+    }
+
+    #[test]
+    fn controls_named_by_a_form_field_point_at_it_and_lend_its_name_to_focus() {
+        let mut page = Page::new();
+        let form = page.tree.insert(Some(page.root), FormField::new("Email"));
+        let field = page.tree.insert(Some(form), TextField::new("", 200.0));
+        let ops = page.sync();
+        assert!(ops.contains(&DomOp::Attr {
+            node: access_id(field).0,
+            name: "aria-labelledby",
+            value: Some(element_id(access_id(form).0)),
+        }));
+        assert_eq!(page.mirror.focused_name(), None);
+
+        page.tree.set_focus(Some(field));
+        page.sync();
+        assert_eq!(page.mirror.focused_name().as_deref(), Some("Email"));
     }
 }

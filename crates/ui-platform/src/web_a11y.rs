@@ -5,7 +5,8 @@
 //!
 //! [`AriaMirror`] decides what changes; this module only carries the operations out.
 //! The widget with keyboard focus is announced through the canvas's
-//! `aria-activedescendant`, so DOM focus stays on the canvas (or the IME text area).
+//! `aria-activedescendant`, so DOM focus stays on the canvas. While a text widget is
+//! edited the IME text area has DOM focus instead, and takes the widget's name.
 //! A click on a mirrored element, or assistive technology moving focus to one, is
 //! queued as an AccessKit action and carried out on the next redraw, as on the desktop.
 
@@ -87,6 +88,12 @@ impl WebA11y {
             built: false,
             listeners,
         })
+    }
+
+    /// The focused widget's accessible name, for the IME text area, which takes DOM
+    /// focus while a text widget is edited.
+    pub fn focused_name(&self) -> Option<String> {
+        self.mirror.focused_name()
     }
 
     pub fn has_actions(&self) -> bool {

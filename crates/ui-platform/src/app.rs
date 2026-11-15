@@ -456,6 +456,9 @@ impl App {
         #[cfg(target_arch = "wasm32")]
         if let Some(web_a11y) = &mut self.web_a11y {
             web_a11y.update(screen.tree(), changed);
+            if let Some(web_ime) = &self.web_ime {
+                web_ime.set_label(web_a11y.focused_name().as_deref());
+            }
         }
         sync_ime(&window, &mut self.ime_area, screen.text_input_area());
         #[cfg(target_arch = "wasm32")]
