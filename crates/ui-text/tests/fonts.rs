@@ -33,4 +33,14 @@ fn a_loaded_font_covers_what_the_bundled_one_lacks() {
     let glyphs = glyph_ids(&mut store, "日本語");
     assert_eq!(glyphs.len(), 3);
     assert!(glyphs.iter().all(|&g| g != 0), "{glyphs:?}");
+
+    // Only a regular weight is loaded: bold Japanese text still finds its glyphs there.
+    let id = store.create("日本語", TextStyle::new(16.0).weight(700), None);
+    let bold: Vec<u16> = store
+        .layouts()
+        .buffer(id)
+        .layout_runs()
+        .flat_map(|run| run.glyphs.iter().map(|g| g.glyph_id))
+        .collect();
+    assert_eq!(bold, glyphs);
 }
