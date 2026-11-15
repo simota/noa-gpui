@@ -34,6 +34,18 @@ A cross-platform UI framework written in Rust, with its own 2D renderer on top o
 >
 > iOS and Android are not supported. IME, accessibility, and file dialogs on the Web are not supported yet.
 
+## Who it is for
+
+noa-gpui is for dense desktop applications written in Rust — admin consoles, data tools, developer tools, and in-house business software — that should also run in the browser from the same code.
+
+- **Components for data-heavy work, built in.** A data grid with per-cell editing, range selection, paste from spreadsheets, undo, and CSV / TSV import and export; a table that keeps every frame under 16ms at 100,000 rows (checked in CI by `cargo bench -p noa-gpui-core --bench table`); a command palette, an inspector, a rule editor, and view state that is saved and restored between runs.
+- **WebGL2 as the floor.** The renderer needs no Compute Shaders or Storage Buffers, so the same screens draw on WebGPU and on WebGL2 browsers. Some platform features are still desktop-only (see the status above).
+- **Japanese input from the start.** IME composition is part of the text widgets' event model, not an afterthought.
+- **Testable without a window.** `Headless` renders a widget tree or a screen to PNG, on the CPU when there is no GPU, and widgets are tested by sending events to a `UiTree`.
+- **Styled with CSS-like sheets**, reloaded on save, rather than a separate UI language.
+
+It is not aimed at games, immediate-mode tool panels, or mobile apps.
+
 ## Target platforms
 
 | Platform | Preferred GPU backend | Fallback |
