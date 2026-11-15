@@ -73,6 +73,7 @@ pub(crate) fn follow(window: &Window, titlebar: &Titlebar, event: Option<&Window
 /// Origins of the close, minimize and zoom buttons in the title bar view (y up, as
 /// AppKit's views are): the close button's top-left at `at` (y down from the window's
 /// top), the others `spacing` apart as AppKit spaced them.
+#[cfg(any(test, all(feature = "native", target_os = "macos")))]
 fn traffic_light_origins(
     titlebar_height: f64,
     button_height: f64,
