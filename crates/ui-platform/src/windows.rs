@@ -24,6 +24,7 @@ pub struct SecondaryWindow {
     ime_area: Option<noa_gpui_scene::Rect>,
     /// The pointer shape last given to the window.
     cursor: noa_gpui_core::Cursor,
+    titlebar: crate::Titlebar,
 }
 
 impl SecondaryWindow {
@@ -33,10 +34,14 @@ impl SecondaryWindow {
         gpu: &GpuContext,
         request: WindowRequest,
     ) -> Option<Self> {
-        let attributes = Window::default_attributes()
-            .with_title(request.title)
-            .with_inner_size(winit::dpi::LogicalSize::new(request.size.0, request.size.1))
-            .with_visible(false);
+        let attributes = crate::titlebar::apply(
+            Window::default_attributes()
+                .with_title(request.title)
+                .with_inner_size(winit::dpi::LogicalSize::new(request.size.0, request.size.1))
+                .with_visible(false),
+            &request.titlebar,
+            request.min_size,
+        );
         let attributes = if request.floating {
             attributes
                 .with_window_level(winit::window::WindowLevel::AlwaysOnTop)
@@ -50,6 +55,7 @@ impl SecondaryWindow {
                 .inspect_err(|e| log::error!("could not open a window: {e}"))
                 .ok()?,
         );
+        crate::titlebar::follow(&window, &request.titlebar, None);
         let accessibility = Accessibility::attach(event_loop, &window);
         let surface = instance
             .create_surface(window.clone())
@@ -79,6 +85,7 @@ impl SecondaryWindow {
             needs_present: true,
             ime_area: None,
             cursor: noa_gpui_core::Cursor::Default,
+            titlebar: request.titlebar,
         })
     }
 
@@ -115,6 +122,7 @@ impl SecondaryWindow {
         now: f64,
     ) -> bool {
         self.accessibility.process_event(&self.window, &event);
+        crate::titlebar::follow(&self.window, &self.titlebar, Some(&event));
         match event {
             WindowEvent::CloseRequested => {
                 self.screen.close_requested();

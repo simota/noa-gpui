@@ -966,6 +966,8 @@ impl Demo for WindowsDemo {
             size: (420.0, 360.0),
             screen: Box::new(NoteWindow::new(self.opened, cx.tree.theme().clone())),
             floating: false,
+            titlebar: Default::default(),
+            min_size: None,
         });
         true
     }

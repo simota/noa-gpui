@@ -471,6 +471,8 @@ impl Catalog {
                         self.tree.theme().clone(),
                     )),
                     floating: false,
+                    titlebar: Default::default(),
+                    min_size: None,
                 });
             }
             ("File", "Go to Top") | ("Help", "About This Catalog") => self.scroll_to(0),

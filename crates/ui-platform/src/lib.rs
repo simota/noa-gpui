@@ -23,6 +23,8 @@ mod system_menu;
 #[cfg(all(feature = "native", target_os = "linux"))]
 #[path = "linux_tray.rs"]
 mod system_menu;
+#[cfg(not(target_arch = "wasm32"))]
+mod titlebar;
 #[cfg(feature = "native")]
 mod view_state;
 mod wake;
@@ -54,6 +56,8 @@ pub use screen::{
 pub use screen::{Screen, advance, replay};
 #[cfg(feature = "native")]
 pub use stylesheet::{StyleSheetLoad, StyleSheetLoadError, StyleSheetWatcher};
+#[cfg(not(target_arch = "wasm32"))]
+pub use titlebar::Titlebar;
 #[cfg(feature = "native")]
 pub use view_state::{MAIN_WINDOW_KEY, MainWindowState, ViewStateFile};
 pub use wake::{Wake, Waker};
