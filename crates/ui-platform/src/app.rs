@@ -193,6 +193,9 @@ pub struct App {
     view_state: Option<(crate::ViewStateFile, noa_gpui_core::ViewState)>,
     /// Shows what the widget under the pointer is (see [`App::inspector`]).
     inspector: Option<crate::inspector::Inspector>,
+    /// The native views of the main screen's `WebView` widgets, once the window exists
+    /// (`None` where there are none: the widgets show their placeholder).
+    web_views: Option<crate::webview::WebViews>,
     /// Where the main window's input is written (see [`App::record_input`]).
     #[cfg(feature = "native")]
     recorder: Option<InputRecorder>,
@@ -277,6 +280,7 @@ impl App {
             #[cfg(feature = "native")]
             view_state: None,
             inspector: None,
+            web_views: None,
             #[cfg(feature = "native")]
             recorder: None,
         }
@@ -548,6 +552,10 @@ impl App {
         screen
             .tree_mut()
             .set_now(self.clock.elapsed().as_secs_f64());
+        // Before animations run, so the widgets' messages come out this frame.
+        if let Some(web_views) = &self.web_views {
+            web_views.deliver_reports(screen.tree_mut());
+        }
         screen.before_frame(&mut self.text);
         let now = self.clock.elapsed().as_secs_f64();
         if wants_frame(screen.tree(), now) {
@@ -565,6 +573,9 @@ impl App {
         let changed = screen.prepare(viewport.logical_size(), &mut self.text);
         if changed {
             self.needs_present = true;
+        }
+        if let Some(web_views) = &mut self.web_views {
+            web_views.sync(screen.tree_mut(), window.scale_factor(), changed);
         }
         #[cfg(feature = "native")]
         if let Some(accessibility) = &mut self.accessibility {
@@ -682,17 +693,22 @@ impl App {
             return;
         };
         for request in gfx.screen.take_window_requests() {
-            if let Some(window) =
-                crate::windows::SecondaryWindow::open(event_loop, instance, &gfx.ctx, request)
-            {
+            if let Some(window) = crate::windows::SecondaryWindow::open(
+                event_loop,
+                instance,
+                &gfx.ctx,
+                request,
+                &self.waker,
+            ) {
                 self.windows.push(window);
             }
         }
     }
 
-    fn schedule_timers(&mut self, event_loop: &ActiveEventLoop) {
+    /// `poll`: wake again within a frame's time even without a timer.
+    fn schedule_timers(&mut self, event_loop: &ActiveEventLoop, poll: bool) {
         let now = self.clock.elapsed().as_secs_f64();
-        let mut next: Option<f64> = None;
+        let mut next: Option<f64> = poll.then_some(now + 1.0 / 60.0);
         let mut due = |timer: Option<f64>, window: &Window| {
             let Some(t) = timer else { return };
             if t <= now {
@@ -998,6 +1014,16 @@ impl ApplicationHandler<Wake> for App {
         {
             window.request_redraw();
         }
+        // A web view reported something: its widget gets it on the next frame.
+        if self.web_views.as_ref().is_some_and(|w| w.has_reports())
+            && let Some(window) = &self.window
+        {
+            window.request_redraw();
+        }
+        #[cfg(feature = "native")]
+        for window in &self.windows {
+            window.redraw_for_web_view_reports();
+        }
         if !self.waker.take() {
             return;
         }
@@ -1032,6 +1058,7 @@ impl ApplicationHandler<Wake> for App {
                     event_loop, &window,
                 ));
             }
+            self.web_views = crate::webview::WebViews::new(&window, &self.waker);
             self.window = Some(window);
         }
         #[cfg(not(target_arch = "wasm32"))]
@@ -1142,6 +1169,13 @@ impl ApplicationHandler<Wake> for App {
         ))]
         self.run_alerts();
         self.apply_main_window_request();
+        // Native web views that need the loop to keep running (GTK's on Linux).
+        let poll = self.web_views.as_mut().is_some_and(|w| w.poll());
+        #[cfg(feature = "native")]
+        let poll = self
+            .windows
+            .iter_mut()
+            .fold(poll, |poll, window| window.poll_web_views() || poll);
         // Async wakes and tray/menu actions can request exit while the main window
         // is hidden, when there may never be another window event or redraw.
         if self
@@ -1152,7 +1186,7 @@ impl ApplicationHandler<Wake> for App {
             event_loop.exit();
             return;
         }
-        self.schedule_timers(event_loop);
+        self.schedule_timers(event_loop, poll);
     }
 }
 
