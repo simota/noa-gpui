@@ -145,8 +145,10 @@ mod views {
     }
 
     pub(crate) struct NativeViews<B: Backend> {
-        backend: B,
+        /// Declared before `backend`, which may hold the last reference to the window
+        /// the views are children of: fields drop in order, so the views go first.
         views: Vec<Native<B::View>>,
+        backend: B,
         /// Widgets whose view could not be made.
         failed: Vec<WidgetId>,
         reports: Reports,
@@ -278,6 +280,18 @@ mod tests {
         Place(WidgetId, Option<Rect>, f64),
         Request(WidgetId, WebViewRequest),
         Destroy(WidgetId),
+        /// The window the views are children of went away.
+        CloseWindow,
+    }
+
+    /// The window a backend holds and puts its views in, as `Wry` holds an
+    /// `Arc<Window>`.
+    struct ParentWindow(std::rc::Rc<std::cell::RefCell<Vec<Call>>>);
+
+    impl Drop for ParentWindow {
+        fn drop(&mut self) {
+            self.0.borrow_mut().push(Call::CloseWindow);
+        }
     }
 
     #[derive(Default)]
@@ -286,6 +300,7 @@ mod tests {
         refuse: bool,
         /// Its views need the event loop to keep running, as GTK's do.
         polled: bool,
+        window: Option<ParentWindow>,
     }
 
     struct FakeView {
@@ -572,6 +587,20 @@ mod tests {
         assert_eq!(w.take_calls().len(), 1);
         w.scroll_to(10.0);
         assert_eq!(w.take_calls(), []);
+    }
+
+    #[test]
+    fn views_go_before_the_window_they_are_children_of() {
+        let calls = std::rc::Rc::default();
+        let w = Window::new(Fake {
+            calls: std::rc::Rc::clone(&calls),
+            window: Some(ParentWindow(std::rc::Rc::clone(&calls))),
+            ..Default::default()
+        });
+        let web = w.web;
+        calls.borrow_mut().clear();
+        drop(w);
+        assert_eq!(*calls.borrow(), [Call::Destroy(web), Call::CloseWindow]);
     }
 
     #[test]
