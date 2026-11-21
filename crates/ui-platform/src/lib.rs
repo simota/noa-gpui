@@ -38,6 +38,14 @@ mod web_aria;
 mod web_ime;
 #[cfg(any(target_arch = "wasm32", test))]
 mod web_text;
+mod webview;
+#[cfg(any(
+    all(feature = "native", any(target_os = "macos", target_os = "windows")),
+    all(feature = "webview-linux", target_os = "linux"),
+))]
+mod webview_native;
+#[cfg(target_arch = "wasm32")]
+mod webview_web;
 #[cfg(feature = "native")]
 mod windows;
 
