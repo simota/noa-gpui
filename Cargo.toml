@@ -13,19 +13,19 @@ members = [
 ]
 
 [workspace.package]
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
-rust-version = "1.89"
+rust-version = "1.90"
 license = "MIT"
 repository = "https://github.com/simota/noa-gpui"
 
 [workspace.dependencies]
-noa-gpui-scene = { path = "crates/ui-scene", version = "0.2.0" }
-noa-gpui-text = { path = "crates/ui-text", version = "0.2.0" }
-noa-gpui-layout = { path = "crates/ui-layout", version = "0.2.0" }
-noa-gpui-core = { path = "crates/ui-core", version = "0.2.0" }
-noa-gpui-render-wgpu = { path = "crates/ui-render-wgpu", version = "0.2.0" }
-noa-gpui-platform = { path = "crates/ui-platform", version = "0.2.0" }
+noa-gpui-scene = { path = "crates/ui-scene", version = "0.2.1" }
+noa-gpui-text = { path = "crates/ui-text", version = "0.2.1" }
+noa-gpui-layout = { path = "crates/ui-layout", version = "0.2.1" }
+noa-gpui-core = { path = "crates/ui-core", version = "0.2.1" }
+noa-gpui-render-wgpu = { path = "crates/ui-render-wgpu", version = "0.2.1" }
+noa-gpui-platform = { path = "crates/ui-platform", version = "0.2.1" }
 demo = { path = "apps/demo" }
 
 wgpu = { version = "30.0.1", default-features = false, features = ["std", "wgsl"] }

@@ -121,7 +121,7 @@ On the Web, initialize the GPU from a canvas and then use `App::with_gpu` (`apps
 
 ## Running
 
-Requires Rust 1.89 or later (a requirement of the cosmic-text 0.19 dependency).
+Requires Rust 1.90 or later (a requirement of the tray-icon 0.25 and muda 0.20 dependencies used on macOS and Windows).
 
 ### Desktop
 
