@@ -1,17 +1,18 @@
 use noa_gpui_core::style::{Size, length};
 use noa_gpui_core::widgets::{
-    Button, ButtonClicked, ComboBox, FindBar, Label, LogLine, LogView, SearchField,
+    Button, ButtonClicked, ComboBox, Container, FindBar, Label, LogLine, LogView, SearchField,
     SearchSubmitted, SecureTextField, SelectionChanged, Terminal, TerminalInput, TextChanged,
-    TextField, TextSubmitted, TextView, TokenField, TokensChanged, Truncation, drive_find,
+    TextField, TextSubmitted, TextView, TokenField, TokensChanged, Truncation, WebView,
+    WebViewEvent, drive_find,
 };
 use noa_gpui_core::{Message, Paint, PaintCx, Role, Style, Widget, WidgetId};
 use noa_gpui_scene::{Color, TextLayoutId};
 use noa_gpui_text::{TextAlign, TextSpan, TextStore, TextStyle};
 
-use super::kit::Kit;
+use super::kit::{Kit, row_style};
 use super::{Demo, DemoCx, SectionSpec};
 
-pub const SECTIONS: [SectionSpec; 10] = [
+pub const SECTIONS: [SectionSpec; 11] = [
     SectionSpec {
         title: "Label",
         description: "Static text. Single-line by default; wrap(true) wraps at the available \
@@ -84,6 +85,18 @@ pub const SECTIONS: [SectionSpec; 10] = [
                       (Ctrl+Shift+C) to copy and Cmd+V (Ctrl+Shift+V) to paste. Here a tiny line editor answers \
                       instead of a shell.",
         build: terminal,
+    },
+    SectionSpec {
+        title: "Web view",
+        description: "A web page in the OS's web view (WKWebView on macOS, WebView2 on \
+                      Windows, WebKitGTK on Linux X11 with the webview-linux feature) or an \
+                      <iframe> on the Web. The platform layer places the native view over \
+                      the part of the WebView widget that shows and keeps it there as the \
+                      catalog scrolls, hides it with the widget and destroys it when the widget \
+                      goes; the widget itself paints only a placeholder. The page sits above \
+                      everything the window draws, menus included. Navigation and title \
+                      changes arrive as WebViewEvent.",
+        build: web_view,
     },
 ];
 
@@ -546,4 +559,74 @@ fn rich_text(kit: &mut Kit) -> Box<dyn Demo> {
     let card = kit.card("TextStore::create_rich(text, spans, style, None)");
     kit.tree.insert(Some(card), CodeLine { shaped: None });
     Box::new(())
+}
+
+const WEB_HOME: &str = "https://example.com";
+
+struct WebViewDemo {
+    web: WidgetId,
+    back: WidgetId,
+    forward: WidgetId,
+    reload: WidgetId,
+    home: WidgetId,
+    status: WidgetId,
+}
+
+impl Demo for WebViewDemo {
+    fn handle(&mut self, cx: &mut DemoCx, message: &Message) -> bool {
+        if message.source == self.web {
+            let text = match message.downcast_ref::<WebViewEvent>() {
+                Some(WebViewEvent::Navigated(url)) => format!("Navigated({url:?})"),
+                Some(WebViewEvent::Loaded(url)) => format!("Loaded({url:?})"),
+                Some(WebViewEvent::TitleChanged(title)) => format!("TitleChanged({title:?})"),
+                None => return true,
+            };
+            cx.tree
+                .update::<Label, _>(self.status, |l, cx| l.set_text(cx, text));
+            return true;
+        }
+        let source = message.source;
+        let buttons = [self.back, self.forward, self.reload, self.home];
+        if message.downcast_ref::<ButtonClicked>().is_none() || !buttons.contains(&source) {
+            return false;
+        }
+        cx.tree.update::<WebView, _>(self.web, |w, cx| {
+            if source == self.back {
+                w.go_back(cx);
+            } else if source == self.forward {
+                w.go_forward(cx);
+            } else if source == self.reload {
+                w.reload(cx);
+            } else if source == self.home {
+                w.load_url(cx, WEB_HOME);
+            }
+        });
+        true
+    }
+}
+
+fn web_view(kit: &mut Kit) -> Box<dyn Demo> {
+    let card = kit.wide_card(
+        "WebView::new(url).height(320.0) · go_back / go_forward / reload / load_url · WebViewEvent",
+        640.0,
+    );
+    let row = kit.tree.insert(Some(card), Container::new(row_style(8.0)));
+    let back = kit.tree.insert(Some(row), Button::new("Back"));
+    let forward = kit.tree.insert(Some(row), Button::new("Forward"));
+    let reload = kit.tree.insert(Some(row), Button::new("Reload"));
+    let home = kit.tree.insert(Some(row), Button::new("example.com"));
+    let web = kit
+        .tree
+        .insert(Some(card), WebView::new(WEB_HOME).height(320.0));
+    let status = kit
+        .tree
+        .insert(Some(card), Label::new("—").color(Role::Muted).wrap(true));
+    Box::new(WebViewDemo {
+        web,
+        back,
+        forward,
+        reload,
+        home,
+        status,
+    })
 }

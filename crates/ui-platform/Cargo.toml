@@ -18,6 +18,10 @@ native = [
     "dep:objc2-app-kit",
     "dep:ksni",
 ]
+# Native web views on Linux (WebKitGTK, X11 only). Needs the webkit2gtk-4.1 and GTK 3
+# development libraries, so `native` leaves it out: without it, `WebView` widgets show
+# their placeholder on Linux.
+webview-linux = ["native", "dep:wry", "wry/os-webview", "wry/x11", "dep:gtk"]
 webgpu = ["noa-gpui-render-wgpu/webgpu"]
 webgl2 = ["noa-gpui-render-wgpu/webgl2"]
 
@@ -41,6 +45,13 @@ pollster.workspace = true
 [target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
 tray-icon = { workspace = true, optional = true }
 
+# Native views for `WebView` widgets (WKWebView on macOS, WebView2 on Windows), used
+# with `native`. Not optional here: an optional `wry` would be turned on by the same
+# feature on Linux too, where it needs WebKitGTK (see `webview-linux`), and Cargo does not
+# allow the crate a second name.
+[target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies.wry]
+workspace = true
+
 # The application delegate that reports a click on the Dock icon (reopen).
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = { workspace = true, optional = true }
@@ -61,8 +72,20 @@ workspace = true
 optional = true
 features = ["xdg-portal", "async-std"]
 
-# The hidden text area for keyboard and IME input on the Web (`web_ime`), and the
-# accessibility tree mirrored as ARIA elements (`web_a11y`).
+# Native views for `WebView` widgets on Linux (WebKitGTK), only with `webview-linux`.
+[target.'cfg(target_os = "linux")'.dependencies.wry]
+workspace = true
+optional = true
+
+# WebKitGTK needs GTK initialized (gtk-rs's `gtk::init`, which wry's views check) and its
+# main loop run alongside winit's. The version wry depends on.
+[target.'cfg(target_os = "linux")'.dependencies.gtk]
+version = "0.18.2"
+optional = true
+
+# The hidden text area for keyboard and IME input on the Web (`web_ime`), the
+# accessibility tree mirrored as ARIA elements (`web_a11y`), and the `<iframe>`s of
+# `WebView` widgets (`webview_web`).
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen.workspace = true
 web-sys = { workspace = true, features = [
@@ -85,6 +108,9 @@ web-sys = { workspace = true, features = [
     "UiEvent",
     "Text",
     "CharacterData",
+    "HtmlIFrameElement",
+    "Location",
+    "History",
 ] }
 
 [[example]]

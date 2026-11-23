@@ -68,6 +68,7 @@ mod toolbar;
 mod tooltip;
 mod tsv;
 mod vt;
+mod webview;
 
 pub use alert::{Alert, AlertResponse, AlertStyle};
 pub use anchor_nav::{AnchorNav, AnchorSelected};
@@ -174,6 +175,7 @@ pub use toolbar::{Toolbar, ToolbarDisplay, ToolbarItem, ToolbarItemClicked, Tool
 pub use tooltip::Tooltip;
 pub use tsv::TableText;
 pub use vt::{CellStyle as TerminalCellStyle, TermColor, TerminalCell};
+pub use webview::{WebView, WebViewContent, WebViewEvent, WebViewFrame, WebViewRequest, web_views};
 
 use noa_gpui_scene::{Border, Color, Rect, Size, TextLayoutId};
 use noa_gpui_text::{TextStore, TextStyle};

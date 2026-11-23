@@ -25,6 +25,8 @@ pub struct SecondaryWindow {
     /// The pointer shape last given to the window.
     cursor: noa_gpui_core::Cursor,
     titlebar: crate::Titlebar,
+    /// The native views of the screen's `WebView` widgets.
+    web_views: Option<crate::webview::WebViews>,
 }
 
 impl SecondaryWindow {
@@ -33,6 +35,7 @@ impl SecondaryWindow {
         instance: &wgpu::Instance,
         gpu: &GpuContext,
         request: WindowRequest,
+        waker: &crate::Waker,
     ) -> Option<Self> {
         let attributes = crate::titlebar::apply(
             Window::default_attributes()
@@ -75,6 +78,7 @@ impl SecondaryWindow {
             screen.set_system_appearance(appearance(theme));
         }
         window.request_redraw();
+        let web_views = crate::webview::WebViews::new(&window, waker);
         Some(Self {
             window,
             accessibility,
@@ -86,7 +90,20 @@ impl SecondaryWindow {
             ime_area: None,
             cursor: noa_gpui_core::Cursor::Default,
             titlebar: request.titlebar,
+            web_views,
         })
+    }
+
+    /// Redraw if a web view reported something, for its widget to get it.
+    pub fn redraw_for_web_view_reports(&self) {
+        if self.web_views.as_ref().is_some_and(|w| w.has_reports()) {
+            self.window.request_redraw();
+        }
+    }
+
+    /// Whether the event loop must wake again soon for this window's web views.
+    pub fn poll_web_views(&mut self) -> bool {
+        self.web_views.as_mut().is_some_and(|w| w.poll())
     }
 
     /// When this window's tree next needs a frame for a timer (see
@@ -190,6 +207,9 @@ impl SecondaryWindow {
     ) {
         let viewport = self.viewport();
         self.screen.tree_mut().set_now(now);
+        if let Some(web_views) = &self.web_views {
+            web_views.deliver_reports(self.screen.tree_mut());
+        }
         if crate::app::wants_frame(self.screen.tree(), now) {
             self.screen.animate(now, text);
         }
@@ -197,6 +217,9 @@ impl SecondaryWindow {
         let changed = self.screen.prepare(viewport.logical_size(), text);
         if changed {
             self.needs_present = true;
+        }
+        if let Some(web_views) = &mut self.web_views {
+            web_views.sync(self.screen.tree_mut(), self.window.scale_factor(), changed);
         }
         self.accessibility
             .update(self.screen.as_ref(), changed, viewport.scale_factor as f64);

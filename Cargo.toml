@@ -54,6 +54,9 @@ objc2 = "0.6.5"
 ksni = { version = "0.3.7", default-features = false, features = ["async-io", "blocking"] }
 objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSResponder"] }
 accesskit_winit = { version = "0.34.2", default-features = false, features = ["accesskit_unix", "async-io", "rwh_06"] }
+# The OS's web view (WKWebView, WebView2, WebKitGTK) for `WebView` widgets. Its default
+# features pull in WebKitGTK on Linux, which only `noa-gpui-platform/webview-linux` wants.
+wry = { version = "0.57.3", default-features = false }
 
 [profile.release]
 debug = "line-tables-only"
