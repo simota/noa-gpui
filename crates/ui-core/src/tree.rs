@@ -2898,17 +2898,16 @@ impl UiTree {
                         self.focus_next(modifiers.shift);
                         return;
                     }
-                    Key::ContextMenu | Key::F10
+                    Key::ContextMenu | Key::F10 => {
                         if (*key == Key::ContextMenu || modifiers.shift)
                             && let Some(focused) = self.focused
                             && let Some(rect) = self.window_rect(focused)
-                            && let Some((owner, items)) = self.context_menu_at(
-                                focused,
-                                Point::new(rect.x + 1.0, rect.y + 1.0),
-                            ) =>
-                    {
-                        self.open_context_menu(owner, items, Point::new(rect.x, rect.bottom()));
-                        return;
+                            && let Some((owner, items)) = self
+                                .context_menu_at(focused, Point::new(rect.x + 1.0, rect.y + 1.0))
+                        {
+                            self.open_context_menu(owner, items, Point::new(rect.x, rect.bottom()));
+                            return;
+                        }
                     }
                     Key::ArrowLeft | Key::ArrowUp | Key::ArrowRight | Key::ArrowDown
                         if self.focus_in_group(matches!(key, Key::ArrowRight | Key::ArrowDown)) =>

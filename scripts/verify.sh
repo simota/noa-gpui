@@ -41,7 +41,7 @@ if [ "${1:-}" = "--full" ]; then
   run bench-desktop cargo bench -p noa-gpui-core --bench desktop
 fi
 
-echo "not covered: release builds per OS and the wasm-release builds (CI matrix jobs only), the MSRV (rust-version 1.89), running the web build in a browser, secret scanning"
+echo "not covered: release builds per OS and the wasm-release builds (CI matrix jobs only), the MSRV (rust-version 1.90), running the web build in a browser, secret scanning"
 if [ "${#failed[@]}" -gt 0 ]; then
   printf 'verify: FAILED: %s\n' "${failed[*]}"
   exit 1
